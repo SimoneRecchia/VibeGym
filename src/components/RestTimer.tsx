@@ -32,16 +32,34 @@ export function RestTimer() {
   const { palette, mode } = useTheme();
   const insets = useSafeAreaInsets();
 
-  const slide = useRef(new Animated.Value(120)).current;
+  // Off-screen value is generous so the bar is fully hidden behind any safe
+  // area / home indicator on all device sizes.
+  const HIDDEN_OFFSET = 260;
+  const slide = useRef(new Animated.Value(HIDDEN_OFFSET)).current;
 
   useEffect(() => {
     Animated.spring(slide, {
-      toValue: timer.active ? 0 : 120,
+      toValue: timer.active ? 0 : HIDDEN_OFFSET,
       useNativeDriver: true,
       speed: 18,
       bounciness: 4,
     }).start();
   }, [timer.active, slide]);
+
+  // Skip rendering entirely when truly inactive — saves layout work and
+  // avoids the very first frame flashing the bar before the spring starts.
+  if (!timer.active) {
+    // Still render but invisible so the slide-in works on next activation
+    return (
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.miniWrap,
+          { bottom: insets.bottom + 78, transform: [{ translateY: HIDDEN_OFFSET }], opacity: 0 },
+        ]}
+      />
+    );
+  }
 
   const pct = timer.total > 0 ? Math.max(0, Math.min(1, 1 - timer.remaining / timer.total)) : 0;
   const isWork = timer.phase === 'work';
