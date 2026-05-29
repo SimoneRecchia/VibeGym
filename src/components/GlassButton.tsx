@@ -79,18 +79,6 @@ export function GlassButton({
         </Text>
         {iconRight && <Icon name={iconRight} color={visual.fg} size={dims.iconSize} />}
       </View>
-      {/* highlight */}
-      <View
-        pointerEvents="none"
-        style={[
-          styles.highlight,
-          {
-            borderTopLeftRadius: dims.radius,
-            borderTopRightRadius: dims.radius,
-            backgroundColor: visual.highlight,
-          },
-        ]}
-      />
     </PressableScale>
   );
 }
