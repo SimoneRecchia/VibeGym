@@ -1,4 +1,5 @@
 import { parseRepsString, parseWeightString } from './format';
+import { slugifySchedaName } from './validate';
 import {
   Day,
   Exercise,
@@ -26,6 +27,7 @@ export const migrateV1ToV2 = (raw: V1Plan): Plan => {
     : [];
   return {
     schema_version: 2,
+    id: slugifySchedaName(raw.nome_scheda),
     nome_scheda: raw.nome_scheda,
     creata_il: raw.creata_il,
     giorni: days,
@@ -152,9 +154,11 @@ export const normalizePlan = (raw: unknown): Plan => {
   }
   const obj = raw as Record<string, unknown>;
   if (obj.schema_version === 2 && Array.isArray(obj.giorni)) {
-    // Already v2 — trust it but ensure storico exists
+    const v2 = obj as unknown as Plan;
+    // Already v2 — trust it but ensure storico exists & id is set
     return {
-      ...(obj as unknown as Plan),
+      ...v2,
+      id: v2.id || slugifySchedaName(v2.nome_scheda),
       storico: Array.isArray(obj.storico) ? (obj.storico as Session[]) : [],
     };
   }

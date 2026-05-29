@@ -9,6 +9,7 @@
 
 export const FORMAT_EXAMPLE = `{
   "schema_version": 2,
+  "id": "la-mia-scheda",
   "nome_scheda": "La mia scheda",
   "creata_il": "2026-05-27",
   "giorni": [
@@ -68,7 +69,7 @@ export const FORMAT_EXAMPLE = `{
 
 export const FORMAT_PROMPT = `Trasforma la mia scheda da palestra in un JSON valido secondo questo schema. Regole:
 
-- Oggetto root: { "schema_version": 2, "nome_scheda": string, "creata_il": "YYYY-MM-DD", "giorni": [...], "storico": [] }.
+- Oggetto root: { "schema_version": 2, "id": "slug-stabile", "nome_scheda": string, "creata_il": "YYYY-MM-DD", "giorni": [...], "storico": [] }. L'"id" è uno slug lowercase-con-trattini, NON cambierà mai (è il nome cartella su GitHub).
 - Ogni giorno: { "id": slug, "nome": string (es. "Giorno A — Petto"), "colore": "#HEX", "esercizi": [...], opzionalmente "cardio" }.
 - Ogni esercizio: { "id": slug, "nome": string, "serie": intero, "reps": Reps, "peso_suggerito": Weight, "recupero_sec": intero, opzionalmente "note_coach": string }.
 - Tipo Weight: { "value": numero, "unit": "kg" | "lb" | "bw" }. Per corpo libero usa { "value": 0, "unit": "bw" }; per BW + zavorra usa { "value": 10, "unit": "bw" }.

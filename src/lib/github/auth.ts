@@ -19,6 +19,10 @@ export interface TokenInfo {
   kind: 'oauth' | 'pat';
   /** GitHub username / login resolved from the token, when known. */
   login?: string;
+  /** Full display name from the GitHub profile, when known. */
+  name?: string;
+  /** Profile picture URL — used as user identity in the home/settings. */
+  avatarUrl?: string;
   /** Saved repo full name "owner/repo" for sync, when known. */
   repo?: string;
 }

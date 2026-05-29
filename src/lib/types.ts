@@ -106,6 +106,13 @@ export interface Session {
 
 export interface Plan {
   schema_version: 2;
+  /**
+   * Stable slug used as the folder name on GitHub
+   * (e.g. `schede/push-pull-2026/`). Derived from nome_scheda on first import
+   * and never changes — renaming nome_scheda does NOT move the folder, so
+   * git history stays intact.
+   */
+  id: string;
   nome_scheda?: string;
   creata_il?: string;
   giorni: Day[];

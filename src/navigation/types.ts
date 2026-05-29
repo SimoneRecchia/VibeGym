@@ -1,3 +1,5 @@
+import { Plan } from '../lib/types';
+
 export type RootStackParamList = {
   Home: undefined;
   Workout: undefined;
@@ -9,4 +11,5 @@ export type RootStackParamList = {
   Settings: undefined;
   Sync: undefined;
   Charts: undefined;
+  ValidatePlan: { plan: Plan };
 };
