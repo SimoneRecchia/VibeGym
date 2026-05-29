@@ -12,6 +12,7 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { SchemaScreen } from '../screens/SchemaScreen';
 import { SyncScreen } from '../screens/SyncScreen';
 import { ChartsScreen } from '../screens/ChartsScreen';
+import { ValidatePlanScreen } from '../screens/ValidatePlanScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -54,6 +55,7 @@ export function AppNavigator() {
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Sync" component={SyncScreen} />
         <Stack.Screen name="Charts" component={ChartsScreen} />
+        <Stack.Screen name="ValidatePlan" component={ValidatePlanScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

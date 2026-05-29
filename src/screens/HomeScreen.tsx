@@ -1,32 +1,38 @@
-import React, { useMemo, useState } from 'react';
-import {
-  Animated,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import React, { useMemo } from 'react';
+import { Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../lib/store';
 import { useTheme } from '../theme/ThemeProvider';
 import { hexToRgba, radius, space, typography } from '../theme/tokens';
-import { dayLetter, estimateDurationMin, formatTimeAgo, getDailyProgress, getGreeting } from '../lib/helpers';
+import {
+  dayLetter,
+  estimateDurationMin,
+  formatTimeAgo,
+  getDailyProgress,
+  getGreeting,
+} from '../lib/helpers';
 import { Screen } from '../components/Screen';
 import { IconButton } from '../components/IconButton';
 import { DayRow } from '../components/DayRow';
 import { GlassCard } from '../components/GlassCard';
 import { GlassButton } from '../components/GlassButton';
-import { Icon } from '../components/Icon';
+import { Icon, IconName } from '../components/Icon';
 import { PressableScale } from '../components/PressableScale';
-import { RootStackParamList } from '../navigation/types';
+import { Avatar } from '../components/Avatar';
 import { ProgressRing } from '../components/ProgressRing';
+import { RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
+function stripHash(hex: string | undefined): string {
+  if (!hex) return '#5E8BFF';
+  return hex.startsWith('#') ? hex : `#${hex}`;
+}
+
 export function HomeScreen() {
   const navigation = useNavigation<Nav>();
-  const { plan, startDay, hydrating } = useStore();
+  const { plan, startDay, hydrating, github } = useStore();
   const { palette, mode, toggle } = useTheme();
 
   const progress = useMemo(() => getDailyProgress(plan), [plan]);
@@ -34,12 +40,8 @@ export function HomeScreen() {
     () => plan?.giorni.find(g => progress[g.id]?.inProgress),
     [plan, progress]
   );
-
   const otherDays = useMemo(
-    () =>
-      plan
-        ? plan.giorni.filter(g => g.id !== inProgressDay?.id)
-        : [],
+    () => (plan ? plan.giorni.filter(g => g.id !== inProgressDay?.id) : []),
     [plan, inProgressDay]
   );
 
@@ -57,6 +59,16 @@ export function HomeScreen() {
     navigation.navigate('Workout');
   };
 
+  // ---- Onboarding state machine ----
+  // 1. not connected → "Collega GitHub"
+  // 2. connected, no plan → "Aggiungi scheda"
+  // 3. connected, plan → normal day list
+  const stage: 'connect' | 'add-plan' | 'workout' = !github.token
+    ? 'connect'
+    : !plan
+    ? 'add-plan'
+    : 'workout';
+
   return (
     <Screen>
       <ScrollView
@@ -68,63 +80,39 @@ export function HomeScreen() {
             <Text style={[styles.greet, { color: palette.textDim }]}>{getGreeting()}</Text>
             <Text style={[styles.title, { color: palette.text }]}>Vibe Gym</Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <IconButton
               icon={mode === 'dark' ? 'sun' : 'moon'}
               onPress={toggle}
               size={42}
             />
-            <IconButton
-              icon="dots"
-              onPress={() => navigation.navigate('Menu')}
-              size={42}
-            />
+            <PressableScale onPress={() => navigation.navigate('Settings')}>
+              {github.token ? (
+                <Avatar url={github.token.avatarUrl} fallback={github.token.login} size={42} />
+              ) : (
+                <IconButton icon="gear" onPress={() => navigation.navigate('Settings')} size={42} />
+              )}
+            </PressableScale>
           </View>
         </View>
 
-        {!plan && !hydrating && (
-          <EmptyState
+        {!hydrating && stage === 'connect' && (
+          <ConnectHero onPress={() => navigation.navigate('Sync')} />
+        )}
+
+        {stage === 'add-plan' && (
+          <AddPlanHero
+            login={github.token?.login ?? ''}
+            avatarUrl={github.token?.avatarUrl}
             onImport={() => navigation.navigate('Import')}
             onHelp={() => navigation.navigate('Format')}
           />
         )}
 
-        {plan && (
+        {stage === 'workout' && plan && (
           <>
-            <PressableScale
-              onPress={() => navigation.navigate('Schema')}
-              style={{ marginTop: space.lg }}
-            >
-              <GlassCard rounded="lg" style={styles.schemaRow}>
-                <View
-                  style={[
-                    styles.schemaIcon,
-                    {
-                      backgroundColor: palette.accentSoft,
-                      borderColor: hexToRgba(stripHash(palette.accent), 0.55),
-                    },
-                  ]}
-                >
-                  <Icon name="layers" color={palette.accent} size={18} />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={[styles.schemaLabel, { color: palette.textDim }]}>Scheda attiva</Text>
-                  <Text style={[styles.schemaName, { color: palette.text }]} numberOfLines={1}>
-                    {plan.nome_scheda || 'La mia scheda'}
-                  </Text>
-                </View>
-                <Icon name="chevron-right" color={palette.textFaint} size={20} />
-              </GlassCard>
-            </PressableScale>
-
-            {/* Quick stats strip */}
             <View style={styles.statsStrip}>
-              <StatPill
-                label="Sessioni"
-                value={String(sessions.length)}
-                hint="totali"
-                icon="chart"
-              />
+              <StatPill label="Sessioni" value={String(sessions.length)} hint="totali" icon="chart" />
               <StatPill
                 label="Settimana"
                 value={String(weeklyVolume)}
@@ -159,7 +147,6 @@ export function HomeScreen() {
 
             <View style={styles.section}>
               <SectionHead title={inProgressDay ? 'Altri giorni' : 'I tuoi giorni'} />
-              {otherDays.length === 0 && !inProgressDay ? null : null}
               {(inProgressDay ? otherDays : plan.giorni).map(g => {
                 const idx = plan.giorni.findIndex(x => x.id === g.id);
                 const p = progress[g.id];
@@ -189,14 +176,18 @@ export function HomeScreen() {
                     <View
                       style={[
                         styles.activityIcon,
-                        { backgroundColor: palette.accentSoft, borderColor: hexToRgba(stripHash(palette.accent), 0.5) },
+                        {
+                          backgroundColor: palette.accentSoft,
+                          borderColor: hexToRgba(stripHash(palette.accent), 0.5),
+                        },
                       ]}
                     >
                       <Icon name="chart" color={palette.accent} size={18} />
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={[styles.activityTitle, { color: palette.text }]}>
-                        {sessions.length} {sessions.length === 1 ? 'sessione completata' : 'sessioni completate'}
+                        {sessions.length}{' '}
+                        {sessions.length === 1 ? 'sessione completata' : 'sessioni completate'}
                       </Text>
                       <Text style={[styles.activityMeta, { color: palette.textDim }]}>
                         Ultima: {formatTimeAgo(new Date(lastSession.data))}
@@ -216,9 +207,7 @@ export function HomeScreen() {
 
 function SectionHead({ title }: { title: string }) {
   const { palette } = useTheme();
-  return (
-    <Text style={[styles.sectionHead, { color: palette.textFaint }]}>{title.toUpperCase()}</Text>
-  );
+  return <Text style={[styles.sectionHead, { color: palette.textFaint }]}>{title.toUpperCase()}</Text>;
 }
 
 function StatPill({
@@ -232,7 +221,7 @@ function StatPill({
   label: string;
   value: string;
   hint: string;
-  icon: import('../components/Icon').IconName;
+  icon: IconName;
   tint?: string;
   tintSoft?: string;
 }) {
@@ -241,7 +230,12 @@ function StatPill({
   const bg = tintSoft ?? palette.accentSoft;
   return (
     <GlassCard style={styles.statPill} rounded="lg">
-      <View style={[styles.statIcon, { backgroundColor: bg, borderColor: hexToRgba(stripHash(fg), 0.45) }]}>
+      <View
+        style={[
+          styles.statIcon,
+          { backgroundColor: bg, borderColor: hexToRgba(stripHash(fg), 0.45) },
+        ]}
+      >
         <Icon name={icon} color={fg} size={14} />
       </View>
       <Text style={[styles.statValue, { color: palette.text }]}>{value}</Text>
@@ -289,7 +283,10 @@ function Hero({
           <View
             style={[
               styles.heroBadge,
-              { backgroundColor: hexToRgba(stripHash(accent), 0.25), borderColor: hexToRgba(stripHash(accent), 0.6) },
+              {
+                backgroundColor: hexToRgba(stripHash(accent), 0.25),
+                borderColor: hexToRgba(stripHash(accent), 0.6),
+              },
             ]}
           >
             <Icon name="lightning" color={accent} size={12} />
@@ -298,7 +295,10 @@ function Hero({
           <View
             style={[
               styles.heroStub,
-              { backgroundColor: hexToRgba(stripHash(accent), 0.35), borderColor: hexToRgba(stripHash(accent), 0.7) },
+              {
+                backgroundColor: hexToRgba(stripHash(accent), 0.35),
+                borderColor: hexToRgba(stripHash(accent), 0.7),
+              },
             ]}
           >
             <Text style={[styles.heroStubText, { color: '#fff' }]}>{letter}</Text>
@@ -316,17 +316,12 @@ function Hero({
             </Text>
             <View style={[styles.progressTrack, { backgroundColor: palette.dividerStrong }]}>
               <Animated.View
-                style={[
-                  styles.progressFill,
-                  { width: `${pct * 100}%`, backgroundColor: accent },
-                ]}
+                style={[styles.progressFill, { width: `${pct * 100}%`, backgroundColor: accent }]}
               />
             </View>
           </View>
           <ProgressRing progress={pct} size={56} thickness={5} color={accent}>
-            <Text style={[styles.ringText, { color: palette.text }]}>
-              {Math.round(pct * 100)}%
-            </Text>
+            <Text style={[styles.ringText, { color: palette.text }]}>{Math.round(pct * 100)}%</Text>
           </ProgressRing>
         </View>
 
@@ -339,92 +334,97 @@ function Hero({
   );
 }
 
-function EmptyState({ onImport, onHelp }: { onImport: () => void; onHelp: () => void }) {
-  const { palette } = useTheme();
+function ConnectHero({ onPress }: { onPress: () => void }) {
+  const { palette, mode } = useTheme();
   return (
-    <View style={styles.empty}>
+    <View style={styles.onboard}>
       <View
         style={[
-          styles.emptyIcon,
+          styles.onboardIcon,
           { backgroundColor: palette.accentSoft, borderColor: hexToRgba(stripHash(palette.accent), 0.5) },
         ]}
       >
-        <Icon name="dumbbell" size={36} color={palette.accent} />
+        <Icon name="layers" size={36} color={palette.accent} />
       </View>
-      <Text style={[styles.emptyTitle, { color: palette.text }]}>Pronto per iniziare?</Text>
-      <Text style={[styles.emptySub, { color: palette.textDim }]}>
-        Importa la tua scheda in JSON e inizia ad allenarti in pochi secondi.
+      <Text style={[styles.onboardTitle, { color: palette.text }]}>Inizia da GitHub</Text>
+      <Text style={[styles.onboardSub, { color: palette.textDim }]}>
+        Vibe Gym usa il tuo account GitHub come backup: scheda + storico vivono
+        in una repo privata tua, niente server di terzi, tutto versionato.
+      </Text>
+      <View style={{ gap: 10, alignSelf: 'stretch', marginTop: space.lg }}>
+        <GlassButton title="Collega GitHub" icon="lightning" onPress={onPress} block size="lg" />
+      </View>
+      <View style={[styles.featuresList, { borderColor: palette.glassBorder, backgroundColor: palette.surface }]}>
+        <Feature icon="check" text="Sincronizzazione automatica dopo ogni allenamento" />
+        <Feature icon="check" text="Storico completo + grafici di progressione" />
+        <Feature icon="check" text="I dati restano tuoi, sul tuo account" />
+      </View>
+    </View>
+  );
+}
+
+function AddPlanHero({
+  login,
+  avatarUrl,
+  onImport,
+  onHelp,
+}: {
+  login: string;
+  avatarUrl?: string;
+  onImport: () => void;
+  onHelp: () => void;
+}) {
+  const { palette } = useTheme();
+  return (
+    <View style={styles.onboard}>
+      <View style={styles.welcomeRow}>
+        <Avatar url={avatarUrl} fallback={login} size={56} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[styles.welcomeLabel, { color: palette.textDim }]}>COLLEGATO</Text>
+          <Text style={[styles.welcomeName, { color: palette.text }]} numberOfLines={1}>
+            @{login}
+          </Text>
+        </View>
+      </View>
+      <Text style={[styles.onboardTitle, { color: palette.text, marginTop: space.lg }]}>
+        Aggiungi la tua scheda
+      </Text>
+      <Text style={[styles.onboardSub, { color: palette.textDim }]}>
+        Importa un file JSON con i tuoi giorni e esercizi. L'app verifica
+        formato e valori; se qualcosa è scritto come "8-9 kg" puoi correggerlo
+        subito.
       </Text>
       <View style={{ gap: 10, alignSelf: 'stretch', marginTop: space.lg }}>
         <GlassButton title="Importa scheda" icon="download" onPress={onImport} block size="lg" />
         <GlassButton
-          title="Non hai un file JSON?"
+          title="Non hai un JSON? Vedi come crearlo"
           variant="ghost"
           onPress={onHelp}
           block
+          icon="bulb"
         />
       </View>
     </View>
   );
 }
 
-function stripHash(hex: string): string {
-  if (!hex) return '#5E8BFF';
-  return hex.startsWith('#') ? hex : `#${hex}`;
+function Feature({ icon, text }: { icon: IconName; text: string }) {
+  const { palette } = useTheme();
+  return (
+    <View style={styles.featureRow}>
+      <Icon name={icon} color={palette.success} size={16} />
+      <Text style={[styles.featureText, { color: palette.text }]}>{text}</Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  scroll: {
-    paddingHorizontal: space.lg,
-    paddingTop: space.lg,
-  },
-  topbar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-  greet: {
-    ...typography.subhead,
-    marginBottom: 2,
-  },
-  title: {
-    ...typography.largeTitle,
-  },
-  schemaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: space.md,
-    gap: 12,
-  },
-  schemaIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth * 1.5,
-  },
-  schemaLabel: {
-    ...typography.caption1,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  schemaName: {
-    ...typography.headline,
-    marginTop: 2,
-  },
-  statsStrip: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: space.md,
-  },
-  statPill: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    alignItems: 'flex-start',
-  },
+  scroll: { paddingHorizontal: space.lg, paddingTop: space.lg },
+  topbar: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  greet: { ...typography.subhead, marginBottom: 2 },
+  title: { ...typography.largeTitle },
+  statsStrip: { flexDirection: 'row', gap: 10, marginTop: space.lg },
+  statPill: { flex: 1, paddingVertical: 12, paddingHorizontal: 12, alignItems: 'flex-start' },
   statIcon: {
     width: 24,
     height: 24,
@@ -434,21 +434,10 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth * 1.5,
     marginBottom: 8,
   },
-  statValue: {
-    ...typography.title2,
-  },
-  statLabel: {
-    ...typography.footnote,
-    marginTop: 1,
-  },
-  statHint: {
-    ...typography.caption2,
-    textTransform: 'uppercase',
-    marginTop: 1,
-  },
-  section: {
-    marginTop: space.xl,
-  },
+  statValue: { ...typography.title2 },
+  statLabel: { ...typography.footnote, marginTop: 1 },
+  statHint: { ...typography.caption2, textTransform: 'uppercase', marginTop: 1 },
+  section: { marginTop: space.xl },
   sectionHead: {
     ...typography.caption1,
     textTransform: 'uppercase',
@@ -466,11 +455,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     elevation: 8,
   },
-  heroTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -480,10 +465,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: StyleSheet.hairlineWidth * 1.5,
   },
-  heroBadgeText: {
-    ...typography.caption2,
-    textTransform: 'uppercase',
-  },
+  heroBadgeText: { ...typography.caption2, textTransform: 'uppercase' },
   heroStub: {
     width: 48,
     height: 48,
@@ -492,35 +474,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth * 1.5,
   },
-  heroStubText: {
-    ...typography.title1,
-    fontWeight: '800',
-  },
-  heroName: {
-    ...typography.title1,
-  },
-  heroBottom: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-  },
-  heroMeta: {
-    ...typography.footnote,
-    marginBottom: 8,
-  },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  ringText: {
-    ...typography.caption2,
-    fontWeight: '700',
-  },
+  heroStubText: { ...typography.title1, fontWeight: '800' },
+  heroName: { ...typography.title1 },
+  heroBottom: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  heroMeta: { ...typography.footnote, marginBottom: 8 },
+  progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 3 },
+  ringText: { ...typography.caption2, fontWeight: '700' },
   heroCTA: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -528,9 +488,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth * 1.5,
   },
-  heroCTAText: {
-    ...typography.headline,
-  },
+  heroCTAText: { ...typography.headline },
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -546,19 +504,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth * 1.5,
   },
-  activityTitle: {
-    ...typography.headline,
-  },
-  activityMeta: {
-    ...typography.footnote,
-    marginTop: 2,
-  },
-  empty: {
-    marginTop: space.xxxl,
-    alignItems: 'center',
-    paddingHorizontal: space.md,
-  },
-  emptyIcon: {
+  activityTitle: { ...typography.headline },
+  activityMeta: { ...typography.footnote, marginTop: 2 },
+  onboard: { marginTop: space.xxl, alignItems: 'center', paddingHorizontal: space.sm },
+  onboardIcon: {
     width: 88,
     height: 88,
     borderRadius: 26,
@@ -567,13 +516,25 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth * 1.5,
     marginBottom: space.lg,
   },
-  emptyTitle: {
-    ...typography.title1,
-    textAlign: 'center',
+  onboardTitle: { ...typography.title1, textAlign: 'center' },
+  onboardSub: { ...typography.body, textAlign: 'center', marginTop: 6 },
+  welcomeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    alignSelf: 'stretch',
+    marginTop: space.xl,
   },
-  emptySub: {
-    ...typography.body,
-    textAlign: 'center',
-    marginTop: 6,
+  welcomeLabel: { ...typography.caption2, letterSpacing: 0.7 },
+  welcomeName: { ...typography.title2, marginTop: 2 },
+  featuresList: {
+    alignSelf: 'stretch',
+    marginTop: space.lg,
+    padding: space.md,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth * 1.5,
+    gap: 10,
   },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  featureText: { ...typography.callout, flex: 1 },
 });

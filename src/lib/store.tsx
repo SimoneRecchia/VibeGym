@@ -45,7 +45,7 @@ import {
   TokenInfo,
 } from './github/auth';
 import { getUser } from './github/api';
-import { ensureRepo, pullPlan, pullSessions, pushPlanAndSessions, RepoInfo } from './github/sync';
+import { ensureRepo, pullActivePlan, pushPlanAndSessions, RepoInfo } from './github/sync';
 
 export type TimerPhase = 'rest' | 'work';
 
@@ -126,7 +126,11 @@ interface StoreCtx {
   connectWithPAT: (token: string) => Promise<{ ok: boolean; error?: string }>;
   saveDeviceFlowToken: (token: string) => Promise<{ ok: boolean; error?: string }>;
   disconnectGitHub: () => Promise<void>;
-  syncNow: (opts?: { silent?: boolean }) => Promise<{ ok: boolean; error?: string }>;
+  syncNow: (opts?: {
+    silent?: boolean;
+    markActive?: boolean;
+    message?: string;
+  }) => Promise<{ ok: boolean; error?: string }>;
   pullFromGitHub: () => Promise<{ ok: boolean; error?: string }>;
 }
 
@@ -637,7 +641,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       try {
         setGithub(g => ({ ...g, syncing: true, error: null }));
         const user = await getUser(raw);
-        const tok: TokenInfo = { token: raw, kind, login: user.login };
+        const tok: TokenInfo = {
+          token: raw,
+          kind,
+          login: user.login,
+          name: user.name,
+          avatarUrl: user.avatar_url,
+        };
         const repo = await ensureRepo(tok);
         const next: GitHubStatus = {
           token: { ...tok, repo: `${repo.owner}/${repo.repo}` },
@@ -648,7 +658,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         };
         setGithub(next);
         await persistGitHub(next);
-        showToast(`Collegato a github.com/${user.login}`);
+        showToast(`Collegato come @${user.login}`);
         return { ok: true };
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -682,19 +692,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [showToast]);
 
   const syncNow = useCallback(
-    async (opts?: { silent?: boolean }): Promise<{ ok: boolean; error?: string }> => {
+    async (
+      opts?: { silent?: boolean; markActive?: boolean; message?: string }
+    ): Promise<{ ok: boolean; error?: string }> => {
       const state = githubRef.current;
       if (!state.token || !state.repo || !plan) {
         return { ok: false, error: 'GitHub non collegato' };
       }
       try {
         setGithub(g => ({ ...g, syncing: true, error: null }));
-        const count = await pushPlanAndSessions(
-          state.token,
-          state.repo,
-          plan,
-          'data: sync'
-        );
+        const count = await pushPlanAndSessions(state.token, state.repo, plan, {
+          markActive: opts?.markActive,
+          message: opts?.message,
+        });
         const lastSyncAt = new Date().toISOString();
         setGithub(g => ({ ...g, syncing: false, lastSyncAt }));
         if (!opts?.silent) showToast(`Sincronizzato (${count} file)`);
@@ -716,12 +726,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       setGithub(g => ({ ...g, syncing: true, error: null }));
-      const remotePlan = await pullPlan(state.token, state.repo);
+      const { plan: remotePlan, allScheda: _ } = await pullActivePlan(state.token, state.repo);
       if (!remotePlan) {
         setGithub(g => ({ ...g, syncing: false }));
         return { ok: false, error: 'Nessuna scheda remota trovata' };
       }
-      const sessions = await pullSessions(state.token, state.repo);
+      const sessions = remotePlan.storico;
       const merged: Plan = { ...remotePlan, storico: sessions };
       setPlanState(merged);
       const lastSyncAt = new Date().toISOString();
@@ -735,7 +745,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [showToast]);
 
-  // Auto-push after a successful workout finish.
+  // Auto-push after a successful workout finish — single, descriptive commit.
   const lastSyncedSessionRef = useRef<string | null>(null);
   useEffect(() => {
     if (hydrating) return;
@@ -744,7 +754,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!last) return;
     if (lastSyncedSessionRef.current === last.id) return;
     lastSyncedSessionRef.current = last.id;
-    syncNow({ silent: true }).catch(() => {});
+    const fatti = last.esercizi.filter(e => e.completato).length;
+    const tot = last.esercizi.length;
+    syncNow({
+      silent: true,
+      message: `session: ${last.giorno_nome} — ${fatti}/${tot} ✓`,
+    }).catch(() => {});
   }, [plan, github.token, github.repo, hydrating, syncNow]);
 
   const value = useMemo<StoreCtx>(

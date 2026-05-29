@@ -31,14 +31,6 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
-jest.mock('react-native-reanimated', () => {
-  try {
-    return require('react-native-reanimated/mock');
-  } catch {
-    return {};
-  }
-});
-
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
