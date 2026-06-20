@@ -140,7 +140,7 @@ export function SyncScreen() {
   return (
     <Screen>
       <Header title="Sincronizzazione" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxxl }}>
+      <ScrollView contentContainerStyle={styles.scrollBody}>
         <View style={styles.heroTitleRow}>
           <View
             style={[
@@ -254,7 +254,7 @@ export function SyncScreen() {
           )}
         </GlassCard>
 
-        <Text style={[styles.legal, { color: palette.textFaint, marginTop: space.xxl }]}>
+        <Text style={[styles.legal, styles.legalFooter, { color: palette.textFaint }]}>
           {Platform.OS === 'ios'
             ? 'Il token è cifrato nel Keychain iOS.'
             : "Il token è cifrato nell'EncryptedSharedPreferences di Android."}
@@ -353,6 +353,18 @@ const styles = StyleSheet.create({
     ...typography.caption1,
     marginTop: space.lg,
     textAlign: 'center',
+  },
+  // Footer pinned to the bottom: `marginTop: 'auto'` pushes it down when the
+  // content is shorter than the screen (tall devices), while it still scrolls
+  // naturally below the cards when the content overflows.
+  legalFooter: {
+    marginTop: 'auto',
+    paddingTop: space.xxl,
+  },
+  scrollBody: {
+    padding: space.lg,
+    paddingBottom: space.xxxl,
+    flexGrow: 1,
   },
   stepCard: {
     padding: space.md,
