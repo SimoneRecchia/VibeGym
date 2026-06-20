@@ -1,16 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Linking,
   Platform,
-  Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import Clipboard from '@react-native-clipboard/clipboard';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../lib/store';
@@ -22,12 +19,6 @@ import { GlassButton } from '../components/GlassButton';
 import { GlassCard } from '../components/GlassCard';
 import { Icon } from '../components/Icon';
 import { RootStackParamList } from '../navigation/types';
-import {
-  DeviceCode,
-  pollForAccessToken,
-  requestDeviceCode,
-} from '../lib/github/auth';
-import { isOAuthConfigured } from '../lib/github/config';
 import { formatTimeAgo } from '../lib/helpers';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Sync'>;
@@ -39,61 +30,20 @@ function stripHash(hex: string | undefined): string {
 
 export function SyncScreen() {
   const navigation = useNavigation<Nav>();
-  const { palette, mode } = useTheme();
+  const { palette } = useTheme();
   const {
     github,
     connectWithPAT,
-    saveDeviceFlowToken,
     disconnectGitHub,
     syncNow,
     pullFromGitHub,
-    showToast,
   } = useStore();
 
-  const [mode2, setMode2] = useState<'idle' | 'device' | 'pat'>('idle');
-  const [deviceCode, setDeviceCode] = useState<DeviceCode | null>(null);
-  const [deviceErr, setDeviceErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [pat, setPat] = useState('');
-  const cancelRef = useRef(false);
 
-  useEffect(() => () => {
-    cancelRef.current = true;
-  }, []);
-
-  const beginDeviceFlow = async () => {
-    setMode2('device');
-    setDeviceErr(null);
-    setBusy(true);
-    try {
-      const dc = await requestDeviceCode();
-      setDeviceCode(dc);
-      cancelRef.current = false;
-      // Spawn polling
-      pollForAccessToken(dc, () => cancelRef.current)
-        .then(async token => {
-          const res = await saveDeviceFlowToken(token);
-          if (!res.ok) setDeviceErr(res.error ?? 'Errore salvataggio token');
-          else {
-            setMode2('idle');
-            setDeviceCode(null);
-          }
-        })
-        .catch(err => {
-          setDeviceErr(err instanceof Error ? err.message : String(err));
-        });
-    } catch (e) {
-      setDeviceErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const cancelDeviceFlow = () => {
-    cancelRef.current = true;
-    setMode2('idle');
-    setDeviceCode(null);
-    setDeviceErr(null);
+  const openUrl = (url: string) => {
+    Linking.openURL(url).catch(() => {});
   };
 
   const connectPAT = async () => {
@@ -101,21 +51,7 @@ export function SyncScreen() {
     setBusy(true);
     const res = await connectWithPAT(pat.trim());
     setBusy(false);
-    if (res.ok) {
-      setMode2('idle');
-      setPat('');
-    }
-  };
-
-  const copyCode = () => {
-    if (!deviceCode) return;
-    Clipboard.setString(deviceCode.user_code);
-    showToast('Codice copiato');
-  };
-
-  const openVerification = () => {
-    if (!deviceCode) return;
-    Linking.openURL(deviceCode.verification_uri).catch(() => {});
+    if (res.ok) setPat('');
   };
 
   /* ----------------------------- Connected ----------------------------- */
@@ -223,136 +159,106 @@ export function SyncScreen() {
           </View>
         </GlassCard>
 
-        {mode2 === 'idle' && (
-          <View style={{ gap: 10, marginTop: space.lg }}>
-            <GlassButton
-              title="Continua con GitHub"
-              icon="lightning"
-              onPress={beginDeviceFlow}
-              disabled={!isOAuthConfigured()}
-              block
-              size="lg"
-            />
-            {!isOAuthConfigured() && (
-              <Text style={[styles.subtle, { color: palette.textFaint }]}>
-                Device Flow non configurato in questo build (manca il
-                client_id). Usa un Personal Access Token qui sotto.
+        {/* Step 1 — account GitHub */}
+        <GlassCard style={[styles.stepCard, { marginTop: space.lg }]}>
+          <View style={styles.stepRow}>
+            <StepBadge n={1} />
+            <View style={styles.stepBody}>
+              <Text style={[styles.stepTitle, { color: palette.text }]}>
+                Accedi o registrati su GitHub
               </Text>
-            )}
-            <GlassButton
-              title="Usa un Personal Access Token"
-              icon="copy"
-              variant="secondary"
-              onPress={() => setMode2('pat')}
-              block
-            />
+              <Text style={[styles.subtle, { color: palette.textDim }]}>
+                Ti serve un account GitHub, è gratis. Se ce l'hai già, accedi e basta.
+              </Text>
+            </View>
           </View>
-        )}
+          <GlassButton
+            title="Apri GitHub"
+            icon="share"
+            variant="secondary"
+            onPress={() => openUrl('https://github.com/login')}
+            block
+            style={{ marginTop: space.sm }}
+          />
+        </GlassCard>
 
-        {mode2 === 'device' && (
-          <GlassCard style={[styles.deviceCard, { marginTop: space.lg }]}>
-            <Text style={[styles.deviceLabel, { color: palette.textDim }]}>
-              CODICE PER L'AUTORIZZAZIONE
-            </Text>
-            {deviceCode ? (
-              <Pressable onPress={copyCode}>
-                <Text style={[styles.deviceCode, { color: palette.text }]}>
-                  {deviceCode.user_code}
-                </Text>
-                <Text style={[styles.deviceHint, { color: palette.textDim }]}>
-                  Tocca per copiare
-                </Text>
-              </Pressable>
-            ) : (
-              <Text style={[styles.deviceCode, { color: palette.textFaint }]}>—</Text>
-            )}
-            <View style={{ gap: 10, marginTop: space.md }}>
-              <GlassButton
-                title="Apri pagina di autorizzazione"
-                icon="share"
-                onPress={openVerification}
-                disabled={!deviceCode}
-                block
-                size="lg"
-              />
-              <GlassButton title="Annulla" variant="ghost" onPress={cancelDeviceFlow} block />
-            </View>
-            {deviceErr && (
-              <View
-                style={[
-                  styles.error,
-                  { backgroundColor: palette.dangerSoft, borderColor: palette.glassBorderStrong, marginTop: 10 },
-                ]}
-              >
-                <Icon name="x" color={palette.danger} size={16} />
-                <Text style={[styles.errorText, { color: palette.danger }]}>{deviceErr}</Text>
-              </View>
-            )}
-            <Text style={[styles.subtle, { color: palette.textFaint, marginTop: space.md }]}>
-              Apri la pagina, incolla il codice e autorizza l'app. La connessione
-              avviene automaticamente quando hai approvato.
-            </Text>
-          </GlassCard>
-        )}
-
-        {mode2 === 'pat' && (
-          <GlassCard style={[styles.deviceCard, { marginTop: space.lg }]}>
-            <Text style={[styles.deviceLabel, { color: palette.textDim }]}>
-              PERSONAL ACCESS TOKEN
-            </Text>
-            <TextInput
-              value={pat}
-              onChangeText={setPat}
-              placeholder="ghp_… o github_pat_…"
-              placeholderTextColor={palette.textFaint}
-              autoCapitalize="none"
-              autoCorrect={false}
-              secureTextEntry
-              style={[
-                styles.input,
-                {
-                  color: palette.text,
-                  backgroundColor: palette.surface,
-                  borderColor: palette.glassBorderStrong,
-                },
-              ]}
-            />
-            <Text style={[styles.subtle, { color: palette.textFaint, marginTop: 6 }]}>
-              Crea un fine-grained token con accesso a "repo" su{' '}
-              <Text style={{ color: palette.accent }} onPress={() => Linking.openURL('https://github.com/settings/tokens?type=beta')}>
-                github.com/settings/tokens
+        {/* Step 2 — crea la chiave */}
+        <GlassCard style={[styles.stepCard, { marginTop: space.md }]}>
+          <View style={styles.stepRow}>
+            <StepBadge n={2} />
+            <View style={styles.stepBody}>
+              <Text style={[styles.stepTitle, { color: palette.text }]}>
+                Crea la chiave di accesso
               </Text>
-              . Lo conserveremo nel Keychain del dispositivo.
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: space.md }}>
-              <GlassButton
-                title="Annulla"
-                variant="ghost"
-                onPress={() => setMode2('idle')}
-                block
-                style={{ flex: 1 }}
-              />
-              <GlassButton
-                title={busy || github.syncing ? 'Verifica…' : 'Collega'}
-                onPress={connectPAT}
-                disabled={busy || github.syncing || !pat.trim()}
-                block
-                style={{ flex: 1 }}
-              />
+              <Text style={[styles.subtle, { color: palette.textDim }]}>
+                Si apre la pagina giusta con tutto già impostato. Scorri in fondo,
+                tocca <Text style={{ fontWeight: '700' }}>Generate token</Text> e
+                copia la chiave che appare.
+              </Text>
             </View>
-            {github.error && (
-              <View
-                style={[
-                  styles.error,
-                  { backgroundColor: palette.dangerSoft, borderColor: palette.glassBorderStrong, marginTop: 10 },
-                ]}
-              >
-                <Icon name="x" color={palette.danger} size={16} />
-                <Text style={[styles.errorText, { color: palette.danger }]}>{github.error}</Text>
-              </View>
-            )}
-          </GlassCard>
-        )}
+          </View>
+          <GlassButton
+            title="Crea la chiave"
+            icon="lightning"
+            onPress={() =>
+              openUrl('https://github.com/settings/tokens/new?description=VibeGym&scopes=repo')
+            }
+            block
+            style={{ marginTop: space.sm }}
+          />
+        </GlassCard>
+
+        {/* Step 3 — incolla la chiave */}
+        <GlassCard style={[styles.stepCard, { marginTop: space.md }]}>
+          <View style={styles.stepRow}>
+            <StepBadge n={3} />
+            <View style={styles.stepBody}>
+              <Text style={[styles.stepTitle, { color: palette.text }]}>
+                Incolla la chiave qui
+              </Text>
+              <Text style={[styles.subtle, { color: palette.textDim }]}>
+                La salviamo cifrata sul dispositivo: niente server di terzi.
+              </Text>
+            </View>
+          </View>
+          <TextInput
+            value={pat}
+            onChangeText={setPat}
+            placeholder="ghp_… o github_pat_…"
+            placeholderTextColor={palette.textFaint}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+            style={[
+              styles.input,
+              {
+                color: palette.text,
+                backgroundColor: palette.surface,
+                borderColor: palette.glassBorderStrong,
+              },
+            ]}
+          />
+          <GlassButton
+            title={busy || github.syncing ? 'Verifica…' : 'Collega'}
+            icon="check"
+            onPress={connectPAT}
+            disabled={busy || github.syncing || !pat.trim()}
+            block
+            size="lg"
+            style={{ marginTop: space.sm }}
+          />
+          {github.error && (
+            <View
+              style={[
+                styles.error,
+                { backgroundColor: palette.dangerSoft, borderColor: palette.glassBorderStrong, marginTop: 10 },
+              ]}
+            >
+              <Icon name="x" color={palette.danger} size={16} />
+              <Text style={[styles.errorText, { color: palette.danger }]}>{github.error}</Text>
+            </View>
+          )}
+        </GlassCard>
 
         <Text style={[styles.legal, { color: palette.textFaint, marginTop: space.xxl }]}>
           {Platform.OS === 'ios'
@@ -371,6 +277,20 @@ function Header({ title, onBack }: { title: string; onBack: () => void }) {
       <IconButton icon="arrow-left" onPress={onBack} size={42} />
       <Text style={[styles.title, { color: palette.text }]}>{title}</Text>
       <View style={{ width: 42 }} />
+    </View>
+  );
+}
+
+function StepBadge({ n }: { n: number }) {
+  const { palette } = useTheme();
+  return (
+    <View
+      style={[
+        styles.stepBadge,
+        { backgroundColor: palette.accentSoft, borderColor: hexToRgba(stripHash(palette.accent), 0.5) },
+      ]}
+    >
+      <Text style={[styles.stepBadgeText, { color: palette.accent }]}>{n}</Text>
     </View>
   );
 }
@@ -440,26 +360,25 @@ const styles = StyleSheet.create({
     marginTop: space.lg,
     textAlign: 'center',
   },
-  deviceCard: {
+  stepCard: {
     padding: space.md,
   },
-  deviceLabel: {
-    ...typography.caption1,
-    letterSpacing: 0.7,
-    marginBottom: 8,
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
   },
-  deviceCode: {
-    fontSize: 42,
-    fontWeight: '800',
-    letterSpacing: 6,
-    fontVariant: ['tabular-nums'],
-    textAlign: 'center',
-    marginVertical: 4,
+  stepBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth * 1.5,
   },
-  deviceHint: {
-    ...typography.caption1,
-    textAlign: 'center',
-  },
+  stepBadgeText: { ...typography.headline },
+  stepBody: { flex: 1, minWidth: 0 },
+  stepTitle: { ...typography.headline, marginBottom: 2 },
   input: {
     borderWidth: StyleSheet.hairlineWidth * 1.5,
     borderRadius: radius.md,
@@ -467,7 +386,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontFamily: 'Menlo',
     fontSize: 13,
-    marginTop: 6,
+    marginTop: space.sm,
   },
   subtle: {
     ...typography.caption1,
