@@ -141,23 +141,17 @@ export function SyncScreen() {
     <Screen>
       <Header title="Sincronizzazione" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxxl }}>
-        <GlassCard style={styles.heroCard}>
+        <View style={styles.heroTitleRow}>
           <View
             style={[
-              styles.heroIcon,
+              styles.heroTitleIcon,
               { backgroundColor: palette.accentSoft, borderColor: hexToRgba(stripHash(palette.accent), 0.5) },
             ]}
           >
-            <Icon name="layers" color={palette.accent} size={28} />
+            <Icon name="layers" color={palette.accent} size={20} />
           </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={[styles.heroTitle, { color: palette.text }]}>Collega GitHub</Text>
-            <Text style={[styles.heroSub, { color: palette.textDim }]}>
-              Niente server di terzi: la tua scheda e lo storico vivono in una
-              repo privata sul tuo account, con tutta la cronologia delle modifiche.
-            </Text>
-          </View>
-        </GlassCard>
+          <Text style={[styles.heroTitle, { color: palette.text }]}>Collega GitHub</Text>
+        </View>
 
         {/* Step 1 — account GitHub */}
         <GlassCard style={[styles.stepCard, { marginTop: space.lg }]}>
@@ -305,22 +299,22 @@ const styles = StyleSheet.create({
     paddingBottom: space.sm,
   },
   title: { ...typography.title2 },
-  heroCard: {
+  heroTitleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 14,
-    padding: space.md,
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 4,
+    marginBottom: space.xs,
   },
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
+  heroTitleIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth * 1.5,
   },
-  heroTitle: { ...typography.title2 },
-  heroSub: { ...typography.subhead, marginTop: 4 },
+  heroTitle: { ...typography.title1 },
   connectedCard: {
     flexDirection: 'row',
     alignItems: 'center',
