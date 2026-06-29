@@ -9,16 +9,19 @@ import React, {
 } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import {
+  DEFAULT_PROFILE,
   DEFAULT_SETTINGS,
   Exercise,
   HistoryExercise,
   HistoryExerciseSub,
   Plan,
+  Profile,
   Session,
   Settings,
   Weight,
 } from './types';
 import {
+  carrySessionWeights,
   ensureSessionFields,
   findExercise,
   firstUncheckedIdx,
@@ -32,9 +35,13 @@ import {
 import { haptic, setHapticsEnabled } from './haptics';
 import {
   clearPlan,
+  loadLocalMode,
   loadPlan,
+  loadProfile,
   loadSettings,
   savePlan,
+  saveLocalMode,
+  saveProfile,
   saveSettings,
 } from './storage';
 import { normalizePlan } from './migrate';
@@ -101,6 +108,13 @@ interface StoreCtx {
   hydrating: boolean;
   settings: Settings;
   setSetting: <K extends keyof Settings>(k: K, v: Settings[K]) => void;
+
+  /* Profile + persistence mode */
+  profile: Profile;
+  setProfile: (patch: Partial<Profile>) => void;
+  /** True when the user opted for a single local card with no GitHub backup. */
+  localMode: boolean;
+  enableLocalMode: () => void;
   currentDayId: string | null;
   setCurrentDayId: (id: string | null) => void;
   startDay: (id: string) => void;
@@ -140,6 +154,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [plan, setPlanState] = useState<Plan | null>(null);
   const [hydrating, setHydrating] = useState(true);
   const [settings, setSettingsState] = useState<Settings>({ ...DEFAULT_SETTINGS });
+  const [profile, setProfileState] = useState<Profile>({ ...DEFAULT_PROFILE });
+  const [localMode, setLocalModeState] = useState(false);
   const [currentDayId, setCurrentDayId] = useState<string | null>(null);
   const [timer, setTimer] = useState<TimerState>(initialTimer);
   const [toast, setToast] = useState<string | null>(null);
@@ -166,9 +182,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // Hydrate from storage on mount
   useEffect(() => {
     (async () => {
-      const [p, s, t] = await Promise.all([loadPlan(), loadSettings(), loadTokenInfo()]);
+      const [p, s, t, prof, lm] = await Promise.all([
+        loadPlan(),
+        loadSettings(),
+        loadTokenInfo(),
+        loadProfile(),
+        loadLocalMode(),
+      ]);
       if (p) setPlanState(p);
       setSettingsState(s);
+      setProfileState(prof);
+      setLocalModeState(lm);
       setHapticsEnabled(s.haptic);
       if (t) {
         setGithub(prev => ({
@@ -201,6 +225,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     saveSettings(settings);
     setHapticsEnabled(settings.haptic);
   }, [settings, hydrating]);
+
+  // Persist profile
+  useEffect(() => {
+    if (hydrating) return;
+    saveProfile(profile);
+  }, [profile, hydrating]);
+
+  const setProfile = useCallback((patch: Partial<Profile>) => {
+    setProfileState(prev => ({ ...prev, ...patch }));
+  }, []);
+
+  const enableLocalMode = useCallback(() => {
+    setLocalModeState(true);
+    saveLocalMode(true);
+  }, []);
 
   const setPlan = useCallback((p: Plan | null, _persist = true) => {
     setPlanState(p);
@@ -541,14 +580,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }),
     };
 
+    // Local mode (no GitHub): no version history — the single card is edited in
+    // place, folding the weights you used into its suggested weights.
+    const localOnly = !githubRef.current.token;
     setPlanState(prev => {
       if (!prev) return prev;
       const next: Plan = JSON.parse(JSON.stringify(prev));
-      if (!next.storico) next.storico = [];
-      next.storico.push(snapshot);
+      if (!localOnly) {
+        if (!next.storico) next.storico = [];
+        next.storico.push(snapshot);
+      }
       const targetDay = next.giorni.find(g => g.id === day.id);
       if (targetDay) {
         for (const ex of targetDay.esercizi) {
+          if (localOnly) carrySessionWeights(ex);
           const n = getSerieTotali(ex);
           ex._serie_stato = new Array(n).fill(false);
           ex._note_utente = '';
@@ -769,6 +814,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       hydrating,
       settings,
       setSetting,
+      profile,
+      setProfile,
+      localMode,
+      enableLocalMode,
       currentDayId,
       setCurrentDayId,
       startDay,
@@ -801,6 +850,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       hydrating,
       settings,
       setSetting,
+      profile,
+      setProfile,
+      localMode,
+      enableLocalMode,
       currentDayId,
       startDay,
       toggleSet,
