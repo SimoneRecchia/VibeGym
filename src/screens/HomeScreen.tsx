@@ -21,6 +21,7 @@ import { Icon, IconName } from '../components/Icon';
 import { PressableScale } from '../components/PressableScale';
 import { Avatar } from '../components/Avatar';
 import { ProgressRing } from '../components/ProgressRing';
+import { ProfileFields } from '../components/ProfileFields';
 import { RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -32,7 +33,7 @@ function stripHash(hex: string | undefined): string {
 
 export function HomeScreen() {
   const navigation = useNavigation<Nav>();
-  const { plan, startDay, hydrating, github } = useStore();
+  const { plan, startDay, hydrating, github, localMode, enableLocalMode } = useStore();
   const { palette, mode, toggle } = useTheme();
 
   const progress = useMemo(() => getDailyProgress(plan), [plan]);
@@ -60,11 +61,13 @@ export function HomeScreen() {
   };
 
   // ---- Onboarding state machine ----
-  // 1. not connected → "Collega GitHub"
-  // 2. connected, no plan → "Aggiungi scheda"
-  // 3. connected, plan → normal day list
-  const stage: 'connect' | 'add-plan' | 'workout' = !github.token
-    ? 'connect'
+  // 1. no path chosen → profile + "Collega GitHub" / use local card
+  // 2. path chosen, no plan → "Aggiungi scheda"
+  // 3. plan present → normal day list
+  const connected = !!github.token;
+  const ready = connected || localMode;
+  const stage: 'onboarding' | 'add-plan' | 'workout' = !ready
+    ? 'onboarding'
     : !plan
     ? 'add-plan'
     : 'workout';
@@ -96,13 +99,19 @@ export function HomeScreen() {
           </View>
         </View>
 
-        {!hydrating && stage === 'connect' && (
-          <ConnectHero onPress={() => navigation.navigate('Sync')} />
+        {!hydrating && stage === 'onboarding' && (
+          <OnboardingHero
+            onConnect={() => navigation.navigate('Sync')}
+            onLocal={() => {
+              enableLocalMode();
+              navigation.navigate('Import');
+            }}
+          />
         )}
 
         {stage === 'add-plan' && (
           <AddPlanHero
-            login={github.token?.login ?? ''}
+            login={github.token?.login}
             avatarUrl={github.token?.avatarUrl}
             onImport={() => navigation.navigate('Import')}
             onHelp={() => navigation.navigate('Format')}
@@ -334,31 +343,37 @@ function Hero({
   );
 }
 
-function ConnectHero({ onPress }: { onPress: () => void }) {
-  const { palette, mode } = useTheme();
+function OnboardingHero({
+  onConnect,
+  onLocal,
+}: {
+  onConnect: () => void;
+  onLocal: () => void;
+}) {
+  const { palette } = useTheme();
   return (
-    <View style={styles.onboard}>
-      <View
-        style={[
-          styles.onboardIcon,
-          { backgroundColor: palette.accentSoft, borderColor: hexToRgba(stripHash(palette.accent), 0.5) },
-        ]}
-      >
-        <Icon name="layers" size={36} color={palette.accent} />
-      </View>
-      <Text style={[styles.onboardTitle, { color: palette.text }]}>Inizia da GitHub</Text>
-      <Text style={[styles.onboardSub, { color: palette.textDim }]}>
-        Vibe Gym usa il tuo account GitHub come backup: scheda + storico vivono
-        in una repo privata tua, niente server di terzi, tutto versionato.
+    <View style={styles.onboardForm}>
+      <Text style={[styles.onboardFormTitle, { color: palette.text }]}>Crea il tuo profilo</Text>
+      <Text style={[styles.onboardFormSub, { color: palette.textDim }]}>
+        Bastano pochi dati per iniziare — sono opzionali. Poi scegli come salvare
+        la tua scheda.
       </Text>
-      <View style={{ gap: 10, alignSelf: 'stretch', marginTop: space.lg }}>
-        <GlassButton title="Collega GitHub" icon="lightning" onPress={onPress} block size="lg" />
+
+      <View style={{ marginTop: space.lg }}>
+        <ProfileFields />
       </View>
-      <View style={[styles.featuresList, { borderColor: palette.glassBorder, backgroundColor: palette.surface }]}>
-        <Feature icon="check" text="Sincronizzazione automatica dopo ogni allenamento" />
-        <Feature icon="check" text="Storico completo + grafici di progressione" />
-        <Feature icon="check" text="I dati restano tuoi, sul tuo account" />
+
+      <View style={{ gap: 12, marginTop: space.xl }}>
+        <GlassButton title="Collega GitHub" icon="lightning" onPress={onConnect} block size="lg" />
+        <Text style={[styles.localLink, { color: palette.textDim }]} onPress={onLocal}>
+          Usa una scheda locale, senza versioni
+        </Text>
       </View>
+
+      <Text style={[styles.localHint, { color: palette.textFaint }]}>
+        Con GitHub: backup, storico e grafici di progressione. In locale: una sola
+        scheda sul telefono, aggiornata in posto dopo ogni allenamento.
+      </Text>
     </View>
   );
 }
@@ -369,7 +384,7 @@ function AddPlanHero({
   onImport,
   onHelp,
 }: {
-  login: string;
+  login?: string;
   avatarUrl?: string;
   onImport: () => void;
   onHelp: () => void;
@@ -377,22 +392,33 @@ function AddPlanHero({
   const { palette } = useTheme();
   return (
     <View style={styles.onboard}>
-      <View style={styles.welcomeRow}>
-        <Avatar url={avatarUrl} fallback={login} size={56} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[styles.welcomeLabel, { color: palette.textDim }]}>COLLEGATO</Text>
-          <Text style={[styles.welcomeName, { color: palette.text }]} numberOfLines={1}>
-            @{login}
-          </Text>
+      {login ? (
+        <View style={styles.welcomeRow}>
+          <Avatar url={avatarUrl} fallback={login} size={56} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.welcomeLabel, { color: palette.textDim }]}>COLLEGATO</Text>
+            <Text style={[styles.welcomeName, { color: palette.text }]} numberOfLines={1}>
+              @{login}
+            </Text>
+          </View>
         </View>
-      </View>
+      ) : (
+        <View
+          style={[
+            styles.onboardIcon,
+            { backgroundColor: palette.accentSoft, borderColor: hexToRgba(stripHash(palette.accent), 0.5) },
+          ]}
+        >
+          <Icon name="doc" size={36} color={palette.accent} />
+        </View>
+      )}
       <Text style={[styles.onboardTitle, { color: palette.text, marginTop: space.lg }]}>
         Aggiungi la tua scheda
       </Text>
       <Text style={[styles.onboardSub, { color: palette.textDim }]}>
-        Importa un file JSON con i tuoi giorni e esercizi. L'app verifica
-        formato e valori; se qualcosa è scritto come "8-9 kg" puoi correggerlo
-        subito.
+        {login
+          ? 'Importa un file JSON con i tuoi giorni e esercizi. L\'app verifica formato e valori; se qualcosa è scritto come "8-9 kg" puoi correggerlo subito.'
+          : 'Importa un file JSON con i tuoi giorni e esercizi. In locale resta una sola scheda, aggiornata in posto dopo ogni allenamento.'}
       </Text>
       <View style={{ gap: 10, alignSelf: 'stretch', marginTop: space.lg }}>
         <GlassButton title="Importa scheda" icon="download" onPress={onImport} block size="lg" />
@@ -404,16 +430,6 @@ function AddPlanHero({
           icon="bulb"
         />
       </View>
-    </View>
-  );
-}
-
-function Feature({ icon, text }: { icon: IconName; text: string }) {
-  const { palette } = useTheme();
-  return (
-    <View style={styles.featureRow}>
-      <Icon name={icon} color={palette.success} size={16} />
-      <Text style={[styles.featureText, { color: palette.text }]}>{text}</Text>
     </View>
   );
 }
@@ -518,6 +534,16 @@ const styles = StyleSheet.create({
   },
   onboardTitle: { ...typography.title1, textAlign: 'center' },
   onboardSub: { ...typography.body, textAlign: 'center', marginTop: 6 },
+  onboardForm: { marginTop: space.xl },
+  onboardFormTitle: { ...typography.title1 },
+  onboardFormSub: { ...typography.body, marginTop: 6 },
+  localLink: {
+    ...typography.footnote,
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+    paddingVertical: 6,
+  },
+  localHint: { ...typography.caption1, textAlign: 'center', marginTop: space.md },
   welcomeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -527,14 +553,4 @@ const styles = StyleSheet.create({
   },
   welcomeLabel: { ...typography.caption2, letterSpacing: 0.7 },
   welcomeName: { ...typography.title2, marginTop: 2 },
-  featuresList: {
-    alignSelf: 'stretch',
-    marginTop: space.lg,
-    padding: space.md,
-    borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth * 1.5,
-    gap: 10,
-  },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  featureText: { ...typography.callout, flex: 1 },
 });

@@ -46,6 +46,7 @@ export function SettingsScreen() {
     settings,
     setSetting,
     plan,
+    profile,
     exportPlanJSON,
     resetProgress,
     disconnectPlan,
@@ -99,6 +100,14 @@ export function SettingsScreen() {
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxxl }}>
         {/* PROFILO */}
         <Section title="Profilo">
+          <GlassCard style={[styles.card, { marginBottom: space.sm }]}>
+            <NavRow
+              icon="pencil"
+              label="Dati personali"
+              hint={profile.name ? profile.name : 'Nome, data di nascita, peso, altezza'}
+              onPress={() => navigation.navigate('Profile')}
+            />
+          </GlassCard>
           {github.token ? (
             <PressableScale onPress={() => navigation.navigate('Sync')}>
               <GlassCard style={styles.profile}>

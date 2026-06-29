@@ -9,6 +9,7 @@ export type RootStackParamList = {
   Import: undefined;
   Format: undefined;
   Settings: undefined;
+  Profile: undefined;
   Sync: undefined;
   Charts: undefined;
   ValidatePlan: { plan: Plan };

@@ -142,6 +142,21 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultUnit: 'kg',
 };
 
+/* ------------------------------- Profile ---------------------------- */
+
+/** Personal info collected on the first page. All fields optional. */
+export interface Profile {
+  name?: string;
+  /** Free-form birth date as typed by the user, e.g. "12/03/1990". */
+  birthDate?: string;
+  /** Body weight in kg. */
+  weightKg?: number;
+  /** Height in cm. */
+  heightCm?: number;
+}
+
+export const DEFAULT_PROFILE: Profile = {};
+
 /* --------------------------- Legacy v1 schema ------------------------ */
 /* Kept only so we can migrate imports created with the original PWA.    */
 
