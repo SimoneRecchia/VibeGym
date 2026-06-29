@@ -6,6 +6,21 @@ export const getSerieTotali = (ex: Exercise): number => {
   return ex.serie ?? 0;
 };
 
+/**
+ * Local-mode progression: fold the weights actually logged this session back
+ * into the card's suggested weight, so the single file "evolves" in place.
+ * If nothing was logged for a target, its suggested weight is left untouched
+ * (made a change → it sticks; made none → stays the same).
+ */
+export const carrySessionWeights = (ex: Exercise): void => {
+  const apply = (t: Exercise | ExerciseSub) => {
+    const logged = (t._pesi_serie ?? []).filter((w): w is Weight => w != null);
+    if (logged.length) t.peso_suggerito = logged[logged.length - 1];
+  };
+  if (ex.tipo === 'superset' && ex.esercizi) ex.esercizi.forEach(apply);
+  else apply(ex);
+};
+
 export const getSerieFatte = (ex: Exercise): number =>
   (ex._serie_stato ?? []).filter(Boolean).length;
 
