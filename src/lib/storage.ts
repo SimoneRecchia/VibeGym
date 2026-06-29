@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DEFAULT_SETTINGS, Plan, Settings } from './types';
+import { DEFAULT_PROFILE, DEFAULT_SETTINGS, Plan, Profile, Settings } from './types';
 import { normalizePlan } from './migrate';
 
 const PLAN_KEY = 'vibegym_plan_v2';
 const PLAN_LEGACY_KEY = 'vibegym_plan_v1';
 const SETTINGS_KEY = 'vibegym_settings';
+const PROFILE_KEY = 'vibegym_profile';
+const LOCAL_MODE_KEY = 'vibegym_local_mode';
 
 export const loadPlan = async (): Promise<Plan | null> => {
   try {
@@ -51,6 +53,40 @@ export const loadSettings = async (): Promise<Settings> => {
 export const saveSettings = async (s: Settings): Promise<void> => {
   try {
     await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
+};
+
+export const loadProfile = async (): Promise<Profile> => {
+  try {
+    const raw = await AsyncStorage.getItem(PROFILE_KEY);
+    if (!raw) return { ...DEFAULT_PROFILE };
+    return { ...DEFAULT_PROFILE, ...(JSON.parse(raw) as Partial<Profile>) };
+  } catch {
+    return { ...DEFAULT_PROFILE };
+  }
+};
+
+export const saveProfile = async (p: Profile): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+  } catch {
+    /* ignore */
+  }
+};
+
+export const loadLocalMode = async (): Promise<boolean> => {
+  try {
+    return (await AsyncStorage.getItem(LOCAL_MODE_KEY)) === '1';
+  } catch {
+    return false;
+  }
+};
+
+export const saveLocalMode = async (on: boolean): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(LOCAL_MODE_KEY, on ? '1' : '0');
   } catch {
     /* ignore */
   }

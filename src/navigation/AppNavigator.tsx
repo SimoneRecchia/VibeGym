@@ -9,6 +9,7 @@ import { MenuScreen } from '../screens/MenuScreen';
 import { ImportScreen } from '../screens/ImportScreen';
 import { FormatScreen } from '../screens/FormatScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { ProfileScreen } from '../screens/ProfileScreen';
 import { SchemaScreen } from '../screens/SchemaScreen';
 import { SyncScreen } from '../screens/SyncScreen';
 import { ChartsScreen } from '../screens/ChartsScreen';
@@ -53,6 +54,7 @@ export function AppNavigator() {
         <Stack.Screen name="Import" component={ImportScreen} />
         <Stack.Screen name="Format" component={FormatScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="Sync" component={SyncScreen} />
         <Stack.Screen name="Charts" component={ChartsScreen} />
         <Stack.Screen name="ValidatePlan" component={ValidatePlanScreen} />
