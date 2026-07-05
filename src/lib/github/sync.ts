@@ -1,5 +1,5 @@
 import { Base64 } from 'js-base64';
-import { Plan, Session } from '../types';
+import { BodyEntry, Plan, Profile, Session } from '../types';
 import {
   BlobRef,
   createCommitWithFiles,
@@ -315,3 +315,128 @@ export const pullActivePlan = async (token: TokenInfo, repo: RepoInfo): Promise<
 };
 
 const decodeBase64 = (b64: string) => Base64.decode(b64.replace(/\n/g, ''));
+
+/* ============================================================
+ *  Athlete data (profile + body metrics) — repo root, versioned
+ *  independently of any scheda.
+ * ============================================================ */
+
+const PROFILE_PATH = 'profile.json';
+const BODY_METRICS_PATH = 'metrics/body.json';
+
+export interface AthleteData {
+  profile: Profile | null;
+  bodyLog: BodyEntry[];
+}
+
+/** Push profile.json + metrics/body.json in a single commit. */
+export const pushAthlete = async (
+  token: TokenInfo,
+  repo: RepoInfo,
+  profile: Profile,
+  bodyLog: BodyEntry[]
+): Promise<void> => {
+  const files: BlobRef[] = [
+    { path: PROFILE_PATH, content: JSON.stringify(profile, null, 2) + '\n' },
+    {
+      path: BODY_METRICS_PATH,
+      content:
+        JSON.stringify(
+          { schema_version: 2, generator: USER_AGENT, entries: bodyLog },
+          null,
+          2
+        ) + '\n',
+    },
+  ];
+  await createCommitWithFiles(
+    token.token,
+    repo.owner,
+    repo.repo,
+    repo.branch,
+    'chore: update profile + body metrics',
+    files
+  );
+};
+
+export const pullAthlete = async (token: TokenInfo, repo: RepoInfo): Promise<AthleteData> => {
+  const [pf, bf] = await Promise.all([
+    getFile(token.token, repo.owner, repo.repo, PROFILE_PATH, repo.branch),
+    getFile(token.token, repo.owner, repo.repo, BODY_METRICS_PATH, repo.branch),
+  ]);
+  let profile: Profile | null = null;
+  let bodyLog: BodyEntry[] = [];
+  if (pf) {
+    try {
+      profile = JSON.parse(decodeBase64(pf.content)) as Profile;
+    } catch {
+      /* ignore */
+    }
+  }
+  if (bf) {
+    try {
+      const doc = JSON.parse(decodeBase64(bf.content)) as { entries?: BodyEntry[] };
+      bodyLog = Array.isArray(doc?.entries) ? doc.entries : [];
+    } catch {
+      /* ignore */
+    }
+  }
+  return { profile, bodyLog };
+};
+
+/* ============================================================
+ *  Pull the whole scheda library (all folders), not just active.
+ * ============================================================ */
+
+export interface LibraryResult {
+  plans: Plan[];
+  activeId: string | null;
+}
+
+export const pullLibrary = async (token: TokenInfo, repo: RepoInfo): Promise<LibraryResult> => {
+  const activeFile = await getFile(token.token, repo.owner, repo.repo, ACTIVE_PATH, repo.branch);
+  let activeId: string | null = null;
+  if (activeFile) {
+    try {
+      activeId = (JSON.parse(decodeBase64(activeFile.content)) as ActiveDoc).scheda ?? null;
+    } catch {
+      activeId = null;
+    }
+  }
+
+  const dirs = await listDirectory(token.token, repo.owner, repo.repo, 'schede', repo.branch);
+  const slugs = dirs.filter(e => e.type === 'dir').map(e => e.name);
+
+  const plans: Plan[] = [];
+  for (const slug of slugs) {
+    const planFile = await getFile(token.token, repo.owner, repo.repo, planPath(slug), repo.branch);
+    if (!planFile) continue;
+    let plan: Plan;
+    try {
+      plan = JSON.parse(decodeBase64(planFile.content)) as Plan;
+    } catch {
+      continue;
+    }
+    const names = await listRemoteSessions(token, repo, slug);
+    const sessions: Session[] = [];
+    for (const name of names) {
+      const f = await getFile(
+        token.token,
+        repo.owner,
+        repo.repo,
+        `${sessionsDir(slug)}/${name}`,
+        repo.branch
+      );
+      if (!f) continue;
+      try {
+        sessions.push(JSON.parse(decodeBase64(f.content)) as Session);
+      } catch {
+        /* skip */
+      }
+    }
+    sessions.sort((a, b) => a.data.localeCompare(b.data));
+    plans.push({ ...plan, storico: sessions });
+  }
+
+  if (!activeId && plans.length) activeId = plans[0].id;
+  return { plans, activeId };
+};
