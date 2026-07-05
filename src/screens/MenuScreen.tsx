@@ -102,6 +102,13 @@ export function MenuScreen() {
 
         <SectionHead title="Scheda" />
         <MenuItem
+          icon="layers"
+          label="Le tue schede"
+          hint="Gestisci e cambia scheda attiva"
+          onPress={() => navigation.navigate('Schede')}
+          disabled={!hasPlan}
+        />
+        <MenuItem
           icon="sparkles"
           label="Crea o converti una scheda"
           hint="Procedura guidata con l'AI"
