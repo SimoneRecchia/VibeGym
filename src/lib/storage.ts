@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DEFAULT_PROFILE, DEFAULT_SETTINGS, Plan, Profile, Settings } from './types';
+import { Backend, DEFAULT_PROFILE, DEFAULT_SETTINGS, Plan, Profile, Settings } from './types';
 import { normalizePlan } from './migrate';
 
 const PLAN_KEY = 'vibegym_plan_v2';
@@ -7,6 +7,7 @@ const PLAN_LEGACY_KEY = 'vibegym_plan_v1';
 const SETTINGS_KEY = 'vibegym_settings';
 const PROFILE_KEY = 'vibegym_profile';
 const LOCAL_MODE_KEY = 'vibegym_local_mode';
+const BACKEND_KEY = 'vibegym_backend';
 
 export const loadPlan = async (): Promise<Plan | null> => {
   try {
@@ -87,6 +88,28 @@ export const loadLocalMode = async (): Promise<boolean> => {
 export const saveLocalMode = async (on: boolean): Promise<void> => {
   try {
     await AsyncStorage.setItem(LOCAL_MODE_KEY, on ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
+};
+
+/**
+ * Canonical persistence-backend flag. Supersedes the legacy `vibegym_local_mode`
+ * boolean (still read at hydration for backward compatibility). Stores only the
+ * committed choices — a fresh install returns null (→ onboarding).
+ */
+export const loadBackend = async (): Promise<Backend> => {
+  try {
+    const raw = await AsyncStorage.getItem(BACKEND_KEY);
+    return raw === 'local' || raw === 'cloud' ? raw : null;
+  } catch {
+    return null;
+  }
+};
+
+export const saveBackend = async (b: Exclude<Backend, null>): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(BACKEND_KEY, b);
   } catch {
     /* ignore */
   }

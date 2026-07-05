@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import {
+  Backend,
   DEFAULT_PROFILE,
   DEFAULT_SETTINGS,
   Exercise,
@@ -21,7 +22,6 @@ import {
   Weight,
 } from './types';
 import {
-  carrySessionWeights,
   ensureSessionFields,
   findExercise,
   firstUncheckedIdx,
@@ -35,11 +35,13 @@ import {
 import { haptic, setHapticsEnabled } from './haptics';
 import {
   clearPlan,
+  loadBackend,
   loadLocalMode,
   loadPlan,
   loadProfile,
   loadSettings,
   savePlan,
+  saveBackend,
   saveLocalMode,
   saveProfile,
   saveSettings,
@@ -112,8 +114,11 @@ interface StoreCtx {
   /* Profile + persistence mode */
   profile: Profile;
   setProfile: (patch: Partial<Profile>) => void;
-  /** True when the user opted for a single local card with no GitHub backup. */
+  /** Canonical backend choice: 'local' | 'cloud' | null (not chosen yet). */
+  backend: Backend;
+  /** Convenience: true when backend === 'local'. */
   localMode: boolean;
+  /** Commit to local-only saving (this device). */
   enableLocalMode: () => void;
   currentDayId: string | null;
   setCurrentDayId: (id: string | null) => void;
@@ -139,6 +144,15 @@ interface StoreCtx {
   github: GitHubStatus;
   connectWithPAT: (token: string) => Promise<{ ok: boolean; error?: string }>;
   saveDeviceFlowToken: (token: string) => Promise<{ ok: boolean; error?: string }>;
+  /**
+   * Connect the cloud and upload the existing local plan + ALL its history in
+   * one go (guest → cloud upgrade). Only flips backend to 'cloud' if the upload
+   * succeeds, so a failed sync never leaves the user believing they're backed up.
+   */
+  migrateLocalToCloud: (
+    token: string,
+    kind?: 'oauth' | 'pat'
+  ) => Promise<{ ok: boolean; error?: string }>;
   disconnectGitHub: () => Promise<void>;
   syncNow: (opts?: {
     silent?: boolean;
@@ -155,7 +169,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [hydrating, setHydrating] = useState(true);
   const [settings, setSettingsState] = useState<Settings>({ ...DEFAULT_SETTINGS });
   const [profile, setProfileState] = useState<Profile>({ ...DEFAULT_PROFILE });
-  const [localMode, setLocalModeState] = useState(false);
+  const [backend, setBackendState] = useState<Backend>(null);
+  // localMode is derived — kept in the public surface for existing callers.
+  const localMode = backend === 'local';
+  // Synchronous mirror so finishWorkout / the auto-push effect read a fresh
+  // value without stale-closure bugs (same pattern as githubRef below).
+  const backendRef = useRef<Backend>(backend);
+  backendRef.current = backend;
   const [currentDayId, setCurrentDayId] = useState<string | null>(null);
   const [timer, setTimer] = useState<TimerState>(initialTimer);
   const [toast, setToast] = useState<string | null>(null);
@@ -171,6 +191,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const githubRef = useRef(github);
   githubRef.current = github;
 
+  // Tracks the last session id we auto-pushed, so the effect below doesn't
+  // re-push it. migrateLocalToCloud primes this after its bulk upload.
+  const lastSyncedSessionRef = useRef<string | null>(null);
+
   // The timer uses wall-clock time, not setInterval ticks, so it stays correct
   // even if JS is paused (e.g. when the app is backgrounded). When the user
   // returns we re-render based on the absolute end time stored here.
@@ -182,17 +206,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // Hydrate from storage on mount
   useEffect(() => {
     (async () => {
-      const [p, s, t, prof, lm] = await Promise.all([
+      const [p, s, t, prof, storedBackend, legacyLocalMode] = await Promise.all([
         loadPlan(),
         loadSettings(),
         loadTokenInfo(),
         loadProfile(),
+        loadBackend(),
         loadLocalMode(),
       ]);
       if (p) setPlanState(p);
       setSettingsState(s);
       setProfileState(prof);
-      setLocalModeState(lm);
+      // Derive the backend. A live token is authoritative (token ⇒ cloud);
+      // then the explicit stored choice; then the legacy local-mode flag.
+      let resolvedBackend: Backend;
+      if (t) resolvedBackend = 'cloud';
+      else if (storedBackend) resolvedBackend = storedBackend;
+      else if (legacyLocalMode) resolvedBackend = 'local';
+      else resolvedBackend = null;
+      setBackendState(resolvedBackend);
+      // Forward-migrate the flag so future loads read the canonical key.
+      if (!storedBackend && resolvedBackend) saveBackend(resolvedBackend);
       setHapticsEnabled(s.haptic);
       if (t) {
         setGithub(prev => ({
@@ -237,8 +271,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const enableLocalMode = useCallback(() => {
-    setLocalModeState(true);
-    saveLocalMode(true);
+    setBackendState('local');
+    saveBackend('local');
+    saveLocalMode(true); // keep the legacy flag in sync for older reads
   }, []);
 
   const setPlan = useCallback((p: Plan | null, _persist = true) => {
@@ -580,20 +615,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }),
     };
 
-    // Local mode (no GitHub): no version history — the single card is edited in
-    // place, folding the weights you used into its suggested weights.
-    const localOnly = !githubRef.current.token;
+    // Both backends keep the full immutable history now: every completed
+    // session is appended to `storico`, so trends/charts/tracking work the same
+    // whether the user saves locally or in the cloud. The live day is then
+    // reset for its next run (no destructive in-place weight folding — "what did
+    // I lift last time" comes from history, identically in both modes).
     setPlanState(prev => {
       if (!prev) return prev;
       const next: Plan = JSON.parse(JSON.stringify(prev));
-      if (!localOnly) {
-        if (!next.storico) next.storico = [];
-        next.storico.push(snapshot);
-      }
+      if (!next.storico) next.storico = [];
+      next.storico.push(snapshot);
       const targetDay = next.giorni.find(g => g.id === day.id);
       if (targetDay) {
         for (const ex of targetDay.esercizi) {
-          if (localOnly) carrySessionWeights(ex);
           const n = getSerieTotali(ex);
           ex._serie_stato = new Array(n).fill(false);
           ex._note_utente = '';
@@ -702,6 +736,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           error: null,
         };
         setGithub(next);
+        // Update the ref synchronously too: callers that chain a syncNow right
+        // after (e.g. migrateLocalToCloud) read githubRef.current before React
+        // has a chance to re-render, and would otherwise see stale null state.
+        githubRef.current = next;
         await persistGitHub(next);
         showToast(`Collegato come @${user.login}`);
         return { ok: true };
@@ -714,16 +752,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [persistGitHub, showToast]
   );
 
-  const connectWithPAT = useCallback(
-    (token: string) => adoptToken(token.trim(), 'pat'),
-    [adoptToken]
-  );
-
-  const saveDeviceFlowToken = useCallback(
-    (token: string) => adoptToken(token, 'oauth'),
-    [adoptToken]
-  );
-
   const disconnectGitHub = useCallback(async () => {
     await clearTokenInfo();
     setGithub({
@@ -733,7 +761,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       lastSyncAt: null,
       error: null,
     });
-    showToast('GitHub scollegato');
+    // Fall back to local saving — the plan + full history stay on the device
+    // (untouched in vibegym_plan_v2). Not null, so the user keeps a working app.
+    setBackendState('local');
+    saveBackend('local');
+    saveLocalMode(true);
+    showToast('Cloud scollegato — dati salvati su questo telefono');
   }, [showToast]);
 
   const syncNow = useCallback(
@@ -790,10 +823,60 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [showToast]);
 
+  const migrateLocalToCloud = useCallback(
+    async (
+      token: string,
+      kind: 'oauth' | 'pat' = 'pat'
+    ): Promise<{ ok: boolean; error?: string }> => {
+      // 1. Connect + ensure the data repo exists (sets github.token/repo).
+      const adopt = await adoptToken(token.trim(), kind);
+      if (!adopt.ok) return adopt;
+
+      // 2. Upload the existing local plan + ALL its sessions in one commit.
+      //    On a fresh repo every session is "new", so pushPlanAndSessions
+      //    uploads the whole history; markActive writes active.json too.
+      if (plan) {
+        const res = await syncNow({
+          markActive: true,
+          message: `import: ${plan.nome_scheda ?? plan.id} + ${plan.storico.length} sessioni (da locale)`,
+        });
+        if (!res.ok) {
+          // Connected but upload failed — stay 'local' so we never claim the
+          // data is safely in the cloud when it isn't. The token stays adopted
+          // so a retry is one tap away.
+          return { ok: false, error: res.error ?? 'Upload fallito' };
+        }
+        // Prevent the auto-push effect from re-pushing the same last session.
+        const last = plan.storico[plan.storico.length - 1];
+        if (last) lastSyncedSessionRef.current = last.id;
+      }
+
+      // 3. Only now commit to the cloud backend.
+      setBackendState('cloud');
+      saveBackend('cloud');
+      return { ok: true };
+    },
+    [adoptToken, plan, syncNow]
+  );
+
+  // The plain "connect" paths route through migrateLocalToCloud so connecting
+  // always (a) uploads any existing local history and (b) flips backend to
+  // 'cloud' — enabling auto-push in the same session. With no local plan it just
+  // adopts the token and switches to cloud.
+  const connectWithPAT = useCallback(
+    (token: string) => migrateLocalToCloud(token.trim(), 'pat'),
+    [migrateLocalToCloud]
+  );
+
+  const saveDeviceFlowToken = useCallback(
+    (token: string) => migrateLocalToCloud(token, 'oauth'),
+    [migrateLocalToCloud]
+  );
+
   // Auto-push after a successful workout finish — single, descriptive commit.
-  const lastSyncedSessionRef = useRef<string | null>(null);
   useEffect(() => {
     if (hydrating) return;
+    if (backendRef.current !== 'cloud') return; // local mode never auto-pushes
     if (!github.token || !github.repo || !plan) return;
     const last = plan.storico[plan.storico.length - 1];
     if (!last) return;
@@ -805,7 +888,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       silent: true,
       message: `session: ${last.giorno_nome} — ${fatti}/${tot} ✓`,
     }).catch(() => {});
-  }, [plan, github.token, github.repo, hydrating, syncNow]);
+  }, [plan, github.token, github.repo, hydrating, syncNow, backend]);
 
   const value = useMemo<StoreCtx>(
     () => ({
@@ -816,6 +899,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setSetting,
       profile,
       setProfile,
+      backend,
       localMode,
       enableLocalMode,
       currentDayId,
@@ -840,6 +924,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       github,
       connectWithPAT,
       saveDeviceFlowToken,
+      migrateLocalToCloud,
       disconnectGitHub,
       syncNow,
       pullFromGitHub,
@@ -852,6 +937,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setSetting,
       profile,
       setProfile,
+      backend,
       localMode,
       enableLocalMode,
       currentDayId,
@@ -875,6 +961,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       github,
       connectWithPAT,
       saveDeviceFlowToken,
+      migrateLocalToCloud,
       disconnectGitHub,
       syncNow,
       pullFromGitHub,
