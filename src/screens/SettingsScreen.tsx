@@ -73,6 +73,13 @@ export function SettingsScreen() {
     { value: 'bw', label: 'BW' },
   ];
 
+  const reminderOpts: { value: number; label: string }[] = [
+    { value: 0, label: 'Off' },
+    { value: 7, label: '7' },
+    { value: 14, label: '14' },
+    { value: 30, label: '30' },
+  ];
+
   const onExportJson = async () => {
     const json = exportPlanJSON();
     if (!json) {
@@ -140,12 +147,14 @@ export function SettingsScreen() {
                     },
                   ]}
                 >
-                  <Icon name="layers" color={palette.accent} size={20} />
+                  <Icon name="cloud" color={palette.accent} size={20} />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={[styles.itemLabel, { color: palette.text }]}>Collega GitHub</Text>
+                  <Text style={[styles.itemLabel, { color: palette.text }]}>
+                    Attiva salvataggio sul cloud
+                  </Text>
                   <Text style={[styles.itemHint, { color: palette.textDim }]} numberOfLines={1}>
-                    Backup scheda + storico nella tua repo
+                    Ora: solo su questo telefono · backup e più dispositivi
                   </Text>
                 </View>
                 <Icon name="chevron-right" color={palette.textFaint} size={18} />
@@ -223,6 +232,30 @@ export function SettingsScreen() {
                 {i < trainingItems.length - 1 && <Divider />}
               </View>
             ))}
+            <Divider />
+            <RowItem
+              icon="chart"
+              label="Promemoria peso"
+              hint="Chiedi di aggiornarlo ogni tot giorni"
+              right={
+                <View style={styles.segmented}>
+                  {reminderOpts.map(o => {
+                    const active = settings.weightReminderDays === o.value;
+                    return (
+                      <Pressable
+                        key={o.value}
+                        onPress={() => setSetting('weightReminderDays', o.value)}
+                        style={[styles.segItem, { backgroundColor: active ? palette.accent : 'transparent' }]}
+                      >
+                        <Text style={[styles.segText, { color: active ? '#fff' : palette.text }]}>
+                          {o.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              }
+            />
           </GlassCard>
         </Section>
 
@@ -238,17 +271,18 @@ export function SettingsScreen() {
             />
             <Divider />
             <NavRow
-              icon="bulb"
-              label="Come creare un JSON"
-              hint="Prompt AI + esempio"
-              onPress={() => navigation.navigate('Format')}
+              icon="sparkles"
+              label="Crea o converti una scheda"
+              hint="Procedura guidata con l'AI"
+              onPress={() => navigation.navigate('PlanWizard')}
             />
             <Divider />
             <NavRow
-              icon="refresh"
-              label="Cambia scheda"
-              hint="Importa una scheda diversa"
-              onPress={() => navigation.navigate('Import')}
+              icon="layers"
+              label="Le tue schede"
+              hint="Gestisci e cambia scheda attiva"
+              onPress={() => navigation.navigate('Schede')}
+              disabled={!plan}
             />
             <Divider />
             <NavRow
@@ -274,8 +308,8 @@ export function SettingsScreen() {
             <Divider />
             <NavRow
               icon="trash"
-              label="Rimuovi scheda locale"
-              hint="Resta tutto su GitHub"
+              label="Rimuovi scheda"
+              hint={github.token ? 'Resta salvata sul cloud' : 'Verrà eliminata da questo telefono'}
               tone="danger"
               onPress={() => disconnectPlan()}
               disabled={!plan}
@@ -285,8 +319,8 @@ export function SettingsScreen() {
                 <Divider />
                 <NavRow
                   icon="x"
-                  label="Scollega GitHub"
-                  hint="Token cancellato dal device"
+                  label="Disattiva il cloud"
+                  hint="I dati restano su questo telefono"
                   tone="danger"
                   onPress={() => setShowDisconnectGitHubConfirm(true)}
                 />
@@ -329,9 +363,9 @@ export function SettingsScreen() {
       <ConfirmModal
         visible={showDisconnectGitHubConfirm}
         onClose={() => setShowDisconnectGitHubConfirm(false)}
-        title="Scollegare GitHub?"
-        body="Il token viene cancellato dal device. La tua repo e i dati su GitHub non vengono toccati: ti basterà ricollegare per ritrovarli."
-        confirmLabel="Scollega"
+        title="Disattivare il cloud?"
+        body="I tuoi dati restano su questo telefono e nel cloud. Potrai riattivarlo quando vuoi per ritrovarli su tutti i dispositivi."
+        confirmLabel="Disattiva"
         danger
         onConfirm={async () => {
           setShowDisconnectGitHubConfirm(false);
