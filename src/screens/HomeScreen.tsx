@@ -34,7 +34,7 @@ function stripHash(hex: string | undefined): string {
 
 export function HomeScreen() {
   const navigation = useNavigation<Nav>();
-  const { plan, startDay, hydrating, github, localMode, enableLocalMode } = useStore();
+  const { plan, plans, startDay, hydrating, github, localMode, enableLocalMode } = useStore();
   const { palette, mode, toggle } = useTheme();
 
   const progress = useMemo(() => getDailyProgress(plan), [plan]);
@@ -137,6 +137,28 @@ export function HomeScreen() {
                 tintSoft={palette.successSoft}
               />
             </View>
+
+            <PressableScale onPress={() => navigation.navigate('Schede')}>
+              <GlassCard rounded="lg" style={styles.schedaBar}>
+                <View
+                  style={[
+                    styles.schedaIcon,
+                    { backgroundColor: palette.accentSoft, borderColor: hexToRgba(stripHash(palette.accent), 0.5) },
+                  ]}
+                >
+                  <Icon name="layers" color={palette.accent} size={16} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.schedaBarLabel, { color: palette.textFaint }]}>
+                    SCHEDA ATTIVA{plans.length > 1 ? ` · ${plans.length} schede` : ''}
+                  </Text>
+                  <Text style={[styles.schedaBarName, { color: palette.text }]} numberOfLines={1}>
+                    {plan.nome_scheda ?? plan.id}
+                  </Text>
+                </View>
+                <Icon name="chevron-right" color={palette.textFaint} size={18} />
+              </GlassCard>
+            </PressableScale>
 
             {inProgressDay && (
               <View style={styles.section}>
@@ -443,6 +465,24 @@ const styles = StyleSheet.create({
   greet: { ...typography.subhead, marginBottom: 2 },
   title: { ...typography.largeTitle },
   statsStrip: { flexDirection: 'row', gap: 10, marginTop: space.lg },
+  schedaBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: space.md,
+    marginTop: space.md,
+  },
+  schedaIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth * 1.5,
+  },
+  schedaBarLabel: { ...typography.caption2, letterSpacing: 0.5 },
+  schedaBarName: { ...typography.headline, marginTop: 1 },
   statPill: { flex: 1, paddingVertical: 12, paddingHorizontal: 12, alignItems: 'flex-start' },
   statIcon: {
     width: 24,
