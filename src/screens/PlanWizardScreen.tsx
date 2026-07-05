@@ -1,62 +1,28 @@
 import React, { useState } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../lib/store';
 import { useTheme } from '../theme/ThemeProvider';
-import { radius, space, typography } from '../theme/tokens';
+import { space, typography } from '../theme/tokens';
 import { Screen } from '../components/Screen';
 import { IconButton } from '../components/IconButton';
 import { GlassCard } from '../components/GlassCard';
 import { GlassButton } from '../components/GlassButton';
 import { ChoiceCard } from '../components/ChoiceCard';
-import { PressableScale } from '../components/PressableScale';
-import { ExperienceLevel } from '../lib/types';
-import { buildConvertPrompt, buildGeneratePrompt } from '../lib/prompt';
+import { buildConvertPrompt, buildGeneratePrompt, describeProfile } from '../lib/prompt';
 import { RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'PlanWizard'>;
 type Mode = null | 'have' | 'create';
 
-const EQUIPMENT = [
-  'Palestra completa',
-  'Manubri',
-  'Bilanciere',
-  'Cavi',
-  'Macchine',
-  'Elastici',
-  'Corpo libero',
-];
-const GOALS = [
-  'Ipertrofia',
-  'Forza',
-  'Dimagrimento',
-  'Resistenza',
-  'Cardio',
-  'Equilibrio',
-  'Mobilità',
-  'Postura',
-];
-const EXPERIENCE: { key: ExperienceLevel; label: string }[] = [
-  { key: 'beginner', label: 'Principiante' },
-  { key: 'intermediate', label: 'Intermedio' },
-  { key: 'advanced', label: 'Avanzato' },
-];
-
 export function PlanWizardScreen() {
   const navigation = useNavigation<Nav>();
   const { palette } = useTheme();
-  const { profile, setProfile, showToast } = useStore();
+  const { profile, showToast } = useStore();
   const [mode, setMode] = useState<Mode>(null);
-  // Only a visibility flag: the prompt is always rebuilt live from `profile`
-  // below, so edits made after "Crea il prompt" are reflected on copy.
+  // Visibility only: the prompt is always rebuilt live from `profile` on render.
   const [showPrompt, setShowPrompt] = useState(false);
 
   const copy = (s: string, label: string) => {
@@ -64,12 +30,8 @@ export function PlanWizardScreen() {
     showToast(`${label} copiato`);
   };
 
-  const toggleInArray = (arr: string[] | undefined, value: string): string[] => {
-    const set = new Set(arr ?? []);
-    if (set.has(value)) set.delete(value);
-    else set.add(value);
-    return Array.from(set);
-  };
+  const profileText = describeProfile(profile);
+  const hasProfile = profileText !== '- (nessun dato fornito)';
 
   return (
     <Screen>
@@ -101,7 +63,7 @@ export function PlanWizardScreen() {
               <ChoiceCard
                 icon="sparkles"
                 title="Creane una per me"
-                subtitle="Rispondi a poche domande e l'AI ti crea una scheda su misura."
+                subtitle="Usa i dati del tuo profilo per una scheda su misura."
                 tint={palette.success}
                 onPress={() => setMode('create')}
               />
@@ -134,92 +96,30 @@ export function PlanWizardScreen() {
           </>
         )}
 
-        {/* ---------- Branch: generate a plan ---------- */}
+        {/* ---------- Branch: generate a plan from the profile ---------- */}
         {mode === 'create' && (
           <>
             <Text style={[styles.lead, { color: palette.textDim }]}>
-              Poche domande per una scheda su misura. Salti pure ciò che non sai —
-              tutto è facoltativo.
+              Creiamo una scheda su misura dai dati del tuo profilo. Più il profilo è
+              completo, più la scheda sarà azzeccata.
             </Text>
 
-            <Section label="LIVELLO">
-              <ChipRow>
-                {EXPERIENCE.map(e => (
-                  <Chip
-                    key={e.key}
-                    label={e.label}
-                    active={profile.experience === e.key}
-                    onPress={() =>
-                      setProfile({
-                        experience: profile.experience === e.key ? undefined : e.key,
-                      })
-                    }
-                  />
-                ))}
-              </ChipRow>
-            </Section>
-
-            <Section label="QUANTE VOLTE A SETTIMANA / DURATA">
-              <View style={styles.numRow}>
-                <NumberField
-                  value={profile.sessionsPerWeek}
-                  onChange={n => setProfile({ sessionsPerWeek: n })}
-                  suffix="× a settimana"
-                />
-                <NumberField
-                  value={profile.sessionLengthMin}
-                  onChange={n => setProfile({ sessionLengthMin: n })}
-                  suffix="min"
-                />
-              </View>
-            </Section>
-
-            <Section label="ATTREZZATURA DISPONIBILE">
-              <ChipRow>
-                {EQUIPMENT.map(item => (
-                  <Chip
-                    key={item}
-                    label={item}
-                    active={(profile.equipment ?? []).includes(item)}
-                    onPress={() => setProfile({ equipment: toggleInArray(profile.equipment, item) })}
-                  />
-                ))}
-              </ChipRow>
-            </Section>
-
-            <Section label="OBIETTIVI">
-              <ChipRow>
-                {GOALS.map(item => (
-                  <Chip
-                    key={item}
-                    label={item}
-                    active={(profile.goals ?? []).includes(item)}
-                    onPress={() => setProfile({ goals: toggleInArray(profile.goals, item) })}
-                  />
-                ))}
-              </ChipRow>
-              <FreeText
-                placeholder="Vuoi puntare su qualcosa in particolare? (es. bicipiti, equilibrio)"
-                value={profile.goalsNote}
-                onChange={v => setProfile({ goalsNote: v })}
-              />
-            </Section>
-
-            <Section label="INFORTUNI O PROBLEMI FISICI">
-              <FreeText
-                placeholder="es. spalla destra dolorante dopo una caduta"
-                value={profile.injuries}
-                onChange={v => setProfile({ injuries: v })}
-              />
-            </Section>
-
-            <Section label="ESERCIZI DA EVITARE">
-              <FreeText
-                placeholder="es. niente shoulder press; l'AI userà alternative"
-                value={profile.exclusions}
-                onChange={v => setProfile({ exclusions: v })}
-              />
-            </Section>
+            <Text style={[styles.sectionLabel, { color: palette.textFaint }]}>
+              DATI CHE USEREMO
+            </Text>
+            <GlassCard style={styles.summaryCard}>
+              <Text style={[styles.summaryText, { color: hasProfile ? palette.textDim : palette.textFaint }]}>
+                {hasProfile ? profileText : 'Il profilo è vuoto: aggiungi almeno obiettivi e attrezzatura.'}
+              </Text>
+            </GlassCard>
+            <GlassButton
+              title="Modifica il profilo"
+              icon="pencil"
+              variant="ghost"
+              onPress={() => navigation.navigate('Profile')}
+              block
+              style={{ marginTop: 10 }}
+            />
 
             {!showPrompt ? (
               <GlassButton
@@ -261,101 +161,6 @@ export function PlanWizardScreen() {
 }
 
 /* ------------------------------ small pieces ----------------------------- */
-
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
-  const { palette } = useTheme();
-  return (
-    <View style={{ marginTop: space.xl }}>
-      <Text style={[styles.sectionLabel, { color: palette.textFaint }]}>{label}</Text>
-      {children}
-    </View>
-  );
-}
-
-function ChipRow({ children }: { children: React.ReactNode }) {
-  return <View style={styles.chipRow}>{children}</View>;
-}
-
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const { palette } = useTheme();
-  return (
-    <PressableScale onPress={onPress}>
-      <View
-        style={[
-          styles.chip,
-          {
-            backgroundColor: active ? palette.accentSoft : palette.surface,
-            borderColor: active ? palette.accent : palette.glassBorderStrong,
-          },
-        ]}
-      >
-        <Text
-          style={[
-            styles.chipText,
-            { color: active ? palette.accent : palette.textDim },
-          ]}
-        >
-          {label}
-        </Text>
-      </View>
-    </PressableScale>
-  );
-}
-
-function NumberField({
-  value,
-  onChange,
-  suffix,
-}: {
-  value?: number;
-  onChange: (n: number | undefined) => void;
-  suffix: string;
-}) {
-  const { palette } = useTheme();
-  const [text, setText] = useState(value != null ? String(value) : '');
-  return (
-    <View style={[styles.numField, { borderColor: palette.glassBorderStrong, backgroundColor: palette.surface }]}>
-      <TextInput
-        value={text}
-        onChangeText={t => {
-          setText(t);
-          const n = parseInt(t.replace(/[^0-9]/g, ''), 10);
-          onChange(Number.isFinite(n) ? n : undefined);
-        }}
-        placeholder="—"
-        placeholderTextColor={palette.textFaint}
-        keyboardType="number-pad"
-        style={[styles.numInput, { color: palette.text }]}
-      />
-      <Text style={[styles.numSuffix, { color: palette.textFaint }]}>{suffix}</Text>
-    </View>
-  );
-}
-
-function FreeText({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value?: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-}) {
-  const { palette } = useTheme();
-  return (
-    <TextInput
-      value={value ?? ''}
-      onChangeText={onChange}
-      placeholder={placeholder}
-      placeholderTextColor={palette.textFaint}
-      multiline
-      style={[
-        styles.freeText,
-        { color: palette.text, backgroundColor: palette.surface, borderColor: palette.glassBorderStrong },
-      ]}
-    />
-  );
-}
 
 function Steps({ steps }: { steps: string[] }) {
   const { palette } = useTheme();
@@ -405,37 +210,12 @@ const styles = StyleSheet.create({
     ...typography.caption1,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
+    marginTop: space.xl,
     marginBottom: 10,
     marginLeft: 4,
   },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: radius.pill,
-    borderWidth: StyleSheet.hairlineWidth * 1.5,
-  },
-  chipText: { ...typography.footnote, fontWeight: '600' },
-  numRow: { flexDirection: 'row', gap: space.md },
-  numField: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth * 1.5,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-  },
-  numInput: { flex: 1, paddingVertical: 12, ...typography.body },
-  numSuffix: { ...typography.footnote },
-  freeText: {
-    borderWidth: StyleSheet.hairlineWidth * 1.5,
-    borderRadius: radius.md,
-    padding: 12,
-    minHeight: 64,
-    textAlignVertical: 'top',
-    marginTop: 10,
-    ...typography.callout,
-  },
+  summaryCard: { padding: space.md },
+  summaryText: { ...typography.footnote, lineHeight: 20 },
   step: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   stepNum: {
     width: 28,
