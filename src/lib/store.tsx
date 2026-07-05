@@ -10,6 +10,7 @@ import React, {
 import { AppState, AppStateStatus } from 'react-native';
 import {
   Backend,
+  BodyEntry,
   DEFAULT_PROFILE,
   DEFAULT_SETTINGS,
   Exercise,
@@ -34,17 +35,22 @@ import {
 } from './helpers';
 import { haptic, setHapticsEnabled } from './haptics';
 import {
-  clearPlan,
   loadBackend,
   loadLocalMode,
-  loadPlan,
+  loadPlans,
+  loadActiveScheda,
   loadProfile,
   loadSettings,
-  savePlan,
+  loadBodyLog,
+  loadLastWeightPrompt,
+  savePlans,
+  saveActiveScheda,
   saveBackend,
   saveLocalMode,
   saveProfile,
   saveSettings,
+  saveBodyLog,
+  saveLastWeightPrompt,
 } from './storage';
 import { normalizePlan } from './migrate';
 import {
@@ -54,7 +60,50 @@ import {
   TokenInfo,
 } from './github/auth';
 import { getUser } from './github/api';
-import { ensureRepo, pullActivePlan, pushPlanAndSessions, RepoInfo } from './github/sync';
+import {
+  ensureRepo,
+  pullAthlete,
+  pullLibrary,
+  pushAthlete,
+  pushPlanAndSessions,
+  setActiveScheda as setActiveSchedaRemote,
+  RepoInfo,
+} from './github/sync';
+
+/** Insert or replace a plan in the library, matched by its stable id. */
+const upsertPlan = (list: Plan[], p: Plan): Plan[] => {
+  const i = list.findIndex(x => x.id === p.id);
+  if (i === -1) return [...list, p];
+  const copy = list.slice();
+  copy[i] = p;
+  return copy;
+};
+
+/**
+ * Ensure an imported scheda gets an id that doesn't clash with an existing one.
+ * The id is derived from the (mutable) name, so two schede named the same would
+ * otherwise collide and overwrite each other — importing must never destroy an
+ * existing scheda, so we suffix a fresh number on collision.
+ */
+const uniqueSchedaId = (base: string, list: Plan[]): string => {
+  const ids = new Set(list.map(p => p.id));
+  if (!ids.has(base)) return base;
+  let n = 2;
+  while (ids.has(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
+};
+
+/** ms in a day, for the weight-reminder cadence. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Whether the periodic weight reminder should fire, given cadence + last time. */
+const isWeightPromptDue = (days: number, lastIso: string | null): boolean => {
+  if (!days || days <= 0) return false;
+  if (!lastIso) return true;
+  const last = new Date(lastIso).getTime();
+  if (!Number.isFinite(last)) return true;
+  return Date.now() - last >= days * DAY_MS;
+};
 
 export type TimerPhase = 'rest' | 'work';
 
@@ -106,7 +155,17 @@ export interface GitHubStatus {
 
 interface StoreCtx {
   plan: Plan | null;
-  setPlan: (plan: Plan | null, persist?: boolean) => void;
+  /** Commit a plan as the active scheda; returns the stored plan (id may be
+   *  reassigned to stay unique in the library), or null when clearing. */
+  setPlan: (plan: Plan | null, persist?: boolean) => Plan | null;
+  /** All saved schede (the active one included). Importing adds, never replaces. */
+  plans: Plan[];
+  /** Slug of the active scheda, or null if none chosen. */
+  activeSchedaId: string | null;
+  /** Make an existing scheda the active one. */
+  setActiveScheda: (id: string) => void;
+  /** Remove a scheda from the library (locally). */
+  deleteScheda: (id: string) => void;
   hydrating: boolean;
   settings: Settings;
   setSetting: <K extends keyof Settings>(k: K, v: Settings[K]) => void;
@@ -120,6 +179,16 @@ interface StoreCtx {
   localMode: boolean;
   /** Commit to local-only saving (this device). */
   enableLocalMode: () => void;
+
+  /* Body metrics (independent of any scheda) */
+  bodyLog: BodyEntry[];
+  /** Append a weigh-in (also marks the reminder as satisfied). */
+  logWeight: (weightKg: number) => void;
+  /** True when the periodic weight reminder is due to be shown. */
+  weightPromptDue: boolean;
+  /** Snooze the weight reminder without logging (resets the cadence). */
+  dismissWeightPrompt: () => void;
+
   currentDayId: string | null;
   setCurrentDayId: (id: string | null) => void;
   startDay: (id: string) => void;
@@ -158,6 +227,8 @@ interface StoreCtx {
     silent?: boolean;
     markActive?: boolean;
     message?: string;
+    /** Push this exact plan instead of the active one (avoids stale closures). */
+    plan?: Plan;
   }) => Promise<{ ok: boolean; error?: string }>;
   pullFromGitHub: () => Promise<{ ok: boolean; error?: string }>;
 }
@@ -166,6 +237,18 @@ const Ctx = createContext<StoreCtx | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [plan, setPlanState] = useState<Plan | null>(null);
+  // Scheda library: `plan` is the active one; `plans` holds them all and is what
+  // gets persisted. The active plan is mirrored into `plans` whenever it changes.
+  const [plans, setPlansState] = useState<Plan[]>([]);
+  const [activeSchedaId, setActiveSchedaIdState] = useState<string | null>(null);
+  const plansRef = useRef<Plan[]>(plans);
+  plansRef.current = plans;
+  const activeSchedaIdRef = useRef<string | null>(activeSchedaId);
+  activeSchedaIdRef.current = activeSchedaId;
+  // Body metrics (weight over time), independent of any scheda.
+  const [bodyLog, setBodyLogState] = useState<BodyEntry[]>([]);
+  const [weightPromptDue, setWeightPromptDue] = useState(false);
+  const lastWeightPromptRef = useRef<string | null>(null);
   const [hydrating, setHydrating] = useState(true);
   const [settings, setSettingsState] = useState<Settings>({ ...DEFAULT_SETTINGS });
   const [profile, setProfileState] = useState<Profile>({ ...DEFAULT_PROFILE });
@@ -206,15 +289,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // Hydrate from storage on mount
   useEffect(() => {
     (async () => {
-      const [p, s, t, prof, storedBackend, legacyLocalMode] = await Promise.all([
-        loadPlan(),
-        loadSettings(),
-        loadTokenInfo(),
-        loadProfile(),
-        loadBackend(),
-        loadLocalMode(),
-      ]);
-      if (p) setPlanState(p);
+      const [libRaw, s, t, prof, storedBackend, legacyLocalMode, storedActive, body, lastWeightPrompt] =
+        await Promise.all([
+          loadPlans(),
+          loadSettings(),
+          loadTokenInfo(),
+          loadProfile(),
+          loadBackend(),
+          loadLocalMode(),
+          loadActiveScheda(),
+          loadBodyLog(),
+          loadLastWeightPrompt(),
+        ]);
+      const library = libRaw ?? [];
+      const active = library.find(pl => pl.id === storedActive) ?? library[0] ?? null;
+      setPlansState(library);
+      setActiveSchedaIdState(active?.id ?? null);
+      if (active) setPlanState(active);
+      setBodyLogState(body);
+      lastWeightPromptRef.current = lastWeightPrompt;
+      setWeightPromptDue(isWeightPromptDue(s.weightReminderDays, lastWeightPrompt));
       setSettingsState(s);
       setProfileState(prof);
       // Derive the backend. A live token is authoritative (token ⇒ cloud);
@@ -247,11 +341,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // Persist plan whenever it changes (debounced via microtask)
+  // Mirror the active plan into the library so its progress/history stays fresh
+  // in the persisted set. All the existing actions mutate `plan`; this keeps the
+  // library entry for the active id in sync without rewriting those actions.
+  useEffect(() => {
+    if (hydrating || !plan) return;
+    setPlansState(prev => upsertPlan(prev, plan));
+  }, [plan, hydrating]);
+
+  // Persist the library and the active-scheda pointer.
   useEffect(() => {
     if (hydrating) return;
-    if (plan) savePlan(plan);
-  }, [plan, hydrating]);
+    savePlans(plans);
+  }, [plans, hydrating]);
+
+  useEffect(() => {
+    if (hydrating) return;
+    saveActiveScheda(activeSchedaId);
+  }, [activeSchedaId, hydrating]);
+
+  // Persist body metrics.
+  useEffect(() => {
+    if (hydrating) return;
+    saveBodyLog(bodyLog);
+  }, [bodyLog, hydrating]);
 
   // Persist settings
   useEffect(() => {
@@ -266,6 +379,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     saveProfile(profile);
   }, [profile, hydrating]);
 
+  // Recompute the weight reminder when its cadence changes.
+  useEffect(() => {
+    if (hydrating) return;
+    setWeightPromptDue(isWeightPromptDue(settings.weightReminderDays, lastWeightPromptRef.current));
+  }, [settings.weightReminderDays, hydrating]);
+
+  // Re-check the reminder when the app returns to the foreground.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st: AppStateStatus) => {
+      if (st === 'active') {
+        setWeightPromptDue(
+          isWeightPromptDue(settings.weightReminderDays, lastWeightPromptRef.current)
+        );
+      }
+    });
+    return () => sub.remove();
+  }, [settings.weightReminderDays]);
+
   const setProfile = useCallback((patch: Partial<Profile>) => {
     setProfileState(prev => ({ ...prev, ...patch }));
   }, []);
@@ -276,9 +407,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     saveLocalMode(true); // keep the legacy flag in sync for older reads
   }, []);
 
-  const setPlan = useCallback((p: Plan | null, _persist = true) => {
-    setPlanState(p);
-    if (!p) clearPlan();
+  const setPlan = useCallback((p: Plan | null, _persist = true): Plan | null => {
+    if (!p) {
+      setPlanState(null);
+      return null;
+    }
+    // Importing adds to the library and never overwrites a *different* scheda:
+    // if this id already belongs to another plan, give the import a fresh id.
+    const clash = plansRef.current.some(x => x.id === p.id);
+    const plan = clash ? { ...p, id: uniqueSchedaId(p.id, plansRef.current) } : p;
+    setPlanState(plan);
+    // Makes it the active scheda; the mirror effect upserts it into the library.
+    setActiveSchedaIdState(plan.id);
+    return plan;
   }, []);
 
   const setSetting = useCallback(<K extends keyof Settings>(k: K, v: Settings[K]) => {
@@ -664,12 +805,69 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     haptic('light');
   }, [updatePlan]);
 
-  const disconnectPlan = useCallback(() => {
-    setPlanState(null);
+  /* ------------------------------------------------------------------ */
+  /*  SCHEDA LIBRARY                                                    */
+  /* ------------------------------------------------------------------ */
+
+  const setActiveScheda = useCallback((id: string) => {
+    const target = plansRef.current.find(p => p.id === id);
+    if (!target) return;
+    setPlanState(target);
+    setActiveSchedaIdState(id);
     setCurrentDayId(null);
-    clearPlan();
-    showToast('Scheda scollegata');
+    haptic('light');
+    // Cloud: repoint active.json so other devices pick up the switch.
+    const gh = githubRef.current;
+    if (backendRef.current === 'cloud' && gh.token && gh.repo) {
+      setActiveSchedaRemote(gh.token, gh.repo, id).catch(() => {});
+    }
   }, []);
+
+  const deleteScheda = useCallback((id: string) => {
+    const remaining = plansRef.current.filter(p => p.id !== id);
+    setPlansState(remaining);
+    if (activeSchedaIdRef.current === id) {
+      const nextActive = remaining[0] ?? null;
+      setPlanState(nextActive);
+      setActiveSchedaIdState(nextActive?.id ?? null);
+      setCurrentDayId(null);
+      // Cloud: repoint active.json (the folder itself is left on the remote).
+      const gh = githubRef.current;
+      if (backendRef.current === 'cloud' && gh.token && gh.repo && nextActive) {
+        setActiveSchedaRemote(gh.token, gh.repo, nextActive.id).catch(() => {});
+      }
+    }
+    showToast('Scheda rimossa');
+  }, []);
+
+  /* ------------------------------------------------------------------ */
+  /*  BODY METRICS                                                      */
+  /* ------------------------------------------------------------------ */
+
+  const logWeight = useCallback((weightKg: number) => {
+    if (!Number.isFinite(weightKg) || weightKg <= 0) return;
+    const nowIso = new Date().toISOString();
+    setBodyLogState(prev => [...prev, { date: nowIso, weightKg }]);
+    // Keep the profile's "current" weight in step with the latest weigh-in.
+    setProfileState(prev => ({ ...prev, weightKg }));
+    lastWeightPromptRef.current = nowIso;
+    saveLastWeightPrompt(nowIso);
+    setWeightPromptDue(false);
+    haptic('success');
+  }, []);
+
+  const dismissWeightPrompt = useCallback(() => {
+    const nowIso = new Date().toISOString();
+    lastWeightPromptRef.current = nowIso;
+    saveLastWeightPrompt(nowIso);
+    setWeightPromptDue(false);
+  }, []);
+
+  const disconnectPlan = useCallback(() => {
+    const id = activeSchedaIdRef.current;
+    if (id) deleteScheda(id);
+    else setPlanState(null);
+  }, [deleteScheda]);
 
   const importPlan = useCallback((raw: string): { ok: boolean; error?: string } => {
     try {
@@ -771,15 +969,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const syncNow = useCallback(
     async (
-      opts?: { silent?: boolean; markActive?: boolean; message?: string }
+      opts?: { silent?: boolean; markActive?: boolean; message?: string; plan?: Plan }
     ): Promise<{ ok: boolean; error?: string }> => {
       const state = githubRef.current;
-      if (!state.token || !state.repo || !plan) {
+      const target = opts?.plan ?? plan;
+      if (!state.token || !state.repo || !target) {
         return { ok: false, error: 'GitHub non collegato' };
       }
       try {
         setGithub(g => ({ ...g, syncing: true, error: null }));
-        const count = await pushPlanAndSessions(state.token, state.repo, plan, {
+        const count = await pushPlanAndSessions(state.token, state.repo, target, {
           markActive: opts?.markActive,
           message: opts?.message,
         });
@@ -804,17 +1003,33 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       setGithub(g => ({ ...g, syncing: true, error: null }));
-      const { plan: remotePlan, allScheda: _ } = await pullActivePlan(state.token, state.repo);
-      if (!remotePlan) {
+      const [{ plans: remotePlans, activeId }, athlete] = await Promise.all([
+        pullLibrary(state.token, state.repo),
+        pullAthlete(state.token, state.repo),
+      ]);
+      if (!remotePlans.length) {
         setGithub(g => ({ ...g, syncing: false }));
         return { ok: false, error: 'Nessuna scheda remota trovata' };
       }
-      const sessions = remotePlan.storico;
-      const merged: Plan = { ...remotePlan, storico: sessions };
-      setPlanState(merged);
+      // Merge by id: remote wins for shared ids, but local-only schede are kept
+      // (a pull must not wipe a scheda that hasn't been uploaded yet).
+      setPlansState(prev => {
+        const merged = prev.slice();
+        for (const rp of remotePlans) {
+          const i = merged.findIndex(x => x.id === rp.id);
+          if (i === -1) merged.push(rp);
+          else merged[i] = rp;
+        }
+        return merged;
+      });
+      const active = remotePlans.find(p => p.id === activeId) ?? remotePlans[0];
+      setActiveSchedaIdState(active.id);
+      setPlanState(active);
+      if (athlete.profile) setProfileState(athlete.profile);
+      if (athlete.bodyLog.length) setBodyLogState(athlete.bodyLog);
       const lastSyncAt = new Date().toISOString();
       setGithub(g => ({ ...g, syncing: false, lastSyncAt }));
-      showToast('Scheda scaricata da GitHub');
+      showToast('Dati scaricati da GitHub');
       return { ok: true };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -836,9 +1051,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       //    On a fresh repo every session is "new", so pushPlanAndSessions
       //    uploads the whole history; markActive writes active.json too.
       if (plan) {
+        const hist = plan.storico ?? [];
         const res = await syncNow({
           markActive: true,
-          message: `import: ${plan.nome_scheda ?? plan.id} + ${plan.storico.length} sessioni (da locale)`,
+          message: `import: ${plan.nome_scheda ?? plan.id} + ${hist.length} sessioni (da locale)`,
         });
         if (!res.ok) {
           // Connected but upload failed — stay 'local' so we never claim the
@@ -847,8 +1063,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           return { ok: false, error: res.error ?? 'Upload fallito' };
         }
         // Prevent the auto-push effect from re-pushing the same last session.
-        const last = plan.storico[plan.storico.length - 1];
+        const last = hist[hist.length - 1];
         if (last) lastSyncedSessionRef.current = last.id;
+      }
+
+      // 2b. Push any OTHER local schede + the athlete data (profile + body log),
+      //     so a first cloud connect uploads the whole library, not just the
+      //     active scheda. Best-effort: the active plan + backend flip already
+      //     succeeded above.
+      const gh = githubRef.current;
+      if (gh.token && gh.repo) {
+        for (const pl of plansRef.current) {
+          if (pl.id === activeSchedaIdRef.current) continue;
+          try {
+            await pushPlanAndSessions(gh.token, gh.repo, pl, {
+              message: `import: ${pl.nome_scheda ?? pl.id} (da locale)`,
+            });
+          } catch {
+            /* best-effort */
+          }
+        }
+        try {
+          await pushAthlete(gh.token, gh.repo, profile, bodyLog);
+        } catch {
+          /* best-effort */
+        }
       }
 
       // 3. Only now commit to the cloud backend.
@@ -856,7 +1095,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       saveBackend('cloud');
       return { ok: true };
     },
-    [adoptToken, plan, syncNow]
+    [adoptToken, plan, syncNow, profile, bodyLog]
   );
 
   // The plain "connect" paths route through migrateLocalToCloud so connecting
@@ -878,7 +1117,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (hydrating) return;
     if (backendRef.current !== 'cloud') return; // local mode never auto-pushes
     if (!github.token || !github.repo || !plan) return;
-    const last = plan.storico[plan.storico.length - 1];
+    const hist = plan.storico ?? [];
+    const last = hist[hist.length - 1];
     if (!last) return;
     if (lastSyncedSessionRef.current === last.id) return;
     lastSyncedSessionRef.current = last.id;
@@ -890,10 +1130,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
   }, [plan, github.token, github.repo, hydrating, syncNow, backend]);
 
+  // Push profile + body metrics to the cloud (debounced so rapid profile edits
+  // coalesce into one commit). Independent of any scheda.
+  useEffect(() => {
+    if (hydrating) return;
+    if (backendRef.current !== 'cloud') return;
+    const gh = githubRef.current;
+    if (!gh.token || !gh.repo) return;
+    const h = setTimeout(() => {
+      const g = githubRef.current;
+      if (g.token && g.repo) pushAthlete(g.token, g.repo, profile, bodyLog).catch(() => {});
+    }, 3000);
+    return () => clearTimeout(h);
+  }, [profile, bodyLog, hydrating, backend]);
+
   const value = useMemo<StoreCtx>(
     () => ({
       plan,
       setPlan,
+      plans,
+      activeSchedaId,
+      setActiveScheda,
+      deleteScheda,
       hydrating,
       settings,
       setSetting,
@@ -902,6 +1160,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       backend,
       localMode,
       enableLocalMode,
+      bodyLog,
+      logWeight,
+      weightPromptDue,
+      dismissWeightPrompt,
       currentDayId,
       setCurrentDayId,
       startDay,
@@ -932,6 +1194,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [
       plan,
       setPlan,
+      plans,
+      activeSchedaId,
+      setActiveScheda,
+      deleteScheda,
       hydrating,
       settings,
       setSetting,
@@ -940,6 +1206,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       backend,
       localMode,
       enableLocalMode,
+      bodyLog,
+      logWeight,
+      weightPromptDue,
+      dismissWeightPrompt,
       currentDayId,
       startDay,
       toggleSet,

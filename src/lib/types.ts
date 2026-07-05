@@ -130,6 +130,12 @@ export interface Settings {
   keepScreenOn: boolean;
   /** Default weight unit for new entries. */
   defaultUnit: WeightUnit;
+  /**
+   * Ask to update body weight every N days on app open (0 = off). Feeds the
+   * body-metrics log so weight can be tracked over time without the user having
+   * to remember.
+   */
+  weightReminderDays: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -140,6 +146,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoExpandTimer: false,
   keepScreenOn: true,
   defaultUnit: 'kg',
+  weightReminderDays: 0,
 };
 
 /* ------------------------------- Profile ---------------------------- */
@@ -199,6 +206,21 @@ export const DEFAULT_PROFILE: Profile = {};
  *   - null     → not chosen yet (first run / onboarding)
  */
 export type Backend = 'local' | 'cloud' | null;
+
+/* ---------------------------- Body metrics --------------------------- */
+
+/**
+ * A single body measurement, independent of any workout plan. The log is an
+ * append-only array — each weigh-in is one immutable entry, so the array itself
+ * is the version history (persisted locally, or committed to GitHub in cloud
+ * mode under metrics/body.json).
+ */
+export interface BodyEntry {
+  /** ISO datetime of the measurement. */
+  date: string;
+  /** Body weight in kg. */
+  weightKg?: number;
+}
 
 /* --------------------------- Legacy v1 schema ------------------------ */
 /* Kept only so we can migrate imports created with the original PWA.    */
