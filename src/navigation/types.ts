@@ -7,7 +7,7 @@ export type RootStackParamList = {
   Menu: undefined;
   Schema: undefined;
   Import: undefined;
-  Format: undefined;
+  PlanWizard: undefined;
   Settings: undefined;
   Profile: undefined;
   Sync: undefined;
