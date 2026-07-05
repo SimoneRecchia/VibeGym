@@ -22,6 +22,7 @@ import { PressableScale } from '../components/PressableScale';
 import { Avatar } from '../components/Avatar';
 import { ProgressRing } from '../components/ProgressRing';
 import { ProfileFields } from '../components/ProfileFields';
+import { ChoiceCard } from '../components/ChoiceCard';
 import { RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -101,11 +102,8 @@ export function HomeScreen() {
 
         {!hydrating && stage === 'onboarding' && (
           <OnboardingHero
-            onConnect={() => navigation.navigate('Sync')}
-            onLocal={() => {
-              enableLocalMode();
-              navigation.navigate('Import');
-            }}
+            onCloud={() => navigation.navigate('Sync')}
+            onLocal={() => enableLocalMode()}
           />
         )}
 
@@ -113,8 +111,8 @@ export function HomeScreen() {
           <AddPlanHero
             login={github.token?.login}
             avatarUrl={github.token?.avatarUrl}
+            onWizard={() => navigation.navigate('PlanWizard')}
             onImport={() => navigation.navigate('Import')}
-            onHelp={() => navigation.navigate('Format')}
           />
         )}
 
@@ -344,10 +342,10 @@ function Hero({
 }
 
 function OnboardingHero({
-  onConnect,
+  onCloud,
   onLocal,
 }: {
-  onConnect: () => void;
+  onCloud: () => void;
   onLocal: () => void;
 }) {
   const { palette } = useTheme();
@@ -355,25 +353,31 @@ function OnboardingHero({
     <View style={styles.onboardForm}>
       <Text style={[styles.onboardFormTitle, { color: palette.text }]}>Crea il tuo profilo</Text>
       <Text style={[styles.onboardFormSub, { color: palette.textDim }]}>
-        Bastano pochi dati per iniziare — sono opzionali. Poi scegli come salvare
-        la tua scheda.
+        Bastano pochi dati per iniziare — sono opzionali.
       </Text>
 
       <View style={{ marginTop: space.lg }}>
         <ProfileFields />
       </View>
 
-      <View style={{ gap: 12, marginTop: space.xl }}>
-        <GlassButton title="Collega GitHub" icon="lightning" onPress={onConnect} block size="lg" />
-        <Text style={[styles.localLink, { color: palette.textDim }]} onPress={onLocal}>
-          Usa una scheda locale, senza versioni
-        </Text>
-      </View>
-
-      <Text style={[styles.localHint, { color: palette.textFaint }]}>
-        Con GitHub: backup, storico e grafici di progressione. In locale: una sola
-        scheda sul telefono, aggiornata in posto dopo ogni allenamento.
+      <Text style={[styles.chooseHead, { color: palette.textFaint }]}>
+        COME VUOI SALVARE I DATI?
       </Text>
+      <View style={{ gap: 12 }}>
+        <ChoiceCard
+          icon="cloud"
+          title="Salva sul cloud"
+          subtitle="I tuoi dati ti seguono ovunque, anche se cambi telefono."
+          onPress={onCloud}
+        />
+        <ChoiceCard
+          icon="phone"
+          title="Salva su questo telefono"
+          subtitle="Nessun account, tutto resta qui."
+          tint={palette.success}
+          onPress={onLocal}
+        />
+      </View>
     </View>
   );
 }
@@ -381,13 +385,13 @@ function OnboardingHero({
 function AddPlanHero({
   login,
   avatarUrl,
+  onWizard,
   onImport,
-  onHelp,
 }: {
   login?: string;
   avatarUrl?: string;
+  onWizard: () => void;
   onImport: () => void;
-  onHelp: () => void;
 }) {
   const { palette } = useTheme();
   return (
@@ -416,18 +420,17 @@ function AddPlanHero({
         Aggiungi la tua scheda
       </Text>
       <Text style={[styles.onboardSub, { color: palette.textDim }]}>
-        {login
-          ? 'Importa un file JSON con i tuoi giorni e esercizi. L\'app verifica formato e valori; se qualcosa è scritto come "8-9 kg" puoi correggerlo subito.'
-          : 'Importa un file JSON con i tuoi giorni e esercizi. In locale resta una sola scheda, aggiornata in posto dopo ogni allenamento.'}
+        Importa un file JSON con i tuoi giorni e gli esercizi. Controlliamo
+        formato e valori: se qualcosa non torna, lo correggi al volo.
       </Text>
       <View style={{ gap: 10, alignSelf: 'stretch', marginTop: space.lg }}>
-        <GlassButton title="Importa scheda" icon="download" onPress={onImport} block size="lg" />
+        <GlassButton title="Aggiungi scheda" icon="sparkles" onPress={onWizard} block size="lg" />
         <GlassButton
-          title="Non hai un JSON? Vedi come crearlo"
+          title="Ho già il file .json — importa"
           variant="ghost"
-          onPress={onHelp}
+          onPress={onImport}
           block
-          icon="bulb"
+          icon="download"
         />
       </View>
     </View>
@@ -537,13 +540,14 @@ const styles = StyleSheet.create({
   onboardForm: { marginTop: space.xl },
   onboardFormTitle: { ...typography.title1 },
   onboardFormSub: { ...typography.body, marginTop: 6 },
-  localLink: {
-    ...typography.footnote,
-    textAlign: 'center',
-    textDecorationLine: 'underline',
-    paddingVertical: 6,
+  chooseHead: {
+    ...typography.caption1,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginTop: space.xl,
+    marginBottom: 10,
+    marginLeft: 4,
   },
-  localHint: { ...typography.caption1, textAlign: 'center', marginTop: space.md },
   welcomeRow: {
     flexDirection: 'row',
     alignItems: 'center',
