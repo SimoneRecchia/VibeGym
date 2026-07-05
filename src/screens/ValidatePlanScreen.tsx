@@ -64,12 +64,14 @@ export function ValidatePlanScreen() {
       return;
     }
     setBusy(true);
-    setPlan(current);
+    // setPlan may reassign the id to keep it unique in the library; push that one.
+    const saved = setPlan(current) ?? current;
     if (github.token && github.repo) {
       const res = await syncNow({
         silent: false,
         markActive: true,
-        message: `scheda: import ${current.nome_scheda ?? current.id}`,
+        plan: saved,
+        message: `scheda: import ${saved.nome_scheda ?? saved.id}`,
       });
       if (!res.ok) {
         // We saved locally anyway, but warn
