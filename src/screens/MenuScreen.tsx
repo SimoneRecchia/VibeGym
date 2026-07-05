@@ -86,28 +86,28 @@ export function MenuScreen() {
           disabled={sessions === 0}
         />
 
-        <SectionHead title="Cloud" />
+        <SectionHead title="Salvataggio" />
         <MenuItem
-          icon="layers"
-          label={github.token ? `GitHub · @${github.token.login ?? ''}` : 'Collega GitHub'}
+          icon="cloud"
+          label={github.token ? 'Salvataggio sul cloud' : 'Attiva salvataggio sul cloud'}
           hint={
             github.token
               ? github.lastSyncAt
-                ? `Sincro: ${new Date(github.lastSyncAt).toLocaleString('it-IT')}`
-                : 'Pronto per sincronizzare'
-              : 'Backup automatico nella tua repo'
+                ? `Sincronizzato: ${new Date(github.lastSyncAt).toLocaleString('it-IT')}`
+                : `Attivo${github.token.login ? ` · @${github.token.login}` : ''}`
+              : 'Ora: solo su questo telefono'
           }
           onPress={() => navigation.navigate('Sync')}
         />
 
         <SectionHead title="Scheda" />
-        <MenuItem icon="download" label="Importa scheda" hint="Da file JSON" onPress={() => navigation.navigate('Import')} />
         <MenuItem
-          icon="bulb"
-          label="Come creare il JSON"
-          hint="Prompt + esempio"
-          onPress={() => navigation.navigate('Format')}
+          icon="sparkles"
+          label="Crea o converti una scheda"
+          hint="Procedura guidata con l'AI"
+          onPress={() => navigation.navigate('PlanWizard')}
         />
+        <MenuItem icon="download" label="Importa scheda" hint="Da file JSON" onPress={() => navigation.navigate('Import')} />
         <MenuItem
           icon="upload"
           label="Esporta scheda corrente"
@@ -156,9 +156,13 @@ export function MenuScreen() {
       <ConfirmModal
         visible={showDisconnectConfirm}
         onClose={() => setShowDisconnectConfirm(false)}
-        title="Scollega scheda?"
-        body="Perderai tutto lo storico se non esporti prima. Consigliato: esporta il JSON per sicurezza."
-        confirmLabel="Scollega"
+        title="Rimuovere la scheda?"
+        body={
+          github.token
+            ? 'La scheda resta salvata sul cloud: potrai riscaricarla. Rimuove solo la copia su questo telefono.'
+            : 'Perderai la scheda e lo storico da questo telefono. Consigliato: esporta il JSON per sicurezza.'
+        }
+        confirmLabel="Rimuovi"
         danger
         secondaryLabel="Esporta prima"
         onSecondary={async () => {
