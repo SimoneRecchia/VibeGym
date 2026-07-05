@@ -73,6 +73,13 @@ export function SettingsScreen() {
     { value: 'bw', label: 'BW' },
   ];
 
+  const reminderOpts: { value: number; label: string }[] = [
+    { value: 0, label: 'Off' },
+    { value: 7, label: '7' },
+    { value: 14, label: '14' },
+    { value: 30, label: '30' },
+  ];
+
   const onExportJson = async () => {
     const json = exportPlanJSON();
     if (!json) {
@@ -225,6 +232,30 @@ export function SettingsScreen() {
                 {i < trainingItems.length - 1 && <Divider />}
               </View>
             ))}
+            <Divider />
+            <RowItem
+              icon="chart"
+              label="Promemoria peso"
+              hint="Chiedi di aggiornarlo ogni tot giorni"
+              right={
+                <View style={styles.segmented}>
+                  {reminderOpts.map(o => {
+                    const active = settings.weightReminderDays === o.value;
+                    return (
+                      <Pressable
+                        key={o.value}
+                        onPress={() => setSetting('weightReminderDays', o.value)}
+                        style={[styles.segItem, { backgroundColor: active ? palette.accent : 'transparent' }]}
+                      >
+                        <Text style={[styles.segText, { color: active ? '#fff' : palette.text }]}>
+                          {o.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              }
+            />
           </GlassCard>
         </Section>
 
@@ -247,10 +278,11 @@ export function SettingsScreen() {
             />
             <Divider />
             <NavRow
-              icon="refresh"
-              label="Cambia scheda"
-              hint="Importa una scheda diversa"
-              onPress={() => navigation.navigate('Import')}
+              icon="layers"
+              label="Le tue schede"
+              hint="Gestisci e cambia scheda attiva"
+              onPress={() => navigation.navigate('Schede')}
+              disabled={!plan}
             />
             <Divider />
             <NavRow
