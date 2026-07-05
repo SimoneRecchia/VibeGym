@@ -140,12 +140,14 @@ export function SettingsScreen() {
                     },
                   ]}
                 >
-                  <Icon name="layers" color={palette.accent} size={20} />
+                  <Icon name="cloud" color={palette.accent} size={20} />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={[styles.itemLabel, { color: palette.text }]}>Collega GitHub</Text>
+                  <Text style={[styles.itemLabel, { color: palette.text }]}>
+                    Attiva salvataggio sul cloud
+                  </Text>
                   <Text style={[styles.itemHint, { color: palette.textDim }]} numberOfLines={1}>
-                    Backup scheda + storico nella tua repo
+                    Ora: solo su questo telefono · backup e più dispositivi
                   </Text>
                 </View>
                 <Icon name="chevron-right" color={palette.textFaint} size={18} />
@@ -238,10 +240,10 @@ export function SettingsScreen() {
             />
             <Divider />
             <NavRow
-              icon="bulb"
-              label="Come creare un JSON"
-              hint="Prompt AI + esempio"
-              onPress={() => navigation.navigate('Format')}
+              icon="sparkles"
+              label="Crea o converti una scheda"
+              hint="Procedura guidata con l'AI"
+              onPress={() => navigation.navigate('PlanWizard')}
             />
             <Divider />
             <NavRow
@@ -274,8 +276,8 @@ export function SettingsScreen() {
             <Divider />
             <NavRow
               icon="trash"
-              label="Rimuovi scheda locale"
-              hint="Resta tutto su GitHub"
+              label="Rimuovi scheda"
+              hint={github.token ? 'Resta salvata sul cloud' : 'Verrà eliminata da questo telefono'}
               tone="danger"
               onPress={() => disconnectPlan()}
               disabled={!plan}
@@ -285,8 +287,8 @@ export function SettingsScreen() {
                 <Divider />
                 <NavRow
                   icon="x"
-                  label="Scollega GitHub"
-                  hint="Token cancellato dal device"
+                  label="Disattiva il cloud"
+                  hint="I dati restano su questo telefono"
                   tone="danger"
                   onPress={() => setShowDisconnectGitHubConfirm(true)}
                 />
@@ -329,9 +331,9 @@ export function SettingsScreen() {
       <ConfirmModal
         visible={showDisconnectGitHubConfirm}
         onClose={() => setShowDisconnectGitHubConfirm(false)}
-        title="Scollegare GitHub?"
-        body="Il token viene cancellato dal device. La tua repo e i dati su GitHub non vengono toccati: ti basterà ricollegare per ritrovarli."
-        confirmLabel="Scollega"
+        title="Disattivare il cloud?"
+        body="I tuoi dati restano su questo telefono e nel cloud. Potrai riattivarlo quando vuoi per ritrovarli su tutti i dispositivi."
+        confirmLabel="Disattiva"
         danger
         onConfirm={async () => {
           setShowDisconnectGitHubConfirm(false);

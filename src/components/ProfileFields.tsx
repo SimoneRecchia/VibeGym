@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useStore } from '../lib/store';
 import { useTheme } from '../theme/ThemeProvider';
 import { radius, space, typography } from '../theme/tokens';
+import { Sex } from '../lib/types';
 import { GlassCard } from './GlassCard';
+
+const SEX_OPTIONS: [Sex, string][] = [
+  ['male', 'Uomo'],
+  ['female', 'Donna'],
+  ['other', 'Altro'],
+];
 
 /**
  * Personal profile editor (name, birth date, weight, height). Bound directly to
@@ -68,6 +75,32 @@ export function ProfileFields() {
         />
       </View>
 
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: palette.textDim }]}>SESSO</Text>
+        <View style={styles.sexRow}>
+          {SEX_OPTIONS.map(([val, lab]) => {
+            const active = profile.sex === val;
+            return (
+              <Pressable
+                key={val}
+                onPress={() => setProfile({ sex: active ? undefined : val })}
+                style={[
+                  styles.sexChip,
+                  {
+                    backgroundColor: active ? palette.accentSoft : palette.surface,
+                    borderColor: active ? palette.accent : palette.glassBorderStrong,
+                  },
+                ]}
+              >
+                <Text style={[styles.sexText, { color: active ? palette.accent : palette.textDim }]}>
+                  {lab}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
       <View style={styles.row}>
         <View style={[styles.field, styles.rowItem]}>
           <Text style={[styles.label, { color: palette.textDim }]}>PESO</Text>
@@ -109,6 +142,15 @@ const styles = StyleSheet.create({
   label: { ...typography.caption1, letterSpacing: 0.6 },
   row: { flexDirection: 'row', gap: space.md },
   rowItem: { flex: 1 },
+  sexRow: { flexDirection: 'row', gap: 8 },
+  sexChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 11,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth * 1.5,
+  },
+  sexText: { ...typography.footnote, fontWeight: '700' },
   inputUnitRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   unit: { ...typography.subhead },
   input: {
