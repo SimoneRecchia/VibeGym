@@ -8,12 +8,12 @@ import {
   View,
 } from 'react-native';
 import RNFS from 'react-native-fs';
+import { Base64 } from 'js-base64';
 import { pick, types as pickerTypes } from '@react-native-documents/picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useStore } from '../lib/store';
 import { useTheme } from '../theme/ThemeProvider';
-import { hexToRgba, radius, space, typography } from '../theme/tokens';
+import { radius, space, typography } from '../theme/tokens';
 import { Screen } from '../components/Screen';
 import { IconButton } from '../components/IconButton';
 import { GlassButton } from '../components/GlassButton';
@@ -23,11 +23,6 @@ import { RootStackParamList } from '../navigation/types';
 import { normalizePlan } from '../lib/migrate';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Import'>;
-
-function stripHash(hex: string | undefined): string {
-  if (!hex) return '#5E8BFF';
-  return hex.startsWith('#') ? hex : `#${hex}`;
-}
 
 /**
  * The import path now always routes through ValidatePlanScreen, even when
@@ -40,7 +35,6 @@ function stripHash(hex: string | undefined): string {
 export function ImportScreen() {
   const navigation = useNavigation<Nav>();
   const { palette } = useTheme();
-  const { github } = useStore();
   const [pasted, setPasted] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +42,12 @@ export function ImportScreen() {
   const handleRaw = (raw: string) => {
     setError(null);
     try {
-      const parsed = JSON.parse(raw);
+      // Drop any leading BOM / stray bytes before the JSON actually starts —
+      // some Android content-provider reads prepend a BOM, and copy/paste can
+      // carry one too. Our plans are always a top-level object/array.
+      const start = raw.search(/[{[]/);
+      const cleaned = start >= 0 ? raw.slice(start) : raw.trim();
+      const parsed = JSON.parse(cleaned);
       const plan = normalizePlan(parsed);
       if (!plan.giorni || plan.giorni.length === 0) {
         setError('Nessun giorno trovato nella scheda. Il JSON deve contenere un array "giorni".');
@@ -70,9 +69,11 @@ export function ImportScreen() {
         return;
       }
       const path = decodeURIComponent(picked.uri.replace('file://', ''));
+      // content:// URIs: RNFS.readFile(..., 'utf8') can throw "Invalid UTF-8
+      // detected" on Android even for valid files, so read base64 and decode.
       const raw =
         Platform.OS === 'android' && picked.uri.startsWith('content://')
-          ? await RNFS.readFile(picked.uri, 'utf8')
+          ? Base64.decode(await RNFS.readFile(picked.uri, 'base64'))
           : await RNFS.readFile(path, 'utf8');
       handleRaw(raw);
     } catch (e) {
@@ -100,24 +101,6 @@ export function ImportScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.xxxl }}>
-        {!github.token && (
-          <View
-            style={[
-              styles.warn,
-              {
-                backgroundColor: palette.warnSoft,
-                borderColor: hexToRgba(stripHash(palette.warn), 0.45),
-              },
-            ]}
-          >
-            <Icon name="bulb" color={palette.warn} size={18} />
-            <Text style={[styles.warnText, { color: palette.text }]}>
-              Per salvare i progressi nel cloud serve collegare GitHub. Senza il
-              collegamento la scheda viene salvata solo sul telefono.
-            </Text>
-          </View>
-        )}
-
         <Text style={[styles.section, { color: palette.textFaint }]}>OPZIONE 1 — DA FILE</Text>
         <GlassCard style={styles.card}>
           <View style={styles.row}>
@@ -182,7 +165,7 @@ export function ImportScreen() {
           title="Non hai un JSON? Vedi come crearlo"
           icon="bulb"
           variant="ghost"
-          onPress={() => navigation.navigate('Format')}
+          onPress={() => navigation.navigate('PlanWizard')}
           block
           style={{ marginTop: space.lg }}
         />
@@ -201,16 +184,6 @@ const styles = StyleSheet.create({
     paddingBottom: space.sm,
   },
   title: { ...typography.title2 },
-  warn: {
-    flexDirection: 'row',
-    gap: 8,
-    padding: space.md,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth * 1.5,
-    marginBottom: space.md,
-    alignItems: 'flex-start',
-  },
-  warnText: { ...typography.footnote, flex: 1 },
   section: {
     ...typography.caption1,
     textTransform: 'uppercase',

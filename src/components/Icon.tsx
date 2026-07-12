@@ -37,7 +37,9 @@ export type IconName =
   | 'pause'
   | 'stop'
   | 'flame'
-  | 'sparkles';
+  | 'sparkles'
+  | 'cloud'
+  | 'phone';
 
 type Props = {
   name: IconName;
@@ -317,6 +319,19 @@ export function Icon({ name, size = 22, color = '#FAFAFA', strokeWidth = 1.75 }:
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
           <Path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" stroke={color} {...s} />
           <Path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14zM4 4l.6 1.7L6.3 6.3 4.6 6.9 4 8.6 3.4 6.9 1.7 6.3l1.7-.6L4 4z" stroke={color} {...s} />
+        </Svg>
+      );
+    case 'cloud':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.78A6 6 0 1 0 6.5 19h11z" stroke={color} {...s} />
+        </Svg>
+      );
+    case 'phone':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Rect x="6" y="2" width="12" height="20" rx="2.5" stroke={color} {...s} />
+          <Path d="M11 18h2" stroke={color} {...s} />
         </Svg>
       );
     default:
