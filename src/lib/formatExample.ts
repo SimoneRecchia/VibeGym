@@ -22,7 +22,7 @@ export const FORMAT_EXAMPLE = `{
           "id": "a1",
           "nome": "Chest Press",
           "serie": 4,
-          "reps": { "kind": "range", "min": 8, "max": 10 },
+          "reps": { "value": 10, "unit": "times" },
           "peso_suggerito": { "value": 40, "unit": "kg" },
           "recupero_sec": 120
         },
@@ -30,7 +30,7 @@ export const FORMAT_EXAMPLE = `{
           "id": "a2",
           "nome": "Plank",
           "serie": 3,
-          "reps": { "kind": "time", "sec": 30 },
+          "reps": { "value": 30, "unit": "seconds" },
           "peso_suggerito": { "value": 0, "unit": "bw" },
           "recupero_sec": 60
         },
@@ -44,14 +44,14 @@ export const FORMAT_EXAMPLE = `{
               "id": "a3a",
               "nome": "Alzate laterali",
               "serie": 3,
-              "reps": { "kind": "fixed", "value": 12 },
+              "reps": { "value": 12, "unit": "times" },
               "peso_suggerito": { "value": 6, "unit": "kg" }
             },
             {
               "id": "a3b",
               "nome": "Pushdown",
               "serie": 3,
-              "reps": { "kind": "fixed", "value": 12 },
+              "reps": { "value": 12, "unit": "times" },
               "peso_suggerito": { "value": 15, "unit": "kg" }
             }
           ]
@@ -67,21 +67,28 @@ export const FORMAT_EXAMPLE = `{
   "storico": []
 }`;
 
-export const FORMAT_PROMPT = `Trasforma la mia scheda da palestra in un JSON valido secondo questo schema. Regole:
+export const FORMAT_PROMPT = `Trasforma la mia scheda da palestra in un JSON valido secondo questo schema e forniscimelo come FILE .json SCARICABILE.
+
+IMPORTANTE sul formato della risposta:
+- Genera un vero file scaricabile chiamato "scheda.json" (usa il tuo strumento per creare file / code interpreter) e metti a disposizione il link/pulsante per scaricarlo.
+- NON incollare il JSON solo come testo o dentro un blocco di codice: mi serve il file .json da salvare e importare nell'app.
+- Il file deve contenere SOLO il JSON valido (nessun commento, nessun testo extra, nessun markdown).
+
+Regole dello schema:
 
 - Oggetto root: { "schema_version": 2, "id": "slug-stabile", "nome_scheda": string, "creata_il": "YYYY-MM-DD", "giorni": [...], "storico": [] }. L'"id" è uno slug lowercase-con-trattini, NON cambierà mai (è il nome cartella su GitHub).
 - Ogni giorno: { "id": slug, "nome": string (es. "Giorno A — Petto"), "colore": "#HEX", "esercizi": [...], opzionalmente "cardio" }.
 - Ogni esercizio: { "id": slug, "nome": string, "serie": intero, "reps": Reps, "peso_suggerito": Weight, "recupero_sec": intero, opzionalmente "note_coach": string }.
 - Tipo Weight: { "value": numero, "unit": "kg" | "lb" | "bw" }. Per corpo libero usa { "value": 0, "unit": "bw" }; per BW + zavorra usa { "value": 10, "unit": "bw" }.
-- Tipo Reps: una delle seguenti varianti:
-  • { "kind": "fixed", "value": numero }    — ripetizioni fisse
-  • { "kind": "range", "min": numero, "max": numero }   — range tipo 8-10
-  • { "kind": "amrap" }   — al massimo
-  • { "kind": "time", "sec": numero }   — esercizi a tempo (plank, hold…)
+- Tipo Reps: { "value": intero oppure null, "unit": "times" | "seconds" | "minutes" }.
+  • Ripetizioni normali: { "value": 12, "unit": "times" }
+  • Esercizi a tempo (plank, hold, corsa): { "value": 30, "unit": "seconds" } oppure { "value": 2, "unit": "minutes" }
+  • AMRAP / al massimo: { "value": null, "unit": "times" }
+  • "value" è SEMPRE un intero (o null per AMRAP): NIENTE range tipo "8-10", scegli un singolo numero (di solito il più alto).
 - Superset: { "tipo": "superset", "nome": string, "recupero_sec": intero, "esercizi": [due voci con id/nome/serie/reps/peso_suggerito] }. Il "recupero_sec" sta sul superset.
 - Cardio opzionale: { "tipo": string, "durata_min": intero, "modalita": string }.
 - "storico" sempre [].
-- Rispondi SOLO con JSON valido, niente commenti né backtick markdown.
+- Ricorda: il risultato va consegnato come file "scheda.json" scaricabile, non come testo nella chat.
 
 Ecco la mia scheda:
 

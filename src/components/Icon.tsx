@@ -6,6 +6,7 @@ export type IconName =
   | 'arrow-right'
   | 'chevron-right'
   | 'chevron-down'
+  | 'chevron-up'
   | 'x'
   | 'check'
   | 'sun'
@@ -26,6 +27,8 @@ export type IconName =
   | 'trophy'
   | 'plus'
   | 'minus'
+  | 'repeat'
+  | 'target'
   | 'refresh'
   | 'layers'
   | 'gear'
@@ -76,6 +79,12 @@ export function Icon({ name, size = 22, color = '#FAFAFA', strokeWidth = 1.75 }:
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
           <Path d="M6 9l6 6 6-6" stroke={color} {...s} strokeWidth={2} />
+        </Svg>
+      );
+    case 'chevron-up':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d="M6 15l6-6 6 6" stroke={color} {...s} strokeWidth={2} />
         </Svg>
       );
     case 'x':
@@ -220,6 +229,23 @@ export function Icon({ name, size = 22, color = '#FAFAFA', strokeWidth = 1.75 }:
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
           <Path d="M5 12h14" stroke={color} {...s} strokeWidth={2} />
+        </Svg>
+      );
+    case 'repeat':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d="M17 2l4 4-4 4" stroke={color} {...s} />
+          <Path d="M3 11V9a4 4 0 0 1 4-4h14" stroke={color} {...s} />
+          <Path d="M7 22l-4-4 4-4" stroke={color} {...s} />
+          <Path d="M21 13v2a4 4 0 0 1-4 4H3" stroke={color} {...s} />
+        </Svg>
+      );
+    case 'target':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Circle cx="12" cy="12" r="8" stroke={color} {...s} />
+          <Circle cx="12" cy="12" r="3.5" stroke={color} {...s} />
+          <Circle cx="12" cy="12" r="0.8" fill={color} />
         </Svg>
       );
     case 'refresh':

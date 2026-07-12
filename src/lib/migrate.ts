@@ -1,4 +1,4 @@
-import { parseRepsString, parseWeightString } from './format';
+import { coerceReps, parseWeightString } from './format';
 import { slugifySchedaName } from './validate';
 import {
   Day,
@@ -49,7 +49,7 @@ const migrateExercise = (ex: V1Exercise): Exercise => {
       id: sub.id,
       nome: sub.nome,
       serie: sub.serie,
-      reps: parseRepsString(sub.reps),
+      reps: coerceReps(sub.reps),
       peso_suggerito: parseWeightString(sub.peso_suggerito) ?? undefined,
     }));
     return {
@@ -65,7 +65,7 @@ const migrateExercise = (ex: V1Exercise): Exercise => {
     id: ex.id,
     nome: ex.nome,
     serie: ex.serie ?? 0,
-    reps: parseRepsString(ex.reps, ex.durata_sec),
+    reps: coerceReps(ex.reps, ex.durata_sec),
     peso_suggerito: parseWeightString(ex.peso_suggerito) ?? undefined,
     recupero_sec: ex.recupero_sec ?? 90,
     note_coach: ex.note_coach,
@@ -124,14 +124,14 @@ const migrateLegacySession = (raw: unknown): Session | null => {
         serie_fatte: e.serie_fatte,
         serie_stato: e.serie_stato ?? [],
         completato: !!e.completato,
-        reps: parseRepsString(e.reps),
+        reps: coerceReps(e.reps),
         peso_scheda: parseWeightString(e.peso_scheda) ?? undefined,
         pesi_serie: pesi.map(w => w ?? null) as (Weight | null)[],
         sub_esercizi: e.sub_esercizi?.map(sub => ({
           id: sub.id,
           nome: sub.nome,
           serie: sub.serie,
-          reps: parseRepsString(sub.reps),
+          reps: coerceReps(sub.reps),
           peso_scheda: parseWeightString(sub.peso_scheda) ?? undefined,
           pesi_serie: (sub.pesi_serie ?? []).map(s => parseWeightString(s) ?? null),
         })),
@@ -155,13 +155,28 @@ export const normalizePlan = (raw: unknown): Plan => {
   const obj = raw as Record<string, unknown>;
   if (obj.schema_version === 2 && Array.isArray(obj.giorni)) {
     const v2 = obj as unknown as Plan;
-    // Already v2 — trust it but ensure storico exists & id is set
-    return {
+    // Already v2 — trust it but ensure storico exists, id is set, and reps are
+    // coerced to the current {value, unit} shape (older v2 used a tagged union).
+    const normalized: Plan = {
       ...v2,
       id: v2.id || slugifySchedaName(v2.nome_scheda),
       storico: Array.isArray(obj.storico) ? (obj.storico as Session[]) : [],
     };
+    normalizeRepsInPlan(normalized);
+    return normalized;
   }
   // Treat as v1
   return migrateV1ToV2(obj as unknown as V1Plan);
+};
+
+/** Coerce every reps field in a plan (giorni → esercizi → sub-esercizi). */
+const normalizeRepsInPlan = (plan: Plan): void => {
+  for (const day of plan.giorni ?? []) {
+    for (const ex of day.esercizi ?? []) {
+      if (ex.reps !== undefined) ex.reps = coerceReps(ex.reps);
+      for (const sub of ex.esercizi ?? []) {
+        if (sub.reps !== undefined) sub.reps = coerceReps(sub.reps);
+      }
+    }
+  }
 };
