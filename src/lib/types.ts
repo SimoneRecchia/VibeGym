@@ -17,12 +17,22 @@ export interface Weight {
   unit: WeightUnit;
 }
 
-/** Tagged union covering the four ways a "rep" target can be expressed. */
-export type Reps =
-  | { kind: 'fixed'; value: number }
-  | { kind: 'range'; min: number; max: number }
-  | { kind: 'amrap' }
-  | { kind: 'time'; sec: number };
+/**
+ * How a rep target is measured. Extensible: add units here (e.g. 'meters')
+ * without touching the shape. The athlete never picks the unit — it comes from
+ * the plan; they only enter the numeric value they actually did.
+ */
+export type RepUnit = 'times' | 'seconds' | 'minutes';
+
+/**
+ * A strongly-typed rep target. `value` is always a non-negative integer, or
+ * `null` for AMRAP ("al massimo"). The meaning of the number depends on `unit`:
+ * 12 × times, 30 × seconds (plank), 2 × minutes, …
+ */
+export interface Reps {
+  value: number | null;
+  unit: RepUnit;
+}
 
 export interface ExerciseSub {
   id: string;
@@ -30,7 +40,14 @@ export interface ExerciseSub {
   serie: number;
   reps?: Reps;
   peso_suggerito?: Weight;
+  /**
+   * Per-set weights learned from the last completed session. Persisted (no `_`
+   * prefix) so the card keeps suggesting what you actually lifted, per set.
+   */
+  pesi_default?: (Weight | null)[];
   _pesi_serie?: (Weight | null)[];
+  /** Actual reps done this session, per set (null = did the target). */
+  _ripetizioni_serie?: (number | null)[];
 }
 
 export interface Exercise {
@@ -40,6 +57,8 @@ export interface Exercise {
   serie?: number;
   reps?: Reps;
   peso_suggerito?: Weight;
+  /** Per-set weights learned from the last completed session (persisted). */
+  pesi_default?: (Weight | null)[];
   recupero_sec: number;
   note_coach?: string;
   esercizi?: ExerciseSub[];
@@ -74,6 +93,7 @@ export interface HistoryExerciseSub {
   reps?: Reps;
   peso_scheda?: Weight;
   pesi_serie: (Weight | null)[];
+  ripetizioni_serie?: (number | null)[];
 }
 
 export interface HistoryExercise {
@@ -128,6 +148,8 @@ export interface Settings {
   countdownWarn: boolean;
   autoExpandTimer: boolean;
   keepScreenOn: boolean;
+  /** Where the floating rest timer docks on screen. */
+  timerPosition: 'top' | 'bottom';
   /** Default weight unit for new entries. */
   defaultUnit: WeightUnit;
 }
@@ -139,6 +161,7 @@ export const DEFAULT_SETTINGS: Settings = {
   countdownWarn: true,
   autoExpandTimer: false,
   keepScreenOn: true,
+  timerPosition: 'bottom',
   defaultUnit: 'kg',
 };
 

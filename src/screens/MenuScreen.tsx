@@ -19,6 +19,7 @@ import { GlassButton } from '../components/GlassButton';
 import { GlassCard } from '../components/GlassCard';
 import { Icon, IconName } from '../components/Icon';
 import { PressableScale } from '../components/PressableScale';
+import { formatDateTime } from '../lib/format';
 import { RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Menu'>;
@@ -93,7 +94,7 @@ export function MenuScreen() {
           hint={
             github.token
               ? github.lastSyncAt
-                ? `Sincro: ${new Date(github.lastSyncAt).toLocaleString('it-IT')}`
+                ? `Sincro: ${formatDateTime(github.lastSyncAt)}`
                 : 'Pronto per sincronizzare'
               : 'Backup automatico nella tua repo'
           }
