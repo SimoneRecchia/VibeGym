@@ -22,6 +22,7 @@ import { PressableScale } from '../components/PressableScale';
 import { Avatar } from '../components/Avatar';
 import { ProgressRing } from '../components/ProgressRing';
 import { ProfileFields } from '../components/ProfileFields';
+import { ChoiceCard } from '../components/ChoiceCard';
 import { RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -33,7 +34,7 @@ function stripHash(hex: string | undefined): string {
 
 export function HomeScreen() {
   const navigation = useNavigation<Nav>();
-  const { plan, startDay, hydrating, github, localMode, enableLocalMode } = useStore();
+  const { plan, plans, startDay, hydrating, github, localMode, enableLocalMode } = useStore();
   const { palette, mode, toggle } = useTheme();
 
   const progress = useMemo(() => getDailyProgress(plan), [plan]);
@@ -101,11 +102,8 @@ export function HomeScreen() {
 
         {!hydrating && stage === 'onboarding' && (
           <OnboardingHero
-            onConnect={() => navigation.navigate('Sync')}
-            onLocal={() => {
-              enableLocalMode();
-              navigation.navigate('Import');
-            }}
+            onCloud={() => navigation.navigate('Sync')}
+            onLocal={() => enableLocalMode()}
           />
         )}
 
@@ -113,8 +111,8 @@ export function HomeScreen() {
           <AddPlanHero
             login={github.token?.login}
             avatarUrl={github.token?.avatarUrl}
+            onWizard={() => navigation.navigate('PlanWizard')}
             onImport={() => navigation.navigate('Import')}
-            onHelp={() => navigation.navigate('Format')}
           />
         )}
 
@@ -139,6 +137,28 @@ export function HomeScreen() {
                 tintSoft={palette.successSoft}
               />
             </View>
+
+            <PressableScale onPress={() => navigation.navigate('Schede')}>
+              <GlassCard rounded="lg" style={styles.schedaBar}>
+                <View
+                  style={[
+                    styles.schedaIcon,
+                    { backgroundColor: palette.accentSoft, borderColor: hexToRgba(stripHash(palette.accent), 0.5) },
+                  ]}
+                >
+                  <Icon name="layers" color={palette.accent} size={16} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.schedaBarLabel, { color: palette.textFaint }]}>
+                    SCHEDA ATTIVA{plans.length > 1 ? ` · ${plans.length} schede` : ''}
+                  </Text>
+                  <Text style={[styles.schedaBarName, { color: palette.text }]} numberOfLines={1}>
+                    {plan.nome_scheda ?? plan.id}
+                  </Text>
+                </View>
+                <Icon name="chevron-right" color={palette.textFaint} size={18} />
+              </GlassCard>
+            </PressableScale>
 
             {inProgressDay && (
               <View style={styles.section}>
@@ -344,10 +364,10 @@ function Hero({
 }
 
 function OnboardingHero({
-  onConnect,
+  onCloud,
   onLocal,
 }: {
-  onConnect: () => void;
+  onCloud: () => void;
   onLocal: () => void;
 }) {
   const { palette } = useTheme();
@@ -355,25 +375,31 @@ function OnboardingHero({
     <View style={styles.onboardForm}>
       <Text style={[styles.onboardFormTitle, { color: palette.text }]}>Crea il tuo profilo</Text>
       <Text style={[styles.onboardFormSub, { color: palette.textDim }]}>
-        Bastano pochi dati per iniziare — sono opzionali. Poi scegli come salvare
-        la tua scheda.
+        Bastano pochi dati per iniziare — sono opzionali.
       </Text>
 
       <View style={{ marginTop: space.lg }}>
         <ProfileFields />
       </View>
 
-      <View style={{ gap: 12, marginTop: space.xl }}>
-        <GlassButton title="Collega GitHub" icon="lightning" onPress={onConnect} block size="lg" />
-        <Text style={[styles.localLink, { color: palette.textDim }]} onPress={onLocal}>
-          Usa una scheda locale, senza versioni
-        </Text>
-      </View>
-
-      <Text style={[styles.localHint, { color: palette.textFaint }]}>
-        Con GitHub: backup, storico e grafici di progressione. In locale: una sola
-        scheda sul telefono, aggiornata in posto dopo ogni allenamento.
+      <Text style={[styles.chooseHead, { color: palette.textFaint }]}>
+        COME VUOI SALVARE I DATI?
       </Text>
+      <View style={{ gap: 12 }}>
+        <ChoiceCard
+          icon="cloud"
+          title="Salva sul cloud"
+          subtitle="I tuoi dati ti seguono ovunque, anche se cambi telefono."
+          onPress={onCloud}
+        />
+        <ChoiceCard
+          icon="phone"
+          title="Salva su questo telefono"
+          subtitle="Nessun account, tutto resta qui."
+          tint={palette.success}
+          onPress={onLocal}
+        />
+      </View>
     </View>
   );
 }
@@ -381,13 +407,13 @@ function OnboardingHero({
 function AddPlanHero({
   login,
   avatarUrl,
+  onWizard,
   onImport,
-  onHelp,
 }: {
   login?: string;
   avatarUrl?: string;
+  onWizard: () => void;
   onImport: () => void;
-  onHelp: () => void;
 }) {
   const { palette } = useTheme();
   return (
@@ -416,18 +442,17 @@ function AddPlanHero({
         Aggiungi la tua scheda
       </Text>
       <Text style={[styles.onboardSub, { color: palette.textDim }]}>
-        {login
-          ? 'Importa un file JSON con i tuoi giorni e esercizi. L\'app verifica formato e valori; se qualcosa è scritto come "8-9 kg" puoi correggerlo subito.'
-          : 'Importa un file JSON con i tuoi giorni e esercizi. In locale resta una sola scheda, aggiornata in posto dopo ogni allenamento.'}
+        Importa un file JSON con i tuoi giorni e gli esercizi. Controlliamo
+        formato e valori: se qualcosa non torna, lo correggi al volo.
       </Text>
       <View style={{ gap: 10, alignSelf: 'stretch', marginTop: space.lg }}>
-        <GlassButton title="Importa scheda" icon="download" onPress={onImport} block size="lg" />
+        <GlassButton title="Aggiungi scheda" icon="sparkles" onPress={onWizard} block size="lg" />
         <GlassButton
-          title="Non hai un JSON? Vedi come crearlo"
+          title="Ho già il file .json — importa"
           variant="ghost"
-          onPress={onHelp}
+          onPress={onImport}
           block
-          icon="bulb"
+          icon="download"
         />
       </View>
     </View>
@@ -440,6 +465,24 @@ const styles = StyleSheet.create({
   greet: { ...typography.subhead, marginBottom: 2 },
   title: { ...typography.largeTitle },
   statsStrip: { flexDirection: 'row', gap: 10, marginTop: space.lg },
+  schedaBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: space.md,
+    marginTop: space.md,
+  },
+  schedaIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth * 1.5,
+  },
+  schedaBarLabel: { ...typography.caption2, letterSpacing: 0.5 },
+  schedaBarName: { ...typography.headline, marginTop: 1 },
   statPill: { flex: 1, paddingVertical: 12, paddingHorizontal: 12, alignItems: 'flex-start' },
   statIcon: {
     width: 24,
@@ -537,13 +580,14 @@ const styles = StyleSheet.create({
   onboardForm: { marginTop: space.xl },
   onboardFormTitle: { ...typography.title1 },
   onboardFormSub: { ...typography.body, marginTop: 6 },
-  localLink: {
-    ...typography.footnote,
-    textAlign: 'center',
-    textDecorationLine: 'underline',
-    paddingVertical: 6,
+  chooseHead: {
+    ...typography.caption1,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginTop: space.xl,
+    marginBottom: 10,
+    marginLeft: 4,
   },
-  localHint: { ...typography.caption1, textAlign: 'center', marginTop: space.md },
   welcomeRow: {
     flexDirection: 'row',
     alignItems: 'center',

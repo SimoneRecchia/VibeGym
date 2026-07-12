@@ -152,6 +152,12 @@ export interface Settings {
   timerPosition: 'top' | 'bottom';
   /** Default weight unit for new entries. */
   defaultUnit: WeightUnit;
+  /**
+   * Ask to update body weight every N days on app open (0 = off). Feeds the
+   * body-metrics log so weight can be tracked over time without the user having
+   * to remember.
+   */
+  weightReminderDays: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -163,12 +169,24 @@ export const DEFAULT_SETTINGS: Settings = {
   keepScreenOn: true,
   timerPosition: 'bottom',
   defaultUnit: 'kg',
+  weightReminderDays: 0,
 };
 
 /* ------------------------------- Profile ---------------------------- */
 
-/** Personal info collected on the first page. All fields optional. */
+export type Sex = 'male' | 'female' | 'other';
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
+
+/**
+ * Personal + training-context info. Every field is optional.
+ *
+ * The light fields (name/birthDate/weightKg/heightCm) are collected during
+ * onboarding; the richer fields (experience, equipment, goals, injuries…) are
+ * gathered in the "create a plan for me" wizard because they only matter when
+ * building the AI prompt — the app runtime never requires them.
+ */
 export interface Profile {
+  // Light onboarding fields
   name?: string;
   /** Free-form birth date as typed by the user, e.g. "12/03/1990". */
   birthDate?: string;
@@ -176,9 +194,56 @@ export interface Profile {
   weightKg?: number;
   /** Height in cm. */
   heightCm?: number;
+
+  // Demographics (may be entered directly or derived from birthDate)
+  age?: number;
+  sex?: Sex;
+
+  // Training context — feeds the AI prompt builder, all optional
+  experience?: ExperienceLevel;
+  /** How many times per week the user trains. */
+  sessionsPerWeek?: number;
+  /** Typical session length in minutes. */
+  sessionLengthMin?: number;
+  /** Available equipment, e.g. ['bilanciere', 'manubri', 'cavi']. */
+  equipment?: string[];
+  /** Structured goal tags, e.g. ['ipertrofia', 'equilibrio', 'cardio']. */
+  goals?: string[];
+  /** Free-text elaboration on goals. */
+  goalsNote?: string;
+  /** Free text — injuries / physical issues to account for. */
+  injuries?: string;
+  /** Free text — exercises or movements the user does not want. */
+  exclusions?: string;
 }
 
 export const DEFAULT_PROFILE: Profile = {};
+
+/* ------------------------------- Backend ---------------------------- */
+
+/**
+ * Where the user has chosen to keep their data. Both backends store the full
+ * session history (`Plan.storico`) so trends/charts/tracking are identical.
+ *   - 'local'  → this device only (AsyncStorage), no account
+ *   - 'cloud'  → device + GitHub sync (backup, edit-from-PC, commit history)
+ *   - null     → not chosen yet (first run / onboarding)
+ */
+export type Backend = 'local' | 'cloud' | null;
+
+/* ---------------------------- Body metrics --------------------------- */
+
+/**
+ * A single body measurement, independent of any workout plan. The log is an
+ * append-only array — each weigh-in is one immutable entry, so the array itself
+ * is the version history (persisted locally, or committed to GitHub in cloud
+ * mode under metrics/body.json).
+ */
+export interface BodyEntry {
+  /** ISO datetime of the measurement. */
+  date: string;
+  /** Body weight in kg. */
+  weightKg?: number;
+}
 
 /* --------------------------- Legacy v1 schema ------------------------ */
 /* Kept only so we can migrate imports created with the original PWA.    */

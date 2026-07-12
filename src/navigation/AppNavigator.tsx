@@ -7,7 +7,8 @@ import { WorkoutScreen } from '../screens/WorkoutScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { MenuScreen } from '../screens/MenuScreen';
 import { ImportScreen } from '../screens/ImportScreen';
-import { FormatScreen } from '../screens/FormatScreen';
+import { PlanWizardScreen } from '../screens/PlanWizardScreen';
+import { SchedeScreen } from '../screens/SchedeScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SchemaScreen } from '../screens/SchemaScreen';
@@ -52,7 +53,8 @@ export function AppNavigator() {
         <Stack.Screen name="Menu" component={MenuScreen} options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="Schema" component={SchemaScreen} />
         <Stack.Screen name="Import" component={ImportScreen} />
-        <Stack.Screen name="Format" component={FormatScreen} />
+        <Stack.Screen name="PlanWizard" component={PlanWizardScreen} />
+        <Stack.Screen name="Schede" component={SchedeScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="Sync" component={SyncScreen} />

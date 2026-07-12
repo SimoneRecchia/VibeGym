@@ -8,6 +8,7 @@ import { StoreProvider, useStore } from './src/lib/store';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { Toast } from './src/components/Toast';
 import { RestTimer } from './src/components/RestTimer';
+import { WeightPrompt } from './src/components/WeightPrompt';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function Root() {
       />
       <AppNavigator />
       <RestTimer />
+      <WeightPrompt />
       <Toast message={toast} />
     </View>
   );
