@@ -10,6 +10,7 @@ import { IconButton } from '../components/IconButton';
 import { GlassCard } from '../components/GlassCard';
 import { Icon } from '../components/Icon';
 import { dayLetter, estimateDurationMin, getSerieTotali } from '../lib/helpers';
+import { formatDate } from '../lib/format';
 import { RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Schema'>;
@@ -67,7 +68,7 @@ export function SchemaScreen() {
             </Text>
             {plan.creata_il && (
               <Text style={[styles.heroMeta, { color: palette.textFaint }]}>
-                Creata il {new Date(plan.creata_il).toLocaleDateString('it-IT')}
+                Creata il {formatDate(plan.creata_il)}
               </Text>
             )}
           </View>

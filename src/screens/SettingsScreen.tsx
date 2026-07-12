@@ -22,7 +22,7 @@ import { GlassButton } from '../components/GlassButton';
 import { Icon, IconName } from '../components/Icon';
 import { Avatar } from '../components/Avatar';
 import { PressableScale } from '../components/PressableScale';
-import { Settings, WeightUnit } from '../lib/types';
+import { WeightUnit } from '../lib/types';
 import { RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
@@ -71,6 +71,11 @@ export function SettingsScreen() {
     { value: 'kg', label: 'kg' },
     { value: 'lb', label: 'lb' },
     { value: 'bw', label: 'BW' },
+  ];
+
+  const timerPositions: { value: 'top' | 'bottom'; label: string }[] = [
+    { value: 'top', label: 'In alto' },
+    { value: 'bottom', label: 'In basso' },
   ];
 
   const reminderOpts: { value: number; label: string }[] = [
@@ -232,6 +237,30 @@ export function SettingsScreen() {
                 {i < trainingItems.length - 1 && <Divider />}
               </View>
             ))}
+            <Divider />
+            <RowItem
+              icon="timer"
+              label="Posizione timer"
+              hint="Dove compare il timer di recupero"
+              right={
+                <View style={styles.segmented}>
+                  {timerPositions.map(p => {
+                    const active = settings.timerPosition === p.value;
+                    return (
+                      <Pressable
+                        key={p.value}
+                        onPress={() => setSetting('timerPosition', p.value)}
+                        style={[styles.segItem, { backgroundColor: active ? palette.accent : 'transparent' }]}
+                      >
+                        <Text style={[styles.segText, { color: active ? '#fff' : palette.text }]}>
+                          {p.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              }
+            />
             <Divider />
             <RowItem
               icon="chart"

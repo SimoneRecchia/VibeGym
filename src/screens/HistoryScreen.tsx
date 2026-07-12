@@ -17,7 +17,7 @@ import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { PressableScale } from '../components/PressableScale';
 import { dayLetter, formatTimeAgo, previousMaxKg } from '../lib/helpers';
-import { formatWeight, weightInKg } from '../lib/format';
+import { formatDate, formatDateTime, formatTime, formatWeight, weekdayNarrow, weightInKg } from '../lib/format';
 import { Session, Weight } from '../lib/types';
 import { RootStackParamList } from '../navigation/types';
 
@@ -63,7 +63,7 @@ export function HistoryScreen() {
         return t >= d.getTime() && t < next.getTime();
       }).length;
       out.push({
-        label: d.toLocaleDateString('it-IT', { weekday: 'narrow' }),
+        label: weekdayNarrow(d),
         count,
       });
     }
@@ -128,8 +128,8 @@ export function HistoryScreen() {
             const letter = idx >= 0 ? dayLetter(idx) : '?';
             const color = day?.colore ?? palette.accent;
             const d = new Date(s.data);
-            const dateStr = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
-            const timeStr = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = formatDate(d);
+            const timeStr = formatTime(d);
             const fatti = s.esercizi.filter(e => e.completato).length;
             const tot = s.esercizi.length;
             return (
@@ -186,7 +186,7 @@ export function HistoryScreen() {
         visible={!!detail}
         onClose={() => setDetail(null)}
         title={detail?.giorno_nome}
-        subtitle={detail ? new Date(detail.data).toLocaleString('it-IT') : ''}
+        subtitle={detail ? formatDateTime(detail.data) : ''}
       >
         {detail && (
           <ScrollView showsVerticalScrollIndicator={false}>

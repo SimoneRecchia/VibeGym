@@ -13,7 +13,7 @@
  * the user can fix in the UI rather than rejecting the whole plan.
  */
 
-import { Plan, Reps, Weight, WeightUnit } from './types';
+import { Plan, RepUnit, Reps, Weight, WeightUnit } from './types';
 
 export type IssueKind =
   | 'missing_root_giorni'
@@ -68,21 +68,15 @@ const isWeight = (w: unknown): w is Weight =>
   (w as Weight).value >= 0 &&
   isUnit((w as Weight).unit);
 
+const isRepUnit = (u: unknown): u is RepUnit =>
+  u === 'times' || u === 'seconds' || u === 'minutes';
+
 const isReps = (r: unknown): r is Reps => {
   if (!r || typeof r !== 'object') return false;
   const x = r as Reps;
-  switch (x.kind) {
-    case 'fixed':
-      return isPositiveInt(x.value);
-    case 'range':
-      return isPositiveInt(x.min) && isPositiveInt(x.max) && x.min <= x.max;
-    case 'amrap':
-      return true;
-    case 'time':
-      return isPositiveInt(x.sec);
-    default:
-      return false;
-  }
+  if (!isRepUnit(x.unit)) return false;
+  if (x.value === null) return true; // AMRAP
+  return isPositiveInt(x.value);
 };
 
 /* ------------------------------------------------------------------ */
@@ -174,7 +168,7 @@ export const validatePlan = (plan: Plan): Issue[] => {
                 [...subPath, 'reps'],
                 'reps',
                 'bad_reps',
-                'Ripetizioni non valide. Usa un numero fisso, un range (8-10), AMRAP o tempo.',
+                'Ripetizioni non valide. Usa { "value": intero (o null per AMRAP), "unit": "times" | "seconds" | "minutes" }.',
                 sub.reps
               )
             );

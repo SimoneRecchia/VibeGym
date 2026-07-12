@@ -12,6 +12,8 @@
 		74A6329EE9EC876B995FE579 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		BEEF00010000000000000002 /* beep.wav in Resources */ = {isa = PBXBuildFile; fileRef = BEEF00010000000000000001 /* beep.wav */; };
+		BEEF00010000000000000004 /* go.wav in Resources */ = {isa = PBXBuildFile; fileRef = BEEF00010000000000000003 /* go.wav */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +26,8 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-VibeGym.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-VibeGym.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = VibeGym/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = VibeGym/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		BEEF00010000000000000001 /* beep.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = beep.wav; path = VibeGym/beep.wav; sourceTree = "<group>"; };
+		BEEF00010000000000000003 /* go.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = go.wav; path = VibeGym/go.wav; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -47,6 +51,8 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				BEEF00010000000000000001 /* beep.wav */,
+				BEEF00010000000000000003 /* go.wav */,
 			);
 			name = VibeGym;
 			sourceTree = "<group>";
@@ -161,6 +167,8 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				74A6329EE9EC876B995FE579 /* PrivacyInfo.xcprivacy in Resources */,
+				BEEF00010000000000000002 /* beep.wav in Resources */,
+				BEEF00010000000000000004 /* go.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

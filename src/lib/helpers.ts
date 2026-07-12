@@ -1,24 +1,35 @@
 import { Exercise, ExerciseSub, Plan, Reps, Session, Weight } from './types';
 import { formatReps, formatWeight, weightInKg } from './format';
 
+// Re-export the time-based rep helpers so existing importers keep working.
+export { isTimedReps, repsToSeconds } from './format';
+
 export const getSerieTotali = (ex: Exercise): number => {
   if (ex.tipo === 'superset') return ex.esercizi?.[0]?.serie ?? 3;
   return ex.serie ?? 0;
 };
 
 /**
- * Local-mode progression: fold the weights actually logged this session back
- * into the card's suggested weight, so the single file "evolves" in place.
- * If nothing was logged for a target, its suggested weight is left untouched
- * (made a change → it sticks; made none → stays the same).
+ * Progression: fold the weights actually logged this session back into the
+ * card's per-set defaults, so next time the card suggests what you *last
+ * lifted* — per set — instead of the original plan weight.
+ *
+ * Only sets that were actually logged this session overwrite their default;
+ * untouched sets keep their previous default (made a change → it sticks; made
+ * none → stays the same). Runs in both GitHub and local mode.
  */
 export const carrySessionWeights = (ex: Exercise): void => {
-  const apply = (t: Exercise | ExerciseSub) => {
-    const logged = (t._pesi_serie ?? []).filter((w): w is Weight => w != null);
-    if (logged.length) t.peso_suggerito = logged[logged.length - 1];
+  const apply = (t: Exercise | ExerciseSub, n: number) => {
+    const overrides = t._pesi_serie ?? [];
+    if (!overrides.some(w => w != null)) return; // nothing logged → keep defaults
+    const next = Array.from({ length: n }, (_, i) => overrides[i] ?? t.pesi_default?.[i] ?? null);
+    t.pesi_default = next;
+    // Keep peso_suggerito pointing at the last logged weight for charts/back-compat.
+    const lastLogged = overrides.filter((w): w is Weight => w != null).pop();
+    if (lastLogged) t.peso_suggerito = lastLogged;
   };
-  if (ex.tipo === 'superset' && ex.esercizi) ex.esercizi.forEach(apply);
-  else apply(ex);
+  if (ex.tipo === 'superset' && ex.esercizi) ex.esercizi.forEach(s => apply(s, s.serie));
+  else apply(ex, getSerieTotali(ex));
 };
 
 export const getSerieFatte = (ex: Exercise): number =>
@@ -96,6 +107,7 @@ export const ensureSessionFields = (plan: Plan, dayId: string) => {
     if (ex.tipo === 'superset' && ex.esercizi) {
       for (const sub of ex.esercizi) {
         if (!Array.isArray(sub._pesi_serie)) sub._pesi_serie = new Array(sub.serie).fill(null);
+        if (!Array.isArray(sub._ripetizioni_serie)) sub._ripetizioni_serie = new Array(sub.serie).fill(null);
       }
     }
   }
@@ -134,15 +146,22 @@ export const findExercise = (plan: Plan, exId: string): Exercise | null => {
 export const stripDayLetterPrefix = (name: string): string =>
   name.replace(/^Giorno\s+[A-Z]\s*[—·-]\s*/i, '');
 
-/** Combine a per-set weight override with the planned suggested weight. */
+/**
+ * Effective weight for a single set: this session's override, else the per-set
+ * default learned last session, else the plan's suggested weight.
+ */
+export const effectiveSetWeight = (
+  target: Exercise | ExerciseSub,
+  i: number
+): Weight | null =>
+  target._pesi_serie?.[i] ?? target.pesi_default?.[i] ?? target.peso_suggerito ?? null;
+
+/** Resolve all n sets to their effective weights (for history snapshots). */
 export const resolveFinalWeights = (
   target: Exercise | ExerciseSub,
   n: number
-): (Weight | null)[] => {
-  const arr = target._pesi_serie ?? [];
-  const fallback = target.peso_suggerito ?? null;
-  return Array.from({ length: n }, (_, i) => arr[i] ?? fallback ?? null);
-};
+): (Weight | null)[] =>
+  Array.from({ length: n }, (_, i) => effectiveSetWeight(target, i));
 
 /**
  * Find the previous personal record for an exercise across history, comparing
@@ -176,11 +195,16 @@ export const newSessionId = (): string => {
   return `${iso}-${rand}`;
 };
 
-export const formatRepsForDisplay = (r: Reps | undefined): string => {
-  if (!r) return '';
-  if (r.kind === 'time') return formatSec(r.sec);
-  return formatReps(r);
-};
+export const formatRepsForDisplay = (r: Reps | undefined): string => formatReps(r);
 
-export const isTimedReps = (r: Reps | undefined): r is { kind: 'time'; sec: number } =>
-  !!r && r.kind === 'time';
+/**
+ * Effective actual reps for a set: the logged override, else the target value.
+ * `null` target (AMRAP) stays null.
+ */
+export const effectiveSetReps = (
+  reps: Reps | undefined,
+  actual: number | null | undefined
+): number | null => {
+  if (actual != null) return actual;
+  return reps?.value ?? null;
+};

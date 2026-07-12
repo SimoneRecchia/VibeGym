@@ -23,6 +23,7 @@ import {
   Weight,
 } from './types';
 import {
+  carrySessionWeights,
   ensureSessionFields,
   findExercise,
   firstUncheckedIdx,
@@ -31,9 +32,11 @@ import {
   isCompletato,
   isTimedReps,
   newSessionId,
+  repsToSeconds,
   resolveFinalWeights,
 } from './helpers';
 import { haptic, setHapticsEnabled } from './haptics';
+import { playBeep, playGo, setSoundEnabled } from './sound';
 import {
   loadBackend,
   loadLocalMode,
@@ -195,7 +198,8 @@ interface StoreCtx {
   toggleSet: (exId: string, idx: number) => void;
   setNote: (exId: string, val: string) => void;
   setWeightForSet: (exId: string, subId: string | null, idx: number, value: Weight | null) => void;
-  startExerciseTimer: (exId: string) => void;
+  setRepsForSet: (exId: string, subId: string | null, idx: number, value: number | null) => void;
+  startExerciseTimer: (exId: string, idx?: number) => void;
   timer: TimerState;
   expandTimer: () => void;
   collapseTimer: () => void;
@@ -322,6 +326,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // Forward-migrate the flag so future loads read the canonical key.
       if (!storedBackend && resolvedBackend) saveBackend(resolvedBackend);
       setHapticsEnabled(s.haptic);
+      setSoundEnabled(s.sound);
       if (t) {
         setGithub(prev => ({
           ...prev,
@@ -371,6 +376,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (hydrating) return;
     saveSettings(settings);
     setHapticsEnabled(settings.haptic);
+    setSoundEnabled(settings.sound);
   }, [settings, hydrating]);
 
   // Persist profile
@@ -496,6 +502,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [updatePlan]
   );
 
+  const setRepsForSet = useCallback(
+    (exId: string, subId: string | null, idx: number, value: number | null) => {
+      updatePlan(p => {
+        const ex = findExercise(p, exId);
+        if (!ex) return;
+        const target: Exercise | import('./types').ExerciseSub | undefined = subId
+          ? ex.esercizi?.find(s => s.id === subId)
+          : ex;
+        if (!target) return;
+        const n = subId
+          ? (target as import('./types').ExerciseSub).serie
+          : getSerieTotali(ex);
+        if (!Array.isArray(target._ripetizioni_serie)) {
+          target._ripetizioni_serie = new Array(n).fill(null);
+        }
+        target._ripetizioni_serie[idx] = value;
+      });
+      haptic('light');
+    },
+    [updatePlan]
+  );
+
   /* ------------------------------------------------------------------ */
   /*  TIMER                                                             */
   /* ------------------------------------------------------------------ */
@@ -521,6 +549,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       ) {
         lastTickWarnRef.current = remaining;
         haptic('light');
+        playBeep();
       }
       if (remaining <= 0) {
         // End of phase — defer to avoid setState-within-setState
@@ -600,6 +629,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // Chain into the rest phase
         const n = t.next;
         haptic('done');
+        playGo();
         // Defer to avoid setState inside setState
         setTimeout(() => {
           startTimerInternal(n.sec, n.exName, n.subText, n.exId, {
@@ -612,6 +642,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       // Rest finished → mark finished, auto-close after a beat
       haptic('done');
+      playGo();
       clearTickInterval();
       endAtRef.current = null;
       const finished: TimerState = {
@@ -642,7 +673,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => () => clearTickInterval(), []);
 
   const startExerciseTimer = useCallback(
-    (exId: string) => {
+    (exId: string, idx?: number) => {
       setPlanState(prev => {
         if (!prev) return prev;
         const next: Plan = JSON.parse(JSON.stringify(prev));
@@ -650,15 +681,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (!ex) return prev;
         const total = getSerieTotali(ex);
         if (!Array.isArray(ex._serie_stato)) ex._serie_stato = new Array(total).fill(false);
-        const first = firstUncheckedIdx(ex);
-        if (first === -1) return prev;
+        const first = idx != null ? idx : firstUncheckedIdx(ex);
+        if (first < 0 || first >= total) return prev;
         haptic('medium');
         const subText = `Serie ${first + 1} di ${total}`;
         const isLast = first === total - 1;
         const skipRest = isLast && settings.skipLastRest;
 
-        if (isTimedReps(ex.reps)) {
-          const workSec = ex.reps.sec;
+        // Only run the work→rest flow for a *bounded* timed target. An
+        // open-ended timed AMRAP ({value:null}) has no duration, so fall
+        // through to mark-done-then-rest instead of a 0s work timer.
+        if (isTimedReps(ex.reps) && repsToSeconds(ex.reps) > 0) {
+          const workSec = repsToSeconds(ex.reps);
           // timed exercise: work then rest
           const nextOpt = skipRest
             ? null
@@ -750,6 +784,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             reps: sub.reps,
             peso_scheda: sub.peso_suggerito,
             pesi_serie: resolveFinalWeights(sub, sub.serie),
+            ripetizioni_serie: sub._ripetizioni_serie?.slice(),
           }));
         }
         return base;
@@ -769,12 +804,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const targetDay = next.giorni.find(g => g.id === day.id);
       if (targetDay) {
         for (const ex of targetDay.esercizi) {
+          // Always fold the weights you used into the per-set defaults, so the
+          // card suggests what you last lifted (fixes "still shows old weights
+          // the week after") — in GitHub mode too, not just local mode.
+          carrySessionWeights(ex);
           const n = getSerieTotali(ex);
           ex._serie_stato = new Array(n).fill(false);
           ex._note_utente = '';
           ex._pesi_serie = new Array(n).fill(null);
+          ex._ripetizioni_serie = new Array(n).fill(null);
           if (ex.tipo === 'superset' && ex.esercizi) {
-            for (const sub of ex.esercizi) sub._pesi_serie = new Array(sub.serie).fill(null);
+            for (const sub of ex.esercizi) {
+              sub._pesi_serie = new Array(sub.serie).fill(null);
+              sub._ripetizioni_serie = new Array(sub.serie).fill(null);
+            }
           }
         }
       }
@@ -795,8 +838,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ex._serie_stato = new Array(n).fill(false);
           ex._note_utente = '';
           ex._pesi_serie = new Array(n).fill(null);
+          ex._ripetizioni_serie = new Array(n).fill(null);
           if (ex.tipo === 'superset' && ex.esercizi) {
-            for (const sub of ex.esercizi) sub._pesi_serie = new Array(sub.serie).fill(null);
+            for (const sub of ex.esercizi) {
+              sub._pesi_serie = new Array(sub.serie).fill(null);
+              sub._ripetizioni_serie = new Array(sub.serie).fill(null);
+            }
           }
         }
       }
@@ -1170,6 +1217,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       toggleSet,
       setNote,
       setWeightForSet,
+      setRepsForSet,
       startExerciseTimer,
       timer,
       expandTimer,
@@ -1215,6 +1263,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       toggleSet,
       setNote,
       setWeightForSet,
+      setRepsForSet,
       startExerciseTimer,
       timer,
       expandTimer,

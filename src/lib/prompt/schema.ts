@@ -52,11 +52,11 @@ Superset (due o più esercizi da eseguire di fila):
   ]
 }
 
-Tipo Reps (usa UNA di queste forme):
-- { "kind": "fixed", "value": 10 }               // ripetizioni fisse
-- { "kind": "range", "min": 8, "max": 12 }       // intervallo (min ≤ max)
-- { "kind": "amrap" }                            // più ripetizioni possibili
-- { "kind": "time", "sec": 30 }                  // a tempo (plank, hold…) in secondi
+Tipo Reps: { "value": intero oppure null, "unit": "times" | "seconds" | "minutes" }
+- Ripetizioni normali: { "value": 10, "unit": "times" }
+- A tempo (plank, hold, corsa…): { "value": 30, "unit": "seconds" } oppure { "value": 2, "unit": "minutes" }
+- AMRAP / più ripetizioni possibili: { "value": null, "unit": "times" }
+- "value" è SEMPRE un intero (oppure null solo per AMRAP): NIENTE intervalli tipo "8-10", scegli un singolo numero.
 
 Tipo Peso:
 - { "value": 40, "unit": "kg" }                  // chili
@@ -86,7 +86,7 @@ export const EXAMPLE_JSON = `{
           "id": "a1",
           "nome": "Panca piana con manubri",
           "serie": 4,
-          "reps": { "kind": "range", "min": 8, "max": 10 },
+          "reps": { "value": 10, "unit": "times" },
           "peso_suggerito": { "value": 22, "unit": "kg" },
           "recupero_sec": 120
         },
@@ -94,7 +94,7 @@ export const EXAMPLE_JSON = `{
           "id": "a2",
           "nome": "Plank",
           "serie": 3,
-          "reps": { "kind": "time", "sec": 40 },
+          "reps": { "value": 40, "unit": "seconds" },
           "peso_suggerito": { "value": 0, "unit": "bw" },
           "recupero_sec": 60
         },
@@ -108,14 +108,14 @@ export const EXAMPLE_JSON = `{
               "id": "a3a",
               "nome": "Alzate laterali",
               "serie": 3,
-              "reps": { "kind": "fixed", "value": 12 },
+              "reps": { "value": 12, "unit": "times" },
               "peso_suggerito": { "value": 6, "unit": "kg" }
             },
             {
               "id": "a3b",
               "nome": "Push-down ai cavi",
               "serie": 3,
-              "reps": { "kind": "fixed", "value": 12 },
+              "reps": { "value": 12, "unit": "times" },
               "peso_suggerito": { "value": 15, "unit": "kg" }
             }
           ]
@@ -129,5 +129,6 @@ export const EXAMPLE_JSON = `{
 
 /** Strict output instruction reused by both builders. */
 export const OUTPUT_RULES = `COME RISPONDERE:
-- Quando la scheda è pronta, rispondi SOLO con il JSON valido: nessun testo prima o dopo, niente blocchi markdown con i backtick.
-- Il JSON deve poter essere copiato e incollato così com'è nell'app senza modifiche.`;
+- Se puoi, forniscimi un FILE .json scaricabile (chiamalo "scheda.json") così lo importo direttamente nell'app.
+- In alternativa rispondi SOLO con il JSON valido: nessun testo prima o dopo, niente blocchi markdown con i backtick, così posso copiarlo e incollarlo.
+- In entrambi i casi il contenuto deve essere JSON valido, importabile così com'è senza modifiche.`;

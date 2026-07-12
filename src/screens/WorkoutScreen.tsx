@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   ScrollView,
@@ -18,7 +18,7 @@ import { ExerciseCard } from '../components/ExerciseCard';
 import { GlassCard } from '../components/GlassCard';
 import { Icon } from '../components/Icon';
 import { GlassButton } from '../components/GlassButton';
-import { WeightEditor } from '../components/WeightEditor';
+import { SetEditor } from '../components/SetEditor';
 import {
   dayLetter,
   findExercise,
@@ -29,7 +29,8 @@ import {
 } from '../lib/helpers';
 import { RootStackParamList } from '../navigation/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Weight } from '../lib/types';
+import { Reps, Weight } from '../lib/types';
+import { allowScreenSleep, keepScreenAwake } from '../lib/keepAwake';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Workout'>;
 
@@ -49,11 +50,19 @@ export function WorkoutScreen() {
     toggleSet,
     setNote,
     setWeightForSet,
+    setRepsForSet,
     startExerciseTimer,
     timer,
     finishWorkout,
     settings,
   } = useStore();
+
+  // Keep the screen awake during a workout, if enabled in settings.
+  useEffect(() => {
+    if (!settings.keepScreenOn) return;
+    keepScreenAwake();
+    return () => allowScreenSleep();
+  }, [settings.keepScreenOn]);
 
   const [weightModal, setWeightModal] = useState<{
     exId: string;
@@ -62,6 +71,9 @@ export function WorkoutScreen() {
     name: string;
     suggested?: Weight;
     current: Weight | null;
+    repsTarget?: Reps;
+    currentReps: number | null;
+    focus: 'weight' | 'reps';
   } | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [celebration, setCelebration] = useState(false);
@@ -95,25 +107,32 @@ export function WorkoutScreen() {
     navigation.navigate('Home');
   };
 
-  const openWeight = (exId: string, subId: string | null, setIdx: number) => {
+  const openDetail = (exId: string, subId: string | null, setIdx: number, focus: 'weight' | 'reps') => {
     const ex = findExercise(plan, exId);
     if (!ex) return;
     const target = subId ? ex.esercizi?.find(s => s.id === subId) : ex;
     if (!target) return;
     const current = (target._pesi_serie ?? [])[setIdx] ?? null;
+    const currentReps = (target._ripetizioni_serie ?? [])[setIdx] ?? null;
     setWeightModal({
       exId,
       subId,
       setIdx,
       name: subId ? target.nome : ex.nome,
-      suggested: target.peso_suggerito,
+      // Suggest what you last lifted for this set (carried default), falling
+      // back to the plan's suggested weight.
+      suggested: target.pesi_default?.[setIdx] ?? target.peso_suggerito,
       current,
+      repsTarget: target.reps,
+      currentReps,
+      focus,
     });
   };
 
-  const saveWeight = (w: Weight | null) => {
+  const saveDetail = (w: Weight | null, reps: number | null) => {
     if (!weightModal) return;
     setWeightForSet(weightModal.exId, weightModal.subId, weightModal.setIdx, w);
+    setRepsForSet(weightModal.exId, weightModal.subId, weightModal.setIdx, reps);
     setWeightModal(null);
   };
 
@@ -160,9 +179,9 @@ export function WorkoutScreen() {
             tint={accent}
             timer={timer}
             onToggleSet={idx => toggleSet(ex.id, idx)}
-            onChangeNote={v => setNote(ex.id, v)}
-            onEditWeight={(subId, idx) => openWeight(ex.id, subId, idx)}
             onStartTimer={() => startExerciseTimer(ex.id)}
+            onEditSet={(subId, idx, focus) => openDetail(ex.id, subId, idx, focus)}
+            onChangeNote={v => setNote(ex.id, v)}
           />
         ))}
 
@@ -215,16 +234,19 @@ export function WorkoutScreen() {
         </View>
       </View>
 
-      {/* Typed weight editor */}
-      <WeightEditor
+      {/* Set detail: weight + actual reps */}
+      <SetEditor
         visible={!!weightModal}
         exerciseName={weightModal?.name ?? ''}
         setNumber={(weightModal?.setIdx ?? 0) + 1}
         suggested={weightModal?.suggested}
         current={weightModal?.current ?? null}
+        repsTarget={weightModal?.repsTarget}
+        currentReps={weightModal?.currentReps ?? null}
+        focus={weightModal?.focus}
         defaultUnit={settings.defaultUnit}
         onCancel={() => setWeightModal(null)}
-        onSave={saveWeight}
+        onSave={saveDetail}
       />
 
       {/* Summary / Finish confirmation modal */}

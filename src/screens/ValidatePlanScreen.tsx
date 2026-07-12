@@ -18,9 +18,9 @@ import { IconButton } from '../components/IconButton';
 import { GlassButton } from '../components/GlassButton';
 import { GlassCard } from '../components/GlassCard';
 import { Icon } from '../components/Icon';
-import { Issue, getAtPath, pathKey, setAtPath, validatePlan } from '../lib/validate';
-import { Plan, Reps, Weight, WeightUnit } from '../lib/types';
-import { formatRepsForDisplay, formatSec, getSerieTotali } from '../lib/helpers';
+import { Issue, pathKey, setAtPath, validatePlan } from '../lib/validate';
+import { Plan, RepUnit, Reps, Weight, WeightUnit } from '../lib/types';
+import { formatRepsForDisplay, formatSec } from '../lib/helpers';
 import { formatWeight } from '../lib/format';
 import { dayLetter } from '../lib/helpers';
 import { RootStackParamList } from '../navigation/types';
@@ -439,91 +439,67 @@ function RepsEditor({
   onCommit: (r: Reps) => void;
 }) {
   const { palette } = useTheme();
-  const [kind, setKind] = useState<Reps['kind']>(initial?.kind ?? 'fixed');
-  const [v1, setV1] = useState<string>(
-    initial?.kind === 'fixed'
-      ? String(initial.value)
-      : initial?.kind === 'range'
-      ? String(initial.min)
-      : initial?.kind === 'time'
-      ? String(initial.sec)
-      : ''
-  );
-  const [v2, setV2] = useState<string>(
-    initial?.kind === 'range' ? String(initial.max) : ''
-  );
+  const [unit, setUnit] = useState<RepUnit>(initial?.unit ?? 'times');
+  const [amrap, setAmrap] = useState<boolean>(initial ? initial.value == null : false);
+  const [val, setVal] = useState<string>(initial?.value != null ? String(initial.value) : '');
 
-  const tryCommit = (k: Reps['kind'], a: string, b: string) => {
-    let r: Reps | null = null;
-    if (k === 'fixed') {
-      const n = parseInt(a, 10);
-      if (Number.isFinite(n) && n > 0) r = { kind: 'fixed', value: n };
-    } else if (k === 'range') {
-      const min = parseInt(a, 10);
-      const max = parseInt(b, 10);
-      if (Number.isFinite(min) && Number.isFinite(max) && min > 0 && max >= min) {
-        r = { kind: 'range', min, max };
-      }
-    } else if (k === 'amrap') {
-      r = { kind: 'amrap' };
-    } else if (k === 'time') {
-      const sec = parseInt(a, 10);
-      if (Number.isFinite(sec) && sec > 0) r = { kind: 'time', sec };
+  const tryCommit = (u: RepUnit, isAmrap: boolean, v: string) => {
+    if (isAmrap) {
+      onCommit({ value: null, unit: u });
+      return;
     }
-    if (r) onCommit(r);
+    const n = parseInt(v, 10);
+    if (Number.isFinite(n) && n > 0) onCommit({ value: n, unit: u });
   };
+
+  const units: { u: RepUnit; label: string }[] = [
+    { u: 'times', label: 'Volte' },
+    { u: 'seconds', label: 'Secondi' },
+    { u: 'minutes', label: 'Minuti' },
+  ];
 
   return (
     <View>
       <View style={inlineStyles.segmented}>
-        {(['fixed', 'range', 'amrap', 'time'] as Reps['kind'][]).map(k => {
-          const active = k === kind;
+        {units.map(({ u, label }) => {
+          const active = u === unit && !amrap;
           return (
             <Pressable
-              key={k}
+              key={u}
               onPress={() => {
-                setKind(k);
-                tryCommit(k, v1, v2);
+                setUnit(u);
+                setAmrap(false);
+                tryCommit(u, false, val);
               }}
-              style={[
-                inlineStyles.segItem,
-                { backgroundColor: active ? palette.accent : 'transparent' },
-              ]}
+              style={[inlineStyles.segItem, { backgroundColor: active ? palette.accent : 'transparent' }]}
             >
-              <Text style={[inlineStyles.segText, { color: active ? '#fff' : palette.text }]}>
-                {k === 'fixed' ? 'Fisse' : k === 'range' ? 'Range' : k === 'amrap' ? 'AMRAP' : 'Tempo'}
-              </Text>
+              <Text style={[inlineStyles.segText, { color: active ? '#fff' : palette.text }]}>{label}</Text>
             </Pressable>
           );
         })}
+        <Pressable
+          onPress={() => {
+            setAmrap(true);
+            tryCommit(unit, true, val);
+          }}
+          style={[inlineStyles.segItem, { backgroundColor: amrap ? palette.accent : 'transparent' }]}
+        >
+          <Text style={[inlineStyles.segText, { color: amrap ? '#fff' : palette.text }]}>AMRAP</Text>
+        </Pressable>
       </View>
-      {kind !== 'amrap' && (
-        <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
-          <TextInput
-            value={v1}
-            onChangeText={t => {
-              setV1(t);
-              tryCommit(kind, t, v2);
-            }}
-            placeholder={kind === 'time' ? 'sec' : kind === 'range' ? 'min' : 'reps'}
-            placeholderTextColor={palette.textFaint}
-            keyboardType={Platform.OS === 'ios' ? 'number-pad' : 'numeric'}
-            style={[inlineStyles.input, { color: palette.text, flex: 1 }]}
-          />
-          {kind === 'range' && (
-            <TextInput
-              value={v2}
-              onChangeText={t => {
-                setV2(t);
-                tryCommit(kind, v1, t);
-              }}
-              placeholder="max"
-              placeholderTextColor={palette.textFaint}
-              keyboardType={Platform.OS === 'ios' ? 'number-pad' : 'numeric'}
-              style={[inlineStyles.input, { color: palette.text, flex: 1 }]}
-            />
-          )}
-        </View>
+      {!amrap && (
+        <TextInput
+          value={val}
+          onChangeText={t => {
+            const clean = t.replace(/[^0-9]/g, '');
+            setVal(clean);
+            tryCommit(unit, false, clean);
+          }}
+          placeholder={unit === 'times' ? 'numero' : unit === 'seconds' ? 'secondi' : 'minuti'}
+          placeholderTextColor={palette.textFaint}
+          keyboardType="number-pad"
+          style={[inlineStyles.input, { color: palette.text, marginTop: 6 }]}
+        />
       )}
       {raw && (
         <Text style={[inlineStyles.raw, { color: palette.textFaint }]}>

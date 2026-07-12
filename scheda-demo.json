@@ -1,0 +1,123 @@
+{
+  "schema_version": 2,
+  "id": "demo-tutti-i-casi",
+  "nome_scheda": "Demo — tutti i casi",
+  "creata_il": "2026-07-12",
+  "giorni": [
+    {
+      "id": "giorno_a",
+      "nome": "Giorno A — Tutti i casi",
+      "colore": "#5E8BFF",
+      "esercizi": [
+        {
+          "id": "a1",
+          "nome": "Panca piana",
+          "serie": 4,
+          "reps": { "value": 12, "unit": "times" },
+          "peso_suggerito": { "value": 40, "unit": "kg" },
+          "recupero_sec": 120,
+          "note_coach": "Scapole retratte, discesa controllata."
+        },
+        {
+          "id": "a2",
+          "nome": "Trazioni alla sbarra",
+          "serie": 3,
+          "reps": { "value": null, "unit": "times" },
+          "peso_suggerito": { "value": 0, "unit": "bw" },
+          "recupero_sec": 90
+        },
+        {
+          "id": "a3",
+          "nome": "Dip zavorrati",
+          "serie": 3,
+          "reps": { "value": 8, "unit": "times" },
+          "peso_suggerito": { "value": 15, "unit": "bw" },
+          "recupero_sec": 120
+        },
+        {
+          "id": "a4",
+          "nome": "Curl manubri",
+          "serie": 3,
+          "reps": { "value": 12, "unit": "times" },
+          "peso_suggerito": { "value": 20, "unit": "lb" },
+          "recupero_sec": 60
+        },
+        {
+          "id": "a5",
+          "nome": "Plank",
+          "serie": 3,
+          "reps": { "value": 45, "unit": "seconds" },
+          "peso_suggerito": { "value": 0, "unit": "bw" },
+          "recupero_sec": 60
+        },
+        {
+          "id": "a6",
+          "nome": "Corsa",
+          "serie": 1,
+          "reps": { "value": 10, "unit": "minutes" },
+          "peso_suggerito": { "value": 0, "unit": "bw" },
+          "recupero_sec": 90
+        },
+        {
+          "id": "a7",
+          "tipo": "superset",
+          "nome": "Superset spalle + tricipiti",
+          "recupero_sec": 75,
+          "esercizi": [
+            {
+              "id": "a7a",
+              "nome": "Alzate laterali",
+              "serie": 3,
+              "reps": { "value": 15, "unit": "times" },
+              "peso_suggerito": { "value": 6, "unit": "kg" }
+            },
+            {
+              "id": "a7b",
+              "nome": "Pushdown ai cavi",
+              "serie": 3,
+              "reps": { "value": 12, "unit": "times" },
+              "peso_suggerito": { "value": 25, "unit": "kg" }
+            }
+          ]
+        }
+      ],
+      "cardio": {
+        "tipo": "Tapis roulant",
+        "durata_min": 15,
+        "modalita": "Camminata in pendenza 8%"
+      }
+    },
+    {
+      "id": "giorno_b",
+      "nome": "Giorno B — Gambe",
+      "colore": "#34D399",
+      "esercizi": [
+        {
+          "id": "b1",
+          "nome": "Squat",
+          "serie": 5,
+          "reps": { "value": 5, "unit": "times" },
+          "peso_suggerito": { "value": 80, "unit": "kg" },
+          "recupero_sec": 180
+        },
+        {
+          "id": "b2",
+          "nome": "Affondi in camminata",
+          "serie": 3,
+          "reps": { "value": 20, "unit": "times" },
+          "peso_suggerito": { "value": 0, "unit": "bw" },
+          "recupero_sec": 90
+        },
+        {
+          "id": "b3",
+          "nome": "Wall sit",
+          "serie": 3,
+          "reps": { "value": 60, "unit": "seconds" },
+          "peso_suggerito": { "value": 0, "unit": "bw" },
+          "recupero_sec": 60
+        }
+      ]
+    }
+  ],
+  "storico": []
+}
