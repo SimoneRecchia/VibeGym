@@ -126,3 +126,29 @@ describe('heart rate', () => {
     expect(keytelKcalPerMin(60, 70, 30, 'female')).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('imported weigh-ins in the store', () => {
+  const { useStore } = require('../src/data/store');
+  const { emptyState } = require('../src/data/storage');
+
+  it('enriches imports and remembers a deleted one', () => {
+    useStore.setState({
+      ...emptyState(),
+      hydrated: true,
+      profile: { heightCm: 180 },
+    });
+    const w = {
+      date: '2026-10-12T07:30:00.000Z',
+      weightKg: 81,
+      source: 'health' as const,
+      sourceApp: 'Withings',
+    };
+    useStore.getState().importBodyEntries([w]);
+    const [e] = useStore.getState().body;
+    expect(e.bmi).toBe(25);
+    useStore.getState().deleteBodyEntry(e.id);
+    expect(useStore.getState().body).toHaveLength(0);
+    const ignored = useStore.getState().settings.health.ignored;
+    expect(newWeighIns([], [w], ignored)).toEqual([]);
+  });
+});
