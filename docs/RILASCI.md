@@ -6,12 +6,12 @@ Quattro workflow GitHub Actions in `.github/workflows/`:
 | --- | --- | --- |
 | **CI** (`ci.yml`) | a ogni push e pull request | typecheck, lint, test |
 | **Android · Verifica build** (`android-check.yml`) | quando cambiano dipendenze native o file Android | compila l'APK per controllare che la parte nativa funzioni (artifact per 7 giorni) |
-| **Android · APK di prova** (`android-apk.yml`) | quando lo lanci tu | compila l'APK e lo pubblica come *pre-release* scaricabile |
+| **Android · APK di prova** (`android-apk.yml`) | a ogni aggiornamento di `main`, o quando lo lanci tu | compila l'APK e lo pubblica come *pre-release* scaricabile |
 | **Android · Release Play Store** (`android-release.yml`) | quando pubblichi una *Release* (tag `v2.1.0`) | test, AAB firmato caricato su Google Play, APK e AAB allegati alla release |
 
 ## APK di prova (subito, senza configurare niente)
 
-1. GitHub → **Actions** → *Android · APK di prova* → **Run workflow** (scegli il branch, note facoltative).
+1. Parte da solo a ogni aggiornamento di `main`. Per lanciarlo a mano: GitHub → **Actions** → *Android · APK di prova* → **Run workflow** (scegli il branch, note facoltative).
 2. Dopo circa 15 minuti trovi in **Releases** la pre-release *VibeGym 2.0.0-build.N (prova)*.
 3. Apri la pagina dal telefono, scarica il file `.apk` e installalo (consenti le *app da fonti sconosciute* la prima volta).
 

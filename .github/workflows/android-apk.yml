@@ -1,8 +1,13 @@
-# Test APK on demand: Actions → "Android · APK di prova" → Run workflow.
-# The APK is published as a GitHub pre-release, downloadable from the phone.
+# Test APK: built on every push to main (and on demand from Actions → Run
+# workflow), published as a GitHub pre-release downloadable from the phone.
 name: Android · APK di prova
 
 on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - docs/**
   workflow_dispatch:
     inputs:
       notes:
