@@ -43,7 +43,7 @@ Il parser è tollerante (blocchi markdown, testo attorno, commenti, virgole fina
 
 ### Animazioni degli esercizi
 
-Catalogo di 876 esercizi da [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (pubblico dominio), incluso nell'app (45 KB) con nomi italiani per i 125 più comuni. I 157 esercizi più usati hanno le illustrazioni a tratto di [Workout Guide](https://github.com/bryllim/workout-guide) (Bryl Lim, da Everkinetic, CC BY-SA 4.0): 3 fotogrammi animati come una GIF e colorati con il tema; gli altri alternano le due foto di free-exercise-db. Se l'esercizio non ha media o manca la connessione l'animazione non compare e il layout si adatta.
+Catalogo di 876 esercizi da [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (pubblico dominio), incluso nell'app (45 KB) con nomi italiani per i 125 più comuni. I 222 esercizi più usati hanno le illustrazioni di [RepDB](https://repdb.co) (stile uniforme, posizione iniziale e di massima contrazione che si alternano; gratuite per l'uso nell'app con il credito «Exercise data by RepDB», caricate dal pacchetto npm `@repdb/exercises` tramite jsDelivr/unpkg); gli altri alternano le due foto di free-exercise-db. Se l'esercizio non ha media o manca la connessione l'animazione non compare e il layout si adatta.
 
 ### Bilancia Xiaomi
 
@@ -138,6 +138,6 @@ modules/vibe-vision/       modulo nativo: codici a barre, testo e cibi in una fo
 modules/vibe-app-icon/     modulo nativo: colore dell'icona sulla schermata Home
 scripts/build-catalog.js   rigenera src/catalog/catalog.json dal dataset
 scripts/build-foods.js     rigenera src/nutrition/generic.json (USDA via tempo-food-db)
-scripts/build-media-map.js abbina gli esercizi alle animazioni di Workout Guide
+scripts/build-media-map.js abbina gli esercizi alle illustrazioni di RepDB
 scripts/build-icon.js      icona dell'app nei vari colori (iOS Icon Composer, Android adattiva, Play Store)
 ```

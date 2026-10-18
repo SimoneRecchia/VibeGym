@@ -30,7 +30,7 @@ I dati di salute letti non lasciano il telefono, non vengono condivisi con terzi
 L'app si collega a internet solo per:
 
 - **Open Food Facts** (database aperto dei prodotti alimentari): quando scansioni un codice a barre o cerchi un prodotto confezionato viene inviato il codice o il testo cercato. Non viene inviato nient'altro che ti identifichi. [Privacy di Open Food Facts](https://world.openfoodfacts.org/privacy).
-- **Animazioni degli esercizi**: le immagini vengono scaricate da jsDelivr, unpkg e GitHub come normali richieste web.
+- **Illustrazioni degli esercizi**: le immagini vengono scaricate da jsDelivr, unpkg e GitHub come normali richieste web.
 - **Google Play Services** (Android): scarica i modelli di riconoscimento usati dallo scanner, che poi funzionano sul telefono.
 - **Bilancia Xiaomi**: comunicazione Bluetooth diretta con la bilancia, senza internet.
 

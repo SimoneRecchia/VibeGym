@@ -1,8 +1,8 @@
 /**
- * Exercise animation. Common exercises use the 3-frame line drawings of
- * Workout Guide (tinted with the theme, stepping like a GIF); the others
- * cross-fade the two photos of free-exercise-db. Without media, network or
- * with media disabled the component renders nothing and the layout collapses.
+ * Exercise animation. Common exercises use the RepDB illustrations (start
+ * and peak of the movement, alternating); the others cross-fade the two
+ * photos of free-exercise-db. Without media, network or with media disabled
+ * the component renders nothing and the layout collapses.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -19,6 +19,8 @@ import { useTheme } from '../theme/ThemeProvider';
 import { Icon } from './Icon';
 
 const PHOTO_BG = '#FFFFFF';
+/** Background of the RepDB images, so `contain` fills the frame seamlessly. */
+const ILLUSTRATION_BG = '#D7F0FC';
 
 type Status = 'ok' | 'fail';
 /** url → status, shared across screens so repeated mounts are instant. */
@@ -88,22 +90,12 @@ interface Props {
   radius?: number;
 }
 
-/** Ping-pong order of the frames: 0 1 2 1 0 … */
-const sequence = (n: number) =>
-  n <= 2
-    ? [0, 1]
-    : [
-        ...Array.from({ length: n }, (_, i) => i),
-        ...Array.from({ length: n - 2 }, (_, i) => n - 2 - i),
-      ];
-
 export function ExerciseMedia({
   catalogId,
   style,
   animate = true,
   radius = 22,
 }: Props) {
-  const { c } = useTheme();
   const enabled = useStore(s => s.settings.showMedia);
   const frames = useFrames(catalogId, enabled);
   const t = useRef(new Animated.Value(0)).current;
@@ -117,15 +109,15 @@ export function ExerciseMedia({
       useNativeDriver: true,
     }).start();
     if (!animate || frames.urls.length < 2) return;
-    const line = frames.kind === 'line';
-    const steps = sequence(frames.urls.length).slice(1).concat(0);
+    // Hold each position, then a quick cross-fade: reads as the movement.
+    const drawn = frames.kind === 'illustration';
     const loop = Animated.loop(
       Animated.sequence(
-        steps.flatMap(i => [
-          Animated.delay(line ? 520 : 700),
+        [1, 0].flatMap(i => [
+          Animated.delay(drawn ? 850 : 700),
           Animated.timing(t, {
             toValue: i,
-            duration: line ? 160 : 450,
+            duration: drawn ? 260 : 450,
             useNativeDriver: true,
           }),
         ]),
@@ -137,11 +129,7 @@ export function ExerciseMedia({
   }, [frames, animate, t, appear]);
 
   if (!frames) return null;
-  const line = frames.kind === 'line';
-  const n = frames.urls.length;
-  // Photos are opaque and simply stack; transparent drawings must also fade
-  // the first frame out, or its lines would show through the others.
-  const bg = line ? c.fill4 : PHOTO_BG;
+  const drawn = frames.kind === 'illustration';
   return (
     <Animated.View
       style={[
@@ -149,7 +137,7 @@ export function ExerciseMedia({
         {
           borderRadius: radius,
           opacity: appear,
-          backgroundColor: bg,
+          backgroundColor: drawn ? ILLUSTRATION_BG : PHOTO_BG,
         },
         style,
       ]}
@@ -162,26 +150,11 @@ export function ExerciseMedia({
           key={u}
           source={{ uri: u }}
           style={[
-            line ? styles.line : StyleSheet.absoluteFill,
-            line && { tintColor: c.label },
-            i > 0 && {
-              opacity: t.interpolate({
-                inputRange: [i - 1, i, i + 1],
-                outputRange: [0, 1, i + 1 < n ? 0 : 1],
-                extrapolate: 'clamp',
-              }),
-            },
-            i === 0 &&
-              line &&
-              n > 1 && {
-                opacity: t.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [1, 0],
-                  extrapolate: 'clamp',
-                }),
-              },
+            StyleSheet.absoluteFill,
+            // Opaque frames: the second fades in over the first.
+            i > 0 && { opacity: t },
           ]}
-          resizeMode={line ? 'contain' : 'cover'}
+          resizeMode={drawn ? 'contain' : 'cover'}
         />
       ))}
     </Animated.View>
@@ -212,18 +185,19 @@ export function ExerciseThumb({
           width: size,
           height: size,
           borderRadius: size * 0.28,
-          backgroundColor: c.fill3,
+          backgroundColor: showImage
+            ? src.kind === 'illustration'
+              ? ILLUSTRATION_BG
+              : PHOTO_BG
+            : c.fill3,
         },
       ]}
     >
       {showImage ? (
         <Image
           source={{ uri: frame }}
-          style={[
-            { width: size, height: size },
-            src.kind === 'line' && { tintColor: c.label },
-          ]}
-          resizeMode={src.kind === 'line' ? 'contain' : 'cover'}
+          style={{ width: size, height: size }}
+          resizeMode={src.kind === 'illustration' ? 'contain' : 'cover'}
           onError={() => setFailed(true)}
         />
       ) : (
@@ -245,6 +219,5 @@ const styles = StyleSheet.create({
     aspectRatio: 3 / 2,
     overflow: 'hidden',
   },
-  line: { position: 'absolute', top: '6%', bottom: '6%', left: 0, right: 0 },
   thumb: { overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
 });

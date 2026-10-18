@@ -6,7 +6,7 @@
  */
 import raw from './catalog.json';
 import { IT_ALIASES } from './aliases';
-import WG_MAP from './wgMap.json';
+import MEDIA_MAP from './mediaMap.json';
 
 type RawItem = [
   string,
@@ -160,17 +160,18 @@ const PHOTO_BASES = [
   'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises',
   'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises',
 ];
-const LINE_BASES = [
-  'https://cdn.jsdelivr.net/npm/@bryllim/workout-guide@1.0.0/assets',
-  'https://unpkg.com/@bryllim/workout-guide@1.0.0/assets',
+// RepDB illustrations, served from the npm package by the public CDNs.
+const ILLUSTRATION_BASES = [
+  'https://cdn.jsdelivr.net/npm/@repdb/exercises@2026.10.0/images/flat',
+  'https://unpkg.com/@repdb/exercises@2026.10.0/images/flat',
 ];
 
-export type MediaKind = 'line' | 'photo';
+export type MediaKind = 'illustration' | 'photo';
 
 /**
- * Animation frames of an exercise: the 3-frame line drawing of Workout Guide
- * (CC BY-SA 4.0) when available, otherwise the 2 photos of free-exercise-db
- * (start and end position). Empty when the exercise has no media.
+ * Animation frames of an exercise: the RepDB illustration (start and peak of
+ * the movement, or a single image) when available, otherwise the 2 photos of
+ * free-exercise-db (start and end position). Empty without media.
  */
 export const mediaSource = (
   catalogId: string | undefined,
@@ -178,12 +179,16 @@ export const mediaSource = (
 ): { kind: MediaKind; urls: string[] } => {
   const ex = getCatalogExercise(catalogId);
   if (!ex) return { kind: 'photo', urls: [] };
-  const slug = (WG_MAP as Record<string, string>)[ex.id];
-  if (slug) {
-    const root = LINE_BASES[mirror] ?? LINE_BASES[0];
+  const hit = (MEDIA_MAP as unknown as Record<string, [string, number]>)[ex.id];
+  if (hit) {
+    const [slug, n] = hit;
+    const root = ILLUSTRATION_BASES[mirror] ?? ILLUSTRATION_BASES[0];
     return {
-      kind: 'line',
-      urls: [1, 2, 3].map(i => `${root}/${slug}/frame-${i}.png`),
+      kind: 'illustration',
+      urls:
+        n > 1
+          ? [`${root}/${slug}-start.webp`, `${root}/${slug}-peak.webp`]
+          : [`${root}/${slug}-main.webp`],
     };
   }
   if (ex.frames === 0) return { kind: 'photo', urls: [] };

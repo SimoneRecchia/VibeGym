@@ -44,23 +44,24 @@ describe('exercise catalog', () => {
   it('resolves loosely written ids and builds media urls', () => {
     expect(resolveCatalogId('Barbell Squat')).toBe('Barbell_Squat');
     expect(resolveCatalogId('barbell_squat')).toBe('Barbell_Squat');
-    // Common exercises use the 3-frame line drawings of Workout Guide…
+    // Common exercises use the RepDB illustrations (start and peak)…
+    const repdb =
+      'https://cdn.jsdelivr.net/npm/@repdb/exercises@2026.10.0/images/flat';
     expect(mediaSource('Barbell_Squat')).toEqual({
-      kind: 'line',
-      urls: [1, 2, 3].map(
-        i =>
-          `https://cdn.jsdelivr.net/npm/@bryllim/workout-guide@1.0.0/assets/squat/frame-${i}.png`,
-      ),
+      kind: 'illustration',
+      urls: [`${repdb}/squat-start.webp`, `${repdb}/squat-peak.webp`],
     });
+    // …or a single image…
+    expect(mediaFrames('Plank')).toEqual([`${repdb}/plank-main.webp`]);
     // …the others keep the free-exercise-db photos.
-    expect(mediaSource('Barbell_Ab_Rollout')).toEqual({
+    expect(mediaSource('3_4_Sit-Up')).toEqual({
       kind: 'photo',
       urls: [
-        'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Ab_Rollout/0.jpg',
-        'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Ab_Rollout/1.jpg',
+        'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/3_4_Sit-Up/0.jpg',
+        'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/3_4_Sit-Up/1.jpg',
       ],
     });
-    expect(mediaFrames('Kettlebell_Halo')).toEqual([]);
+    expect(mediaFrames('Kettlebell_Halo_With_Overhead_Extension')).toEqual([]);
     expect(mediaFrames(undefined)).toEqual([]);
   });
 });

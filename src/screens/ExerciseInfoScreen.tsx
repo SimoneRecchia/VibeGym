@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import { useStore } from '../data/store';
 import { Screen } from '../ui/Screen';
 import { Card } from '../ui/Card';
@@ -46,9 +46,14 @@ export function ExerciseInfoScreen({
   return (
     <Screen title={name} close largeTitle>
       <ExerciseMedia catalogId={catalogId} style={styles.media} />
-      {mediaSource(catalogId).kind === 'line' ? (
-        <T v="caption" color="tertiary" style={styles.credit}>
-          Illustrazione: Workout Guide di Bryl Lim (CC BY-SA 4.0)
+      {mediaSource(catalogId).kind === 'illustration' ? (
+        <T
+          v="caption"
+          color="tertiary"
+          style={styles.credit}
+          onPress={() => Linking.openURL('https://repdb.co')}
+        >
+          Exercise data by RepDB (repdb.co)
         </T>
       ) : null}
       {cat ? (
