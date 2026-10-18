@@ -27,6 +27,10 @@ import { GlassGroup } from './Glass';
 
 export const BAR_H = 52;
 
+// Without a system blur (Android) the edge must hide content almost fully.
+const EDGE_TOP = Platform.OS === 'ios' ? 0.96 : 1;
+const EDGE_MID = Platform.OS === 'ios' ? 0.8 : 0.92;
+
 /** Height of the JS tab bar (Android); iOS uses the native measurement. */
 export const JsTabInset = createContext<number | undefined>(undefined);
 
@@ -95,6 +99,13 @@ export function Screen({
     outputRange: [largeTitle ? 0 : 1, 1],
     extrapolate: 'clamp',
   });
+  // The large title fades as it slides under the bar (there is no blur behind
+  // the bar on Android, so it would stay readable as a ghost).
+  const largeTitleOpacity = y.interpolate({
+    inputRange: [0, 44],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
 
   const goBack = () => {
     if (typeof back === 'function') back();
@@ -147,7 +158,9 @@ export function Screen({
       showsVerticalScrollIndicator={false}
     >
       {largeTitle ? (
-        <View style={styles.titleBlock}>
+        <Animated.View
+          style={[styles.titleBlock, { opacity: largeTitleOpacity }]}
+        >
           {eyebrow ? (
             <T v="subheadStrong" color="secondary" numberOfLines={1}>
               {eyebrow}
@@ -162,7 +175,7 @@ export function Screen({
           >
             {title}
           </T>
-        </View>
+        </Animated.View>
       ) : null}
       {children}
     </Animated.ScrollView>
@@ -193,8 +206,8 @@ export function Screen({
           <Svg width="100%" height="100%">
             <Defs>
               <LinearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={c.bg} stopOpacity={0.96} />
-                <Stop offset="0.62" stopColor={c.bg} stopOpacity={0.8} />
+                <Stop offset="0" stopColor={c.bg} stopOpacity={EDGE_TOP} />
+                <Stop offset="0.62" stopColor={c.bg} stopOpacity={EDGE_MID} />
                 <Stop offset="1" stopColor={c.bg} stopOpacity={0} />
               </LinearGradient>
             </Defs>

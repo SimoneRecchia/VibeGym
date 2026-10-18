@@ -155,6 +155,7 @@ function JsTabs() {
                       v="caption2"
                       color={on ? c.accent : c.label}
                       weight="600"
+                      numberOfLines={1}
                     >
                       {r.title}
                     </T>
@@ -190,6 +191,7 @@ const styles = StyleSheet.create({
   itemInner: {
     height: JS_BAR_H - 12,
     borderRadius: (JS_BAR_H - 12) / 2,
+    marginHorizontal: 2,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
