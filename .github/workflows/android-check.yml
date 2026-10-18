@@ -1,0 +1,59 @@
+# Verifies the native Android build when native dependencies or build files
+# change (JS-only changes are covered by ci.yml). The APK is kept for 7 days
+# as a downloadable artifact.
+name: Android · Verifica build
+
+on:
+  push:
+    branches-ignore: [main]
+    paths:
+      - android/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/android-*.yml
+      - scripts/ci/**
+  pull_request:
+    paths:
+      - android/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/android-*.yml
+      - scripts/ci/**
+
+concurrency:
+  group: android-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Versione
+        run: bash scripts/ci/version.sh
+      - name: Build APK (firma di debug)
+        working-directory: android
+        run: >
+          ./gradlew assembleRelease --no-daemon
+          -PappVersionCode="$APP_VERSION_CODE"
+          -PappVersionName="$APP_VERSION_NAME"
+          -PreactNativeArchitectures=arm64-v8a
+          -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VibeGym-${{ env.APP_VERSION_NAME }}-arm64
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 7

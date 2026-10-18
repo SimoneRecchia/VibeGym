@@ -1,10 +1,11 @@
 # Build e rilasci automatici
 
-Tre workflow GitHub Actions in `.github/workflows/`:
+Quattro workflow GitHub Actions in `.github/workflows/`:
 
 | Workflow | Quando parte | Cosa fa |
 | --- | --- | --- |
 | **CI** (`ci.yml`) | a ogni push e pull request | typecheck, lint, test |
+| **Android · Verifica build** (`android-check.yml`) | quando cambiano dipendenze native o file Android | compila l'APK per controllare che la parte nativa funzioni (artifact per 7 giorni) |
 | **Android · APK di prova** (`android-apk.yml`) | quando lo lanci tu | compila l'APK e lo pubblica come *pre-release* scaricabile |
 | **Android · Release Play Store** (`android-release.yml`) | quando pubblichi una *Release* (tag `v2.1.0`) | test, AAB firmato caricato su Google Play, APK e AAB allegati alla release |
 
