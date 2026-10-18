@@ -105,7 +105,8 @@ afterAll(async () => {
 test('plan tab with greeting and next workout', () => {
   const t = allText(r);
   expect(t).toContain('Simone');
-  expect(t).toContain('PROSSIMO ALLENAMENTO');
+  expect(t).toContain('PROSSIMO');
+  expect(t).toContain('I TUOI GIORNI');
   expect(t).toContain('Full body A');
 });
 

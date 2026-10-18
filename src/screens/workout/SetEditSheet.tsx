@@ -9,7 +9,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { LoggedSet, SessionExercise, DisplayUnit } from '../../core/types';
 import { fromDisplay, roundTo, toDisplay } from '../../core/units';
 import { fmtClock, fmtNum } from '../../core/format';
-import { EditField } from './SetTable';
+import { EditField } from './ExerciseCard';
 
 interface Props {
   visible: boolean;

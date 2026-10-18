@@ -22,16 +22,20 @@ import {
   fmtWeekdayDate,
   greeting,
   plural,
-  WEEKDAYS_NARROW,
 } from '../core/format';
 import {
   allExercises,
+  dayLetter,
   dayMuscles,
   estimateDayMinutes,
   lastSessionForDay,
   nextDayId,
 } from '../plan/planUtils';
-import { trainedThisWeek } from '../stats/progress';
+import { trainedThisWeek, weekStreak } from '../stats/progress';
+import { StatRow, StatTile } from '../ui/StatTile';
+import { HeroButton, HeroCard } from '../ui/HeroCard';
+import { Tap } from '../ui/Pressable';
+import { dayColor, withAlpha } from '../theme/colors';
 import { planToJson } from '../plan/aiFormat';
 import { Nav } from '../navigation/types';
 import { useDraft } from '../data/draft';
@@ -52,6 +56,8 @@ export function PlanTab() {
     [plan, sessions],
   );
   const week = useMemo(() => trainedThisWeek(sessions), [sessions]);
+  const streak = useMemo(() => weekStreak(sessions), [sessions]);
+  const lastSession = sessions[sessions.length - 1];
   const title = `${greeting()}${name ? `, ${name.split(' ')[0]}` : ''}`;
 
   const start = (day: Day) => {
@@ -89,9 +95,23 @@ export function PlanTab() {
     });
   };
 
-  const todayIdx = (new Date().getDay() + 6) % 7;
   const nextDay = plan?.days.find(d => d.id === nextId);
   const nextIndex = plan && nextDay ? plan.days.indexOf(nextDay) : 0;
+  const nextColor = dayColor(nextIndex, c);
+  const liveIndex =
+    plan && workout
+      ? Math.max(
+          0,
+          plan.days.findIndex(d => d.id === workout.dayId),
+        )
+      : 0;
+  const liveColor = dayColor(liveIndex, c);
+  const live = workout
+    ? (() => {
+        const p = workoutProgress(workout);
+        return { ...p, share: p.total ? p.done / p.total : 0 };
+      })()
+    : { done: 0, total: 0, share: 0 };
 
   return (
     <Screen
@@ -115,132 +135,116 @@ export function PlanTab() {
         </Card>
       ) : (
         <>
-          {/* This week */}
-          <Card style={styles.block}>
-            <View style={styles.rowBetween}>
-              <T v="headline">Questa settimana</T>
-              <T v="subhead" color="secondary">
-                {plural(
-                  week.filter(Boolean).length,
-                  'allenamento',
-                  'allenamenti',
-                )}
-              </T>
-            </View>
-            <View style={styles.week}>
-              {week.map((done, i) => (
-                <View key={i} style={styles.weekDay}>
-                  <T
-                    v="caption"
-                    color={i === todayIdx ? 'accent' : 'secondary'}
-                    weight={i === todayIdx ? '700' : '500'}
-                  >
-                    {WEEKDAYS_NARROW[(i + 1) % 7]}
-                  </T>
-                  <View
-                    style={[
-                      styles.dot,
-                      {
-                        backgroundColor: done ? c.accent : c.fill3,
-                        borderColor:
-                          i === todayIdx && !done ? c.accent : c.fill3,
-                      },
-                    ]}
-                  >
-                    {done ? (
-                      <Icon
-                        name="check"
-                        size={14}
-                        color={c.onAccent}
-                        weight={2.8}
-                      />
-                    ) : null}
-                  </View>
-                </View>
-              ))}
-            </View>
-          </Card>
+          {/* Numbers that matter, each in its color */}
+          <StatRow>
+            <StatTile
+              icon="flame"
+              color={c.orange}
+              value={String(week.filter(Boolean).length)}
+              label="Questa settimana"
+            />
+            <StatTile
+              icon="trophy"
+              color={c.yellow}
+              value={String(streak)}
+              label={streak === 1 ? 'Settimana di fila' : 'Settimane di fila'}
+            />
+            <StatTile
+              icon="chart"
+              color={c.accent}
+              value={String(sessions.length)}
+              label="Allenamenti"
+            />
+          </StatRow>
 
-          {/* Next workout */}
+          {/* The one thing to do now */}
           {workout ? (
-            <Card style={styles.block}>
+            <HeroCard color={liveColor} style={styles.block}>
               <View style={styles.rowGap}>
-                <View style={[styles.liveDot, { backgroundColor: c.green }]} />
-                <T v="footnoteStrong" color="green">
+                <View style={styles.liveDot} />
+                <T v="footnoteStrong" color="#FFFFFF">
                   ALLENAMENTO IN CORSO
                 </T>
               </View>
-              <T v="title2" style={styles.heroTitle} numberOfLines={2}>
+              <T
+                v="title1"
+                color="#FFFFFF"
+                style={styles.heroTitle}
+                numberOfLines={2}
+              >
                 {workout.dayName}
               </T>
-              <T v="subhead" color="secondary">
-                {(() => {
-                  const p = workoutProgress(workout);
-                  return `${p.done} di ${p.total} serie completate`;
-                })()}
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${Math.round(live.share * 100)}%` },
+                  ]}
+                />
+              </View>
+              <T v="subhead" color="rgba(255,255,255,0.85)">
+                {live.done} di {live.total} serie
               </T>
-              <Button
+              <HeroButton
                 title="Riprendi"
                 icon="play"
+                color={liveColor}
                 onPress={() => nav.navigate('Workout')}
                 style={styles.heroBtn}
               />
-            </Card>
+            </HeroCard>
           ) : nextDay ? (
-            <Card style={styles.block}>
-              <T v="footnoteStrong" color="secondary">
-                PROSSIMO ALLENAMENTO
+            <HeroCard color={nextColor} style={styles.block}>
+              <T v="footnoteStrong" color="rgba(255,255,255,0.85)">
+                PROSSIMO · GIORNO {dayLetter(nextIndex)}
               </T>
-              <View style={[styles.rowGap, styles.heroHead]}>
-                <DayBadge index={nextIndex} size={52} filled />
-                <View style={styles.flex}>
-                  <T v="title2" numberOfLines={2}>
-                    {nextDay.name}
-                  </T>
-                  <T v="subhead" color="secondary" numberOfLines={1}>
-                    {plural(
-                      allExercises(nextDay).length,
-                      'esercizio',
-                      'esercizi',
-                    )}{' '}
-                    · {fmtMinutes(estimateDayMinutes(nextDay))}
-                  </T>
-                </View>
-              </View>
-              {dayMuscles(nextDay).length ? (
-                <T v="subhead" color="secondary" style={styles.muscles}>
-                  {dayMuscles(nextDay).join(' · ')}
-                </T>
-              ) : null}
+              <T
+                v="title1"
+                color="#FFFFFF"
+                style={styles.heroTitle}
+                numberOfLines={2}
+              >
+                {nextDay.name}
+              </T>
+              <T v="subhead" color="rgba(255,255,255,0.85)" numberOfLines={2}>
+                {plural(allExercises(nextDay).length, 'esercizio', 'esercizi')}{' '}
+                · {fmtMinutes(estimateDayMinutes(nextDay))}
+                {dayMuscles(nextDay).length
+                  ? ` · ${dayMuscles(nextDay).slice(0, 3).join(', ')}`
+                  : ''}
+              </T>
               <View style={styles.heroActions}>
-                <Button
+                <HeroButton
                   title={
                     allExercises(nextDay).length ? 'Inizia' : 'Giorno vuoto'
                   }
                   icon="play"
+                  color={nextColor}
                   onPress={() => start(nextDay)}
                   disabled={!allExercises(nextDay).length}
                   style={styles.flex}
                 />
-                <IconButton
-                  icon="list"
+                <Tap
                   onPress={() => nav.navigate('Day', { dayId: nextDay.id })}
-                  size={54}
+                  accessibilityRole="button"
                   accessibilityLabel="Anteprima esercizi"
-                  plain
-                />
+                >
+                  <View style={styles.heroRound}>
+                    <Icon name="list" size={20} color="#FFFFFF" weight={2.3} />
+                  </View>
+                </Tap>
               </View>
-            </Card>
+            </HeroCard>
           ) : null}
 
           {/* Plan days */}
           <View style={[styles.rowBetween, styles.sectionHead]}>
             <View style={styles.flex}>
+              <T v="footnoteStrong" color="secondary">
+                I TUOI GIORNI
+              </T>
               <T v="title3" numberOfLines={1}>
                 {plan.name}
-              </T>
-              <T v="footnote" color="secondary">
-                {plural(plan.days.length, 'giorno', 'giorni')}
               </T>
             </View>
             <IconButton
@@ -254,6 +258,8 @@ export function PlanTab() {
 
           {plan.days.map((d, i) => {
             const last = lastSessionForDay(sessions, plan.id, d.id);
+            const color = dayColor(i, c);
+            const next = d.id === nextId && !workout;
             return (
               <Card
                 key={d.id}
@@ -262,7 +268,7 @@ export function PlanTab() {
                 accessibilityLabel={d.name}
               >
                 <View style={styles.rowGap}>
-                  <DayBadge index={i} />
+                  <DayBadge index={i} filled={next} />
                   <View style={styles.flex}>
                     <T v="headline" numberOfLines={1}>
                       {d.name}
@@ -273,14 +279,14 @@ export function PlanTab() {
                       {last ? ` · ${fmtRelativeDay(last.startedAt)}` : ''}
                     </T>
                   </View>
-                  {d.id === nextId && !workout ? (
+                  {next ? (
                     <View
                       style={[
                         styles.nextPill,
-                        { backgroundColor: c.accentSoft },
+                        { backgroundColor: withAlpha(color, 0.2) },
                       ]}
                     >
-                      <T v="caption2" color="accent" weight="700">
+                      <T v="caption2" color={color} weight="700">
                         PROSSIMO
                       </T>
                     </View>
@@ -295,6 +301,52 @@ export function PlanTab() {
               </Card>
             );
           })}
+
+          {/* Last activity */}
+          {lastSession ? (
+            <>
+              <T
+                v="footnoteStrong"
+                color="secondary"
+                style={styles.sectionLabel}
+              >
+                ATTIVITÀ
+              </T>
+              <Card
+                onPress={() => nav.navigate('History')}
+                accessibilityLabel="Storico allenamenti"
+              >
+                <View style={styles.rowGap}>
+                  <View
+                    style={[styles.actIcon, { backgroundColor: c.accentSoft }]}
+                  >
+                    <Icon
+                      name="clock"
+                      size={18}
+                      color={c.accent}
+                      weight={2.2}
+                    />
+                  </View>
+                  <View style={styles.flex}>
+                    <T v="headline" numberOfLines={1}>
+                      {lastSession.dayName}
+                    </T>
+                    <T v="footnote" color="secondary" numberOfLines={1}>
+                      {fmtRelativeDay(lastSession.startedAt)} ·{' '}
+                      {fmtMinutes(Math.round(lastSession.durationSec / 60))} ·
+                      Storico
+                    </T>
+                  </View>
+                  <Icon
+                    name="chevron-right"
+                    size={16}
+                    color={c.tertiary}
+                    weight={2.4}
+                  />
+                </View>
+              </Card>
+            </>
+          ) : null}
         </>
       )}
     </Screen>
@@ -311,32 +363,41 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rowGap: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  week: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 14,
-  },
-  weekDay: { alignItems: 'center', gap: 6 },
-  dot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-  },
-  liveDot: { width: 8, height: 8, borderRadius: 4 },
-  heroHead: { marginTop: 12 },
-  heroTitle: { marginTop: 8 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
+  heroTitle: { marginTop: 6, marginBottom: 4 },
   heroBtn: { marginTop: 16 },
-  muscles: { marginTop: 10 },
   heroActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     marginTop: 16,
   },
-  sectionHead: { marginTop: 16, marginBottom: 10, paddingHorizontal: 4 },
+  heroRound: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    marginTop: 8,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  progressFill: { height: 6, borderRadius: 3, backgroundColor: '#FFFFFF' },
+  sectionHead: { marginTop: 12, marginBottom: 10, paddingHorizontal: 4 },
+  sectionLabel: { marginTop: 14, marginBottom: 8, paddingHorizontal: 4 },
   dayCard: { marginBottom: 10 },
   nextPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  actIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

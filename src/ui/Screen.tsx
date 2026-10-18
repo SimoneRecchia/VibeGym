@@ -24,6 +24,7 @@ import { GUTTER } from '../theme/metrics';
 import { T } from './Text';
 import { IconButton } from './Button';
 import { GlassGroup } from './Glass';
+import { Backdrop } from './Backdrop';
 
 export const BAR_H = 52;
 /** Height of a footer button plus the fade above it. */
@@ -87,6 +88,8 @@ interface Props {
   scrollRef?: React.RefObject<ScrollView | null>;
   keyboard?: boolean;
   onScroll?: (y: number) => void;
+  /** Color of the ambient glow (default: theme color). */
+  tint?: string;
 }
 
 export function Screen({
@@ -104,6 +107,7 @@ export function Screen({
   scrollRef,
   keyboard,
   onScroll,
+  tint,
 }: Props) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
@@ -207,6 +211,7 @@ export function Screen({
 
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
+      <Backdrop tint={tint} />
       {keyboard ? (
         <KeyboardAvoidingView
           style={styles.root}

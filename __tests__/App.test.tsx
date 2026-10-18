@@ -73,7 +73,7 @@ test('migrates the old app data and lands on the plan tab', async () => {
   const t = text(r);
   expect(t).toContain('Simone');
   expect(t).toContain('Vecchia scheda');
-  expect(t).toContain('PROSSIMO ALLENAMENTO');
+  expect(t).toContain('I TUOI GIORNI');
   expect(
     useStore.getState().plans[0].days[0].blocks[0].exercises[0].catalogId,
   ).toBe('Barbell_Bench_Press_-_Medium_Grip');

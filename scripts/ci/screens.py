@@ -151,14 +151,14 @@ def main(apk):
     tap('Serie 1 completata', scroll=True)
     time.sleep(1.5)
     shot('workout-serie')
-    if tap('Modifica serie 2', scroll=True):
+    if tap('Modifica peso serie 2', scroll=True):
         shot('workout-modifica')
         adb('shell', 'input', 'keyevent', '4')
         time.sleep(1)
-    adb('shell', 'input', 'swipe', '900', '1200', '150', '1200', '250')
+    adb('shell', 'input', 'swipe', '540', '1700', '540', '600', '400')
     time.sleep(2)
     shot('workout-esercizio-2')
-    if tap('Panoramica allenamento'):
+    if tap('Riepilogo'):
         shot('workout-panoramica')
         adb('shell', 'input', 'keyevent', '4')
         time.sleep(1)

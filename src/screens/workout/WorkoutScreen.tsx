@@ -1,34 +1,31 @@
 /**
- * Live workout. Built for one-handed use between sets:
- *  - one page per exercise (swipe); the animation until the first set, then
- *    the set in progress with its values to adjust right there;
- *  - a single big button logs that set;
- *  - the rest timer starts by itself and floats above the button;
- *  - the overview shows the whole workout and jumps to any exercise.
+ * Live workout as one list, like a paper plan: every exercise is a card with
+ * its sets (tap a row when done, tap a value to change it) and a button for
+ * the next set that starts the rest. The day's color runs through it; the
+ * progress ring sits at the top, summary and finish at the bottom.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useStore } from '../../data/store';
 import { useTheme } from '../../theme/ThemeProvider';
+import { dayColor } from '../../theme/colors';
 import { T } from '../../ui/Text';
 import { Button, IconButton } from '../../ui/Button';
-import { Tap } from '../../ui/Pressable';
+import { Ring } from '../../ui/charts/Ring';
+import { Backdrop } from '../../ui/Backdrop';
 import { showMenu } from '../../ui/Menu';
 import { useNow } from '../../ui/useNow';
-import { WorkoutPage } from './WorkoutPage';
+import { ExerciseCard, EditField } from './ExerciseCard';
 import { RestDock } from './RestDock';
 import { SetEditSheet } from './SetEditSheet';
 import { FinishSheet } from './FinishSheet';
 import { WorkoutOverview } from './WorkoutOverview';
-import { EditField } from './SetTable';
 import {
   SetRef,
-  isBlockDone,
-  nextOutsideBlock,
   nextInBlock,
-  nextPending,
+  nextOutsideBlock,
   workoutProgress,
 } from '../../workout/engine';
 import { completeSet, startTimedSet, undoSet } from '../../workout/actions';
@@ -36,17 +33,18 @@ import { stopTimer, useTimer } from '../../workout/timer';
 import { keepAwake } from '../../services/keepAwake';
 import { requestNotificationPermission } from '../../services/notifications';
 import { fmtClock } from '../../core/format';
-import { fromDisplay, roundTo } from '../../core/units';
 import { exerciseKey } from '../../core/ids';
+import { dayLetter } from '../../plan/planUtils';
 import { useDraft } from '../../data/draft';
 import { ScreenProps } from '../../navigation/types';
-import { LoggedSet } from '../../core/types';
+
+const TOP_H = 64;
 
 export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const workout = useStore(s => s.workout);
+  const plans = useStore(s => s.plans);
   const sessions = useStore(s => s.sessions);
   const settings = useStore(s => s.settings);
   const updateSet = useStore(s => s.updateSet);
@@ -54,8 +52,8 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
   const phase = useTimer(s => s.phase);
   const timerRef = useTimer(s => s.ref);
   const now = useNow(1000, !!workout);
-  const list = useRef<FlatList>(null);
-  const [page, setPage] = useState(workout?.cursor ?? 0);
+  const scroll = useRef<ScrollView>(null);
+  const cardY = useRef<number[]>([]);
   const [edit, setEdit] = useState<{ ref: SetRef; field: EditField } | null>(
     null,
   );
@@ -74,28 +72,32 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
     return () => keepAwake(false);
   }, [settings.keepAwake]);
 
-  // Follow the cursor when the engine moves to the next exercise.
+  const scrollToBlock = useCallback((bi: number) => {
+    const y = cardY.current[bi];
+    if (y != null)
+      scroll.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
+  }, []);
+
+  // When an exercise is finished the engine moves on: follow it.
   const cursor = workout?.cursor ?? 0;
+  const first = useRef(true);
   useEffect(() => {
-    if (cursor !== page && workout && cursor < workout.blocks.length) {
-      const t = setTimeout(() => {
-        list.current?.scrollToIndex({ index: cursor, animated: true });
-        setPage(cursor);
-      }, 450);
-      return () => clearTimeout(t);
+    if (first.current) {
+      first.current = false;
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cursor]);
+    const t = setTimeout(() => scrollToBlock(cursor), 450);
+    return () => clearTimeout(t);
+  }, [cursor, scrollToBlock]);
 
   const goTo = useCallback(
-    (i: number) => {
-      list.current?.scrollToIndex({ index: i, animated: true });
-      setPage(i);
+    (bi: number) => {
       updateWorkout(w => {
-        w.cursor = i;
+        w.cursor = bi;
       });
+      scrollToBlock(bi);
     },
-    [updateWorkout],
+    [updateWorkout, scrollToBlock],
   );
 
   const onToggle = useCallback((ref: SetRef) => {
@@ -106,26 +108,18 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
     else completeSet(ref);
   }, []);
 
+  const onAction = useCallback((bi: number) => {
+    const w = useStore.getState().workout;
+    if (!w) return;
+    const ref = nextInBlock(w, bi);
+    if (!ref) return;
+    if (w.blocks[ref.bi].exercises[ref.ei].kind === 'time') startTimedSet(ref);
+    else completeSet(ref);
+  }, []);
+
   const onEdit = useCallback(
     (ref: SetRef, field: EditField) => setEdit({ ref, field }),
     [],
-  );
-
-  // A new load usually applies to the remaining sets too; reps don't.
-  const onSetValue = useCallback(
-    (ref: SetRef, field: EditField, value: number) => {
-      const unit = useStore.getState().settings.unit;
-      const patch =
-        field === 'kg'
-          ? { kg: roundTo(fromDisplay(value, unit), 0.01) }
-          : field === 'reps'
-          ? { reps: Math.round(value) }
-          : field === 'sec'
-          ? { sec: Math.round(value) }
-          : { km: value || undefined };
-      updateSet(ref.bi, ref.ei, ref.si, patch, field === 'kg');
-    },
-    [updateSet],
   );
 
   const onApplyHint = useCallback(
@@ -223,122 +217,64 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
     );
   }
 
+  const plan = plans.find(p => p.id === workout.planId);
+  const dayIndex = Math.max(
+    0,
+    plan?.days.findIndex(d => d.id === workout.dayId) ?? 0,
+  );
+  const color = dayColor(dayIndex, c);
   const progress = workoutProgress(workout);
-  const pending = nextInBlock(workout, page);
-  const nextAny = nextPending(workout);
-  const pageEx = pending ? workout.blocks[page].exercises[pending.ei] : null;
-  const pendingSet: LoggedSet | null =
-    pending && pageEx ? pageEx.sets[pending.si] : null;
-  const timingThis =
-    phase === 'work' &&
-    timerRef &&
-    pending &&
-    timerRef.bi === pending.bi &&
-    timerRef.ei === pending.ei &&
-    timerRef.si === pending.si;
-
-  const primary = () => {
-    if (pending && pageEx) {
-      if (pageEx.kind === 'time') {
-        if (!timingThis) startTimedSet(pending);
-        return;
-      }
-      completeSet(pending);
-      return;
-    }
-    if (nextAny) goTo(nextAny.bi);
-    else setFinishing(true);
-  };
-
-  let primaryTitle = 'Termina allenamento';
-  let primaryIcon: 'check' | 'play' | 'arrow-right' | 'flame' = 'flame';
-  if (pending && pageEx && pendingSet) {
-    if (pageEx.kind === 'time') {
-      primaryTitle = timingThis
-        ? 'In corso…'
-        : `Avvia la serie ${pending.si + 1} · ${pendingSet.sec ?? 30} s`;
-      primaryIcon = 'play';
-    } else {
-      primaryTitle =
-        pageEx.kind === 'cardio' ? 'Fatto' : `Serie ${pending.si + 1} fatta`;
-      primaryIcon = 'check';
-    }
-    if (workout.blocks[page].exercises.length > 1)
-      primaryTitle = `${String.fromCharCode(65 + page)}${
-        pending.ei + 1
-      } · ${primaryTitle}`;
-  } else if (nextAny) {
-    const next = workout.blocks[nextAny.bi].exercises[nextAny.ei];
-    primaryTitle = `Prossimo: ${next.name}`;
-    primaryIcon = 'arrow-right';
-  }
-
-  const topBarH = insets.top + 56 + 18;
-  const dockH = 96 + (phase !== 'idle' ? 72 : 0) + insets.bottom;
+  const timing = phase === 'work' ? timerRef ?? null : null;
+  const topH = insets.top + TOP_H;
+  const bottomH =
+    84 + (phase !== 'idle' ? 72 : 0) + Math.max(insets.bottom, 12);
   const editEx = edit
     ? workout.blocks[edit.ref.bi]?.exercises[edit.ref.ei] ?? null
     : null;
 
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
-      <FlatList
-        ref={list}
-        data={workout.blocks}
-        keyExtractor={b => b.id}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        initialScrollIndex={Math.min(workout.cursor, workout.blocks.length - 1)}
-        getItemLayout={(_, i) => ({
-          length: width,
-          offset: width * i,
-          index: i,
-        })}
-        windowSize={3}
-        onMomentumScrollEnd={e => {
-          const i = Math.round(e.nativeEvent.contentOffset.x / width);
-          if (i !== page) {
-            setPage(i);
-            updateWorkout(w => {
-              w.cursor = i;
-            });
-          }
-        }}
-        renderItem={({ index }) => (
-          <WorkoutPage
-            workout={workout}
-            bi={index}
-            width={width}
-            sessions={sessions}
-            unit={settings.unit}
-            stepKg={settings.loadStepKg}
-            topPad={topBarH}
-            bottomPad={dockH + 16}
-            onEdit={onEdit}
-            onSetValue={onSetValue}
-            onToggle={onToggle}
-            onMenu={onMenu}
-            onApplyHint={onApplyHint}
-            onInfo={onInfo}
-          />
-        )}
-      />
+      <Backdrop tint={color} />
+      <ScrollView
+        ref={scroll}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: topH + 8, paddingBottom: bottomH + 16 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {workout.blocks.map((b, bi) => (
+          <View
+            key={b.id}
+            onLayout={e => {
+              cardY.current[bi] = e.nativeEvent.layout.y;
+            }}
+          >
+            <ExerciseCard
+              workout={workout}
+              bi={bi}
+              color={color}
+              sessions={sessions}
+              unit={settings.unit}
+              stepKg={settings.loadStepKg}
+              timing={timing}
+              onToggle={onToggle}
+              onEdit={onEdit}
+              onAction={onAction}
+              onInfo={onInfo}
+              onMenu={onMenu}
+              onApplyHint={onApplyHint}
+            />
+          </View>
+        ))}
+      </ScrollView>
 
       {/* Top bar */}
       <View
         pointerEvents="box-none"
         style={[styles.top, { paddingTop: insets.top }]}
       >
-        <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
-          <Defs>
-            <LinearGradient id="wtop" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={c.bg} stopOpacity={0.97} />
-              <Stop offset="0.75" stopColor={c.bg} stopOpacity={0.85} />
-              <Stop offset="1" stopColor={c.bg} stopOpacity={0} />
-            </LinearGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#wtop)" />
-        </Svg>
+        <Fade from="top" color={c.bg} />
         <View style={styles.topRow}>
           <IconButton
             icon="chevron-down"
@@ -346,84 +282,52 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
             accessibilityLabel="Riduci allenamento"
           />
           <View style={styles.topCenter}>
+            <T v="caption2" color={color} weight="700">
+              GIORNO {dayLetter(dayIndex)} ·{' '}
+              {fmtClock((now - workout.startedAt) / 1000)}
+            </T>
             <T v="headline" numberOfLines={1}>
               {workout.dayName}
             </T>
-            <T v="footnote" color="secondary" style={styles.tabular}>
-              {fmtClock((now - workout.startedAt) / 1000)} · {progress.done}/
-              {progress.total} serie
-            </T>
           </View>
-          <IconButton
-            icon="list"
-            onPress={() => setOverview(true)}
-            accessibilityLabel="Panoramica allenamento"
-          />
-          <Button
-            title="Fine"
-            size="m"
-            variant="tinted"
-            onPress={() => setFinishing(true)}
-            feedback="medium"
-          />
-        </View>
-        {/* Progress segments, one per exercise */}
-        <View style={styles.segments}>
-          {workout.blocks.map((b, i) => {
-            const done = isBlockDone(workout, i);
-            const started = b.exercises.some(e => e.sets.some(s => s.done));
-            return (
-              <Tap
-                key={b.id}
-                onPress={() => goTo(i)}
-                style={styles.segTap}
-                feedback="selection"
-                scaleTo={1}
-                accessibilityLabel={`Esercizio ${i + 1}`}
-              >
-                <View
-                  style={[
-                    styles.seg,
-                    {
-                      backgroundColor: done
-                        ? c.green
-                        : started
-                        ? c.accent
-                        : c.fill,
-                    },
-                    i === page ? styles.segOn : styles.segOff,
-                  ]}
-                />
-              </Tap>
-            );
-          })}
+          <Ring
+            progress={progress.total ? progress.done / progress.total : 0}
+            size={48}
+            stroke={5}
+            color={color}
+          >
+            <T v="caption2" weight="700">
+              {progress.done}/{progress.total}
+            </T>
+          </Ring>
         </View>
       </View>
 
-      {/* Bottom dock */}
+      {/* Bottom bar */}
       <View
         pointerEvents="box-none"
         style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 12) }]}
       >
-        <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
-          <Defs>
-            <LinearGradient id="wbot" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={c.bg} stopOpacity={0} />
-              <Stop offset="0.35" stopColor={c.bg} stopOpacity={0.85} />
-              <Stop offset="1" stopColor={c.bg} stopOpacity={0.97} />
-            </LinearGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#wbot)" />
-        </Svg>
+        <Fade from="bottom" color={c.bg} />
         <View style={styles.dockInner}>
           <RestDock />
-          <Button
-            title={primaryTitle}
-            icon={primaryIcon}
-            onPress={primary}
-            disabled={!!timingThis}
-            feedback={null}
-          />
+          <View style={styles.dockRow}>
+            <Button
+              title="Riepilogo"
+              icon="list"
+              variant="glass"
+              onPress={() => setOverview(true)}
+              style={styles.flex}
+            />
+            <Button
+              title="Fine"
+              icon="flame"
+              tint={color}
+              onPress={() => setFinishing(true)}
+              feedback="medium"
+              style={styles.flex}
+            />
+          </View>
         </View>
       </View>
 
@@ -445,7 +349,7 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
       <WorkoutOverview
         visible={overview}
         workout={workout}
-        page={page}
+        page={cursor}
         now={now}
         unit={settings.unit}
         onClose={() => setOverview(false)}
@@ -474,31 +378,40 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
   );
 }
 
+/** Background fade under the floating bars. */
+function Fade({ from, color }: { from: 'top' | 'bottom'; color: string }) {
+  const top = from === 'top';
+  const id = top ? 'wfadeTop' : 'wfadeBottom';
+  return (
+    <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Defs>
+        <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={color} stopOpacity={top ? 1 : 0} />
+          <Stop offset="0.6" stopColor={color} stopOpacity={top ? 0.9 : 0.92} />
+          <Stop offset="1" stopColor={color} stopOpacity={top ? 0 : 1} />
+        </LinearGradient>
+      </Defs>
+      <Rect width="100%" height="100%" fill={`url(#${id})`} />
+    </Svg>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
   mt: { marginTop: 16 },
-  top: { position: 'absolute', top: 0, left: 0, right: 0, paddingBottom: 14 },
+  flex: { flex: 1 },
+  content: { paddingHorizontal: 16 },
+  top: { position: 'absolute', top: 0, left: 0, right: 0, paddingBottom: 12 },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 16,
-    height: 56,
+    height: TOP_H,
   },
-  topCenter: { flex: 1, alignItems: 'center', minWidth: 0 },
-  tabular: { fontVariant: ['tabular-nums'] },
-  segments: {
-    flexDirection: 'row',
-    gap: 4,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    height: 12,
-  },
-  segTap: { flex: 1, height: 12, justifyContent: 'center' },
-  seg: { borderRadius: 3 },
-  segOn: { height: 6 },
-  segOff: { height: 4, opacity: 0.55 },
-  dock: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 28 },
-  dockInner: { paddingHorizontal: 16, gap: 12 },
+  topCenter: { flex: 1, minWidth: 0 },
+  dock: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 24 },
+  dockInner: { paddingHorizontal: 16, gap: 10 },
+  dockRow: { flexDirection: 'row', gap: 10 },
 });
