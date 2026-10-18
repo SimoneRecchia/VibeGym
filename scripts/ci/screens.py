@@ -57,18 +57,23 @@ def nodes():
     return out
 
 
-def find(label, timeout=20):
+def find(label, timeout=20, scroll=False):
     end = time.time() + timeout
+    swipes = 0
     while time.time() < end:
         for n in nodes():
             if label in (n['text'], n['desc']):
                 return n
+        if scroll and swipes < 4:
+            # Below the fold: scroll the content up a bit.
+            adb('shell', 'input', 'swipe', '540', '1700', '540', '700', '300')
+            swipes += 1
         time.sleep(1)
     return None
 
 
-def tap(label, timeout=20):
-    n = find(label, timeout)
+def tap(label, timeout=20, scroll=False):
+    n = find(label, timeout, scroll)
     if not n:
         log(f'!! "{label}" non trovato')
         return False
@@ -97,19 +102,22 @@ def bounds(labels):
 def main(apk):
     log('install', adb('install', '-r', '-g', apk).strip())
     adb('shell', 'cmd', 'uimode', 'night', 'yes')
-    # Galaxy Z Flip 6 with a larger display size (≈ 3 px/dp).
-    adb('shell', 'wm', 'size', '1080x2640')
+    # Like a Galaxy Z Flip 6 with a larger display size (≈ 3 px/dp).
     adb('shell', 'wm', 'density', '480')
+    time.sleep(3)
+    log('display', adb('shell', 'wm', 'size').strip(), '|', adb('shell', 'wm', 'density').strip())
     adb('shell', 'am', 'start', '-W', '-n', f'{PKG}/.MainActivity')
+    find('VibeGym', timeout=90)
 
-    if not tap('Iniziamo', timeout=90):
+    if not tap('Iniziamo', timeout=40, scroll=True):
         shot('avvio')
         return
     if find('Più tardi', timeout=6):
         tap('Più tardi')
 
     tabs = ['Progressi', 'Scheda', 'Nutrizione']
-    w, h = 1080, 2640
+    probe = Image.open(io.BytesIO(adb('exec-out', 'screencap', '-p', binary=True)))
+    w, h = probe.size
     bar = (0, h - 420, w, h)
     for t in ['Scheda', 'Progressi', 'Nutrizione']:
         tap(t)

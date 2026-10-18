@@ -60,6 +60,8 @@ jobs:
           api-level: 35
           target: google_apis
           arch: x86_64
+          # 1080 × 2400 like the Galaxy Z Flip 6 (1080 × 2640).
+          profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: python3 scripts/ci/screens.py android/app/build/outputs/apk/release/app-release.apk screens
