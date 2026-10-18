@@ -33,7 +33,12 @@ import { Chip } from '../../ui/Chip';
 import { toast } from '../../ui/Toast';
 import { haptic } from '../../services/haptics';
 import { Food } from '../../core/types';
-import { GENERIC, MEAL_LABEL, searchFoods } from '../../nutrition/foods';
+import {
+  GENERIC,
+  MEAL_LABEL,
+  normalize,
+  searchFoods,
+} from '../../nutrition/foods';
 import { fetchProduct, searchProducts } from '../../nutrition/off';
 import { PhotoFindings, interpretPhoto } from '../../nutrition/photo';
 import { fmtNum } from '../../core/format';
@@ -347,13 +352,19 @@ function FindingsSheet({
   );
   const query = findings?.query;
 
-  const local = useMemo(
-    () =>
-      query
-        ? searchFoods(query, [...lib.custom, ...lib.cache, ...GENERIC], 6)
-        : [],
-    [query, lib],
-  );
+  // OCR text is noisy: try all its words, then fewer, until something matches.
+  const local = useMemo(() => {
+    if (!query) return [];
+    const pool = [...lib.custom, ...lib.cache, ...GENERIC];
+    const words = normalize(query)
+      .split(' ')
+      .filter(w => w.length >= 3);
+    for (let n = words.length; n >= 1; n--) {
+      const r = searchFoods(words.slice(0, n).join(' '), pool, 6);
+      if (r.length) return r;
+    }
+    return [];
+  }, [query, lib]);
 
   useEffect(() => {
     setOnline(null);

@@ -239,9 +239,11 @@ export function Screen({
           style={[
             styles.footer,
             {
+              // Above the tab bar and any floating bar (workout in progress).
               paddingBottom:
                 Math.max(insets.bottom, 12) +
-                (tabInset ? tabInset - insets.bottom : 0),
+                (tabInset ? tabInset - insets.bottom : 0) +
+                extraInset,
             },
           ]}
         >

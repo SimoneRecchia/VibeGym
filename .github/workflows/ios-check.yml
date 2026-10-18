@@ -30,15 +30,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-          bundler-cache: true
-      - name: Xcode
-        run: xcodebuild -version
+      - name: Xcode e CocoaPods
+        run: |
+          xcodebuild -version
+          pod --version || sudo gem install cocoapods
+      # The runner's CocoaPods (the old Gemfile.lock pins bundler 1.17,
+      # which doesn't run on current Ruby).
       - name: Pod install
         working-directory: ios
-        run: bundle exec pod install
+        run: pod install
       - name: Build (simulatore, senza firma)
         run: |
           xcodebuild \
