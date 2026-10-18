@@ -9,6 +9,8 @@ on:
     paths:
       - src/ui/**
       - src/navigation/**
+      - src/screens/**
+      - src/theme/**
       - scripts/ci/screens.py
       - .github/workflows/android-screens.yml
   workflow_dispatch:

@@ -142,6 +142,7 @@ def main(apk):
     tap('Inizia')
     tap('Prova la scheda demo', scroll=True)
     time.sleep(2)
+    shot('scheda-piano')
     if not tap('Inizia', timeout=10):
         return
     time.sleep(3)
@@ -157,6 +158,12 @@ def main(apk):
     adb('shell', 'input', 'swipe', '900', '1200', '150', '1200', '250')
     time.sleep(2)
     shot('workout-esercizio-2')
+    if tap('Panoramica allenamento'):
+        shot('workout-panoramica')
+        adb('shell', 'input', 'keyevent', '4')
+        time.sleep(1)
+    if tap('Riduci allenamento'):
+        shot('scheda-in-corso')
 
 
 if __name__ == '__main__':
