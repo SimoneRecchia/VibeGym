@@ -12,7 +12,7 @@ import { ProfileButton } from '../ui/Avatar';
 import { Card } from '../ui/Card';
 import { T } from '../ui/Text';
 import { Button, IconButton } from '../ui/Button';
-import { Icon } from '../ui/Icon';
+import { Icon, IconName } from '../ui/Icon';
 import { Tap } from '../ui/Pressable';
 import { Ring } from '../ui/charts/Ring';
 import { toast } from '../ui/Toast';
@@ -31,7 +31,6 @@ import { DAY_MS, addDays, dayKey, dayStart, startOfWeek } from '../core/dates';
 import {
   WEEKDAYS_NARROW,
   capitalize,
-  fmtDateShort,
   fmtNum,
   fmtWeekdayDate,
 } from '../core/format';
@@ -52,6 +51,7 @@ export function NutritionTab() {
   const restoreLog = useStore(s => s.restoreFoodLog);
   const logFood = useStore(s => s.logFood);
   const [editing, setEditing] = useState<FoodLog | null>(null);
+  const [showEnergy, setShowEnergy] = useState(false);
 
   const weekStart = startOfWeek(dayStart(day));
   const weekDays = useMemo(
@@ -144,27 +144,15 @@ export function NutritionTab() {
         </View>
       }
     >
-      {/* Week */}
-      <Card style={styles.block}>
-        <View style={styles.rowBetween}>
-          <IconButton
-            icon="chevron-left"
-            plain
-            size={32}
-            onPress={() => setDay(dayKey(addDays(dayStart(day), -7)))}
-            accessibilityLabel="Settimana precedente"
-          />
-          <T v="subheadStrong" color="secondary">
-            {fmtDateShort(weekStart)} – {fmtDateShort(addDays(weekStart, 6))}
-          </T>
-          <IconButton
-            icon="chevron-right"
-            plain
-            size={32}
-            onPress={() => setDay(dayKey(addDays(dayStart(day), 7)))}
-            accessibilityLabel="Settimana successiva"
-          />
-        </View>
+      {/* Week: one light row, arrows at the ends */}
+      <View style={styles.weekRow}>
+        <IconButton
+          icon="chevron-left"
+          plain
+          size={30}
+          onPress={() => setDay(dayKey(addDays(dayStart(day), -7)))}
+          accessibilityLabel="Settimana precedente"
+        />
         <View style={styles.week}>
           {weekDays.map((d, i) => {
             const on = d === day;
@@ -189,13 +177,13 @@ export function NutritionTab() {
                 <View
                   style={[
                     styles.dayRing,
-                    on && { backgroundColor: c.accentSoft },
+                    { backgroundColor: on ? c.accentSoft : CLEAR },
                   ]}
                 >
                   <Ring
                     progress={n.kcalGoal ? eaten / n.kcalGoal : 0}
-                    size={34}
-                    stroke={4}
+                    size={32}
+                    stroke={3.5}
                     color={eaten > n.kcalGoal * 1.05 ? c.orange : c.accent}
                   >
                     <T v="caption2" color={on ? 'accent' : 'label'}>
@@ -207,14 +195,21 @@ export function NutritionTab() {
             );
           })}
         </View>
-        {day !== today ? (
-          <Tap onPress={() => setDay(today)} style={styles.todayLink}>
-            <T v="footnoteStrong" color="accent">
-              Torna a oggi
-            </T>
-          </Tap>
-        ) : null}
-      </Card>
+        <IconButton
+          icon="chevron-right"
+          plain
+          size={30}
+          onPress={() => setDay(dayKey(addDays(dayStart(day), 7)))}
+          accessibilityLabel="Settimana successiva"
+        />
+      </View>
+      {day !== today ? (
+        <Tap onPress={() => setDay(today)} style={styles.todayLink}>
+          <T v="footnoteStrong" color="accent">
+            Torna a oggi
+          </T>
+        </Tap>
+      ) : null}
 
       {/* Calories + macros */}
       <Card
@@ -239,9 +234,18 @@ export function NutritionTab() {
             </T>
           </Ring>
           <View style={styles.heroSide}>
-            <Stat label="Obiettivo" value={n.kcalGoal} />
-            <Stat label="Mangiate" value={n.totals.kcal} />
-            <Stat label="Consumo" value={n.energy.total} muted />
+            <Stat
+              label="Obiettivo"
+              value={n.kcalGoal}
+              icon="target"
+              color={c.accent}
+            />
+            <Stat
+              label="Mangiate"
+              value={n.totals.kcal}
+              icon="fork"
+              color={c.orange}
+            />
           </View>
         </View>
         <View style={styles.macros}>
@@ -250,7 +254,7 @@ export function NutritionTab() {
             const goal = n.macros[k];
             return (
               <View key={k} style={styles.macro}>
-                <T v="footnote" color="secondary">
+                <T v="footnoteStrong" color={MACRO_COLOR[k]}>
                   {MACRO_LABEL[k]}
                 </T>
                 <View
@@ -283,70 +287,94 @@ export function NutritionTab() {
             );
           })}
         </View>
-        <T v="caption" color="tertiary" style={styles.goalNote}>
-          {goalLine(n.goals, n.energy.total)}
-        </T>
       </Card>
 
-      {/* Energy */}
-      <Card style={styles.block}>
-        <View style={styles.rowBetween}>
-          <T v="headline">Consumo stimato</T>
-          <T v="headline">{fmtNum(n.energy.total, 0)} kcal</T>
-        </View>
-        <View style={styles.energyRows}>
-          <EnergyRow
-            icon="flame"
-            label="Metabolismo basale"
-            kcal={n.energy.basal}
-          />
-          {n.energy.fromHealth ? (
-            <EnergyRow
-              icon="run"
-              label={`Attività (${healthPlatformName})`}
-              kcal={n.energy.active}
+      {/* Energy: one line, details on demand */}
+      <Card style={styles.block} padded={false}>
+        <Tap
+          onPress={() => setShowEnergy(v => !v)}
+          scaleTo={0.99}
+          accessibilityRole="button"
+          accessibilityLabel="Consumo stimato"
+          accessibilityState={{ expanded: showEnergy }}
+        >
+          <View style={styles.energyHead}>
+            <View
+              style={[
+                styles.energyIcon,
+                { backgroundColor: withAlpha(c.green, 0.18) },
+              ]}
+            >
+              <Icon name="flame" size={16} color={c.green} weight={2.3} />
+            </View>
+            <T v="headline" style={styles.flex}>
+              Consumo stimato
+            </T>
+            <T v="headline">{fmtNum(n.energy.total, 0)} kcal</T>
+            <Icon
+              name={showEnergy ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color={c.tertiary}
+              weight={2.4}
             />
-          ) : (
-            <>
+          </View>
+        </Tap>
+        {showEnergy ? (
+          <View style={styles.energyRows}>
+            <EnergyRow
+              icon="flame"
+              label="Metabolismo basale"
+              kcal={n.energy.basal}
+            />
+            {n.energy.fromHealth ? (
               <EnergyRow
                 icon="run"
-                label={
-                  n.energy.steps != null
-                    ? `${fmtNum(n.energy.steps, 0)} passi`
-                    : 'Attività quotidiana (stima)'
-                }
-                kcal={
-                  n.energy.assumed
-                    ? n.energy.active - n.energy.workoutKcal
-                    : n.energy.stepsKcal
-                }
+                label={`Attività (${healthPlatformName})`}
+                kcal={n.energy.active}
               />
-              {n.energy.workouts ? (
+            ) : (
+              <>
                 <EnergyRow
-                  icon="dumbbell"
+                  icon="run"
                   label={
-                    n.energy.workouts === 1
-                      ? 'Allenamento'
-                      : `${n.energy.workouts} allenamenti`
+                    n.energy.steps != null
+                      ? `${fmtNum(n.energy.steps, 0)} passi`
+                      : 'Attività quotidiana (stima)'
                   }
-                  kcal={n.energy.workoutKcal}
+                  kcal={
+                    n.energy.assumed
+                      ? n.energy.active - n.energy.workoutKcal
+                      : n.energy.stepsKcal
+                  }
                 />
-              ) : null}
-            </>
-          )}
-        </View>
-        {n.energy.assumed ? (
-          <Tap
-            onPress={() =>
-              nav.navigate('Settings', { screen: 'HealthSettings' })
-            }
-            style={styles.healthLink}
-          >
-            <T v="footnote" color="accent">
-              Collega {healthPlatformName} per contare i passi del telefono o
-              dello smartwatch
+                {n.energy.workouts ? (
+                  <EnergyRow
+                    icon="dumbbell"
+                    label={
+                      n.energy.workouts === 1
+                        ? 'Allenamento'
+                        : `${n.energy.workouts} allenamenti`
+                    }
+                    kcal={n.energy.workoutKcal}
+                  />
+                ) : null}
+              </>
+            )}
+            <T v="caption" color="tertiary">
+              {goalLine(n.goals, n.energy.total)}
             </T>
-          </Tap>
+            {n.energy.assumed ? (
+              <Tap
+                onPress={() =>
+                  nav.navigate('Settings', { screen: 'HealthSettings' })
+                }
+              >
+                <T v="footnote" color="accent">
+                  Collega {healthPlatformName} per contare i passi
+                </T>
+              </Tap>
+            ) : null}
+          </View>
         ) : null}
       </Card>
 
@@ -357,14 +385,29 @@ export function NutritionTab() {
         return (
           <Card key={m.key} style={styles.block} padded={false}>
             <View style={styles.mealHead}>
-              <View style={styles.flex}>
-                <T v="headline">{m.label}</T>
-                {list.length ? (
-                  <T v="footnote" color="secondary">
-                    {fmtNum(kcal, 0)} kcal
-                  </T>
-                ) : null}
+              <View
+                style={[
+                  styles.mealIcon,
+                  {
+                    backgroundColor: withAlpha(mealStyle(c)[m.key].color, 0.18),
+                  },
+                ]}
+              >
+                <Icon
+                  name={mealStyle(c)[m.key].icon}
+                  size={17}
+                  color={mealStyle(c)[m.key].color}
+                  weight={2.3}
+                />
               </View>
+              <T v="headline" style={styles.flex}>
+                {m.label}
+              </T>
+              {list.length ? (
+                <T v="subheadStrong" color="secondary">
+                  {fmtNum(kcal, 0)} kcal
+                </T>
+              ) : null}
               {day !== today && list.length ? (
                 <IconButton
                   icon="copy"
@@ -473,23 +516,45 @@ const goalLine = (
     : `Consumo abituale ${what}.`;
 };
 
+const CLEAR = 'transparent';
+
+/** Icon and color of each meal. */
+const mealStyle = (c: {
+  yellow: string;
+  orange: string;
+  green: string;
+  accent: string;
+}): Record<MealKey, { icon: IconName; color: string }> => ({
+  breakfast: { icon: 'sun', color: c.yellow },
+  lunch: { icon: 'fork', color: c.orange },
+  snack: { icon: 'bolt', color: c.green },
+  dinner: { icon: 'moon', color: c.accent },
+});
+
 function Stat({
   label,
   value,
-  muted,
+  icon,
+  color,
 }: {
   label: string;
   value: number;
-  muted?: boolean;
+  icon: IconName;
+  color: string;
 }) {
   return (
-    <View>
-      <T v="footnote" color="secondary">
-        {label}
-      </T>
-      <T v="headline" color={muted ? 'secondary' : 'label'}>
-        {fmtNum(value, 0)} kcal
-      </T>
+    <View style={styles.stat}>
+      <View
+        style={[styles.statIcon, { backgroundColor: withAlpha(color, 0.18) }]}
+      >
+        <Icon name={icon} size={14} color={color} weight={2.3} />
+      </View>
+      <View>
+        <T v="footnote" color="secondary">
+          {label}
+        </T>
+        <T v="headline">{fmtNum(value, 0)} kcal</T>
+      </View>
     </View>
   );
 }
@@ -528,22 +593,38 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  week: {
+  weekRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
+    alignItems: 'center',
+    gap: 2,
+    marginBottom: 12,
   },
+  week: { flex: 1, flexDirection: 'row', justifyContent: 'space-between' },
   weekDay: { alignItems: 'center', gap: 6 },
   dayRing: { padding: 3, borderRadius: 24 },
-  todayLink: { alignSelf: 'center', marginTop: 10 },
+  todayLink: { alignSelf: 'center', marginTop: -4, marginBottom: 10 },
   hero: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  heroSide: { flex: 1, gap: 8 },
+  heroSide: { flex: 1, gap: 14 },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  statIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   macros: { flexDirection: 'row', gap: 14, marginTop: 18 },
   macro: { flex: 1, gap: 6 },
   track: { height: 6, borderRadius: 3, overflow: 'hidden' },
   fill: { height: 6, borderRadius: 3 },
-  goalNote: { marginTop: 14 },
-  energyRows: { marginTop: 10, gap: 10 },
+  energyHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  energyRows: { paddingHorizontal: 16, paddingBottom: 14, gap: 10 },
   energyRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   energyIcon: {
     width: 28,
@@ -552,11 +633,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  healthLink: { marginTop: 12 },
+  mealIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   mealHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
