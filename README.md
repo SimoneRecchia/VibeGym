@@ -100,6 +100,14 @@ Dopo l'aggiornamento serve rifare `pod install` (dipendenze native nuove: fotoca
 
 Controlli: `npx tsc --noEmit`, `npm run lint`, `npm test`.
 
+### Icona
+
+Generata da `scripts/build-icon.js` (8 varianti: `manubrio`, `battito`, `disco`, `kettlebell`, `trend`, `monogramma`, `anello`, `neurale`). Per cambiarla: `node scripts/build-icon.js <variante>`.
+
+- **iOS 26**: `ios/VibeGym/AppIcon.icon` (formato Icon Composer) con sfondo e simbolo su livelli di vetro: riflessi, rifrazione e le versioni chiara, scura e a tinta le genera il sistema. Xcode ricava da qui anche le icone per iOS precedenti. Si può rifinire aprendo il file con Icon Composer.
+- **Android**: icona adattiva vettoriale con livello monocromatico per le icone a tema (Android 13+).
+- **Play Store**: `docs/icon/play-store.png` (512 × 512).
+
 ## Build e rilasci automatici
 
 GitHub Actions compila l'APK quando vuoi (pubblicato come pre-release scaricabile dal telefono) e, quando pubblichi una Release `vX.Y.Z`, carica l'AAB firmato su Google Play. Configurazione passo passo: [`docs/RILASCI.md`](docs/RILASCI.md).
@@ -130,4 +138,5 @@ modules/vibe-vision/       modulo nativo: codici a barre, testo e cibi in una fo
 scripts/build-catalog.js   rigenera src/catalog/catalog.json dal dataset
 scripts/build-foods.js     rigenera src/nutrition/generic.json (USDA via tempo-food-db)
 scripts/build-media-map.js abbina gli esercizi alle animazioni di Workout Guide
+scripts/build-icon.js      icona dell'app (iOS Icon Composer, Android adattiva, Play Store)
 ```
