@@ -26,6 +26,8 @@ import { IconButton } from './Button';
 import { GlassGroup } from './Glass';
 
 export const BAR_H = 52;
+/** Height of a footer button plus the fade above it. */
+const FOOTER_FADE = 96;
 
 // Without a system blur (Android) the edge must hide content almost fully.
 const EDGE_TOP = Platform.OS === 'ios' ? 0.96 : 1;
@@ -36,6 +38,28 @@ export const JsTabInset = createContext<number | undefined>(undefined);
 
 /** Extra space taken by floating bars above the tab bar (workout in progress). */
 export const ExtraBottomInset = createContext(0);
+
+/**
+ * Fade to the background behind floating controls (bottom bars, footers),
+ * so content scrolling underneath disappears instead of colliding with them.
+ */
+export function BottomFade({ height }: { height: number }) {
+  const { c } = useTheme();
+  return (
+    <View pointerEvents="none" style={[styles.fade, { height }]}>
+      <Svg width="100%" height="100%">
+        <Defs>
+          <LinearGradient id="bottomFade" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={c.bg} stopOpacity={0} />
+            <Stop offset="0.45" stopColor={c.bg} stopOpacity={EDGE_MID} />
+            <Stop offset="1" stopColor={c.bg} stopOpacity={EDGE_TOP} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#bottomFade)" />
+      </Svg>
+    </View>
+  );
+}
 
 export const useTabBarInset = (): number => {
   const native = useContext(BottomTabBarHeightContext);
@@ -234,6 +258,16 @@ export function Screen({
       </View>
 
       {footer ? (
+        <BottomFade
+          height={
+            Math.max(insets.bottom, 12) +
+            (tabInset ? tabInset - insets.bottom : 0) +
+            extraInset +
+            FOOTER_FADE
+          }
+        />
+      ) : null}
+      {footer ? (
         <View
           pointerEvents="box-none"
           style={[
@@ -267,4 +301,5 @@ const styles = StyleSheet.create({
   sideRight: { justifyContent: 'flex-end' },
   inlineTitle: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
   footer: { position: 'absolute', left: GUTTER, right: GUTTER, bottom: 0 },
+  fade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
 });

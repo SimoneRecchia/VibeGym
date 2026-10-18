@@ -13,7 +13,12 @@ import { useStore } from '../data/store';
 import { ProgressTab } from '../screens/ProgressTab';
 import { PlanTab } from '../screens/PlanTab';
 import { NutritionTab } from '../screens/NutritionTab';
-import { ExtraBottomInset, JsTabInset, useTabBarInset } from '../ui/Screen';
+import {
+  BottomFade,
+  ExtraBottomInset,
+  JsTabInset,
+  useTabBarInset,
+} from '../ui/Screen';
 import {
   FLOATING_BAR_H,
   FloatingWorkoutBar,
@@ -140,6 +145,7 @@ function JsTabs() {
             </View>
           ) : null,
         )}
+        <BottomFade height={inset + 24} />
         <View
           pointerEvents="box-none"
           style={[styles.barWrap, { bottom: Math.max(insets.bottom, 12) }]}
