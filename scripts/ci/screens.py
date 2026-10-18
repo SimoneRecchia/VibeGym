@@ -132,6 +132,30 @@ def main(apk):
     bounds(seg)
     shot('segmented')
 
+    # Live workout with the demo plan.
+    for _ in range(3):
+        adb('shell', 'input', 'keyevent', '4')
+        time.sleep(1)
+    tap('Scheda')
+    tap('Inizia')
+    tap('Prova la scheda demo', scroll=True)
+    time.sleep(2)
+    if not tap('Inizia', timeout=10):
+        return
+    time.sleep(3)
+    log('== Allenamento')
+    shot('workout')
+    tap('Serie 1 completata', scroll=True)
+    time.sleep(1.5)
+    shot('workout-serie')
+    if tap('Modifica kg serie 2', scroll=True):
+        shot('workout-modifica')
+        adb('shell', 'input', 'keyevent', '4')
+        time.sleep(1)
+    adb('shell', 'input', 'swipe', '900', '1200', '150', '1200', '250')
+    time.sleep(2)
+    shot('workout-esercizio-2')
+
 
 if __name__ == '__main__':
     OUT = sys.argv[2]
