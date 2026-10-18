@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 import notifee, {
   AlarmType,
   AndroidImportance,
+  AndroidNotificationSetting,
   AuthorizationStatus,
   RepeatFrequency,
   TimestampTrigger,
@@ -45,6 +46,23 @@ const ensureChannels = () => {
   }
   return channelsReady;
 };
+
+/**
+ * Android 12+: exact alarms ("Sveglie e promemoria") can be off. Without them
+ * the rest-end notification may arrive late. Returns false only when off.
+ */
+export const exactAlarmsAllowed = async (): Promise<boolean> => {
+  if (Platform.OS !== 'android') return true;
+  try {
+    const s = await notifee.getNotificationSettings();
+    return s.android.alarm !== AndroidNotificationSetting.DISABLED;
+  } catch {
+    return true;
+  }
+};
+
+export const openExactAlarmSettings = () =>
+  notifee.openAlarmPermissionSettings().catch(() => {});
 
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {

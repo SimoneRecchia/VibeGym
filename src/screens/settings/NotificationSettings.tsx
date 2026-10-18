@@ -1,5 +1,5 @@
-import React from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, AppState, StyleSheet, View } from 'react-native';
 import { useStore } from '../../data/store';
 import { Screen } from '../../ui/Screen';
 import { Row, Section } from '../../ui/List';
@@ -8,6 +8,8 @@ import { Segmented } from '../../ui/Segmented';
 import { Chip } from '../../ui/Chip';
 import { Settings } from '../../core/types';
 import {
+  exactAlarmsAllowed,
+  openExactAlarmSettings,
   requestNotificationPermission,
   syncReminders,
 } from '../../services/notifications';
@@ -52,6 +54,18 @@ export function NotificationSettings() {
   const n = useStore(s => s.settings.notifications);
   const update = useStore(s => s.updateSettings);
 
+  const [exactOk, setExactOk] = useState(true);
+  useEffect(() => {
+    const check = () => exactAlarmsAllowed().then(setExactOk);
+    check();
+    // Re-check when coming back from the system settings.
+    const sub = AppState.addEventListener(
+      'change',
+      st => st === 'active' && check(),
+    );
+    return () => sub.remove();
+  }, []);
+
   const apply = async (next: N, enabling: boolean) => {
     if (enabling && !(await requestNotificationPermission())) {
       Alert.alert(
@@ -74,6 +88,14 @@ export function NotificationSettings() {
             onChange: v => apply({ ...n, restEnd: v }, v),
           }}
         />
+        {n.restEnd && !exactOk ? (
+          <Row
+            title="Rendi il timer puntuale"
+            subtitle="Consenti «Sveglie e promemoria»: senza, Android può ritardare l'avviso"
+            chevron
+            onPress={openExactAlarmSettings}
+          />
+        ) : null}
       </Section>
 
       <Section title="Promemoria allenamento">
