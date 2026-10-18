@@ -20,22 +20,8 @@ import { DayBadge } from '../components/DayBadge';
 import { ScreenProps } from '../../navigation/types';
 import { Plan } from '../../core/types';
 import { plural } from '../../core/format';
-
-/** Keep the old day ids when names match, so "last done" info survives a modify. */
-const carryDayIds = (next: Plan, old: Plan): Plan => ({
-  ...next,
-  id: old.id,
-  createdAt: old.createdAt,
-  days: next.days.map((d, i) => {
-    const same =
-      old.days.find(
-        o => o.name.trim().toLowerCase() === d.name.trim().toLowerCase(),
-      ) ?? old.days[i];
-    return same && !next.days.some((x, j) => j < i && x.id === same.id)
-      ? { ...d, id: same.id }
-      : d;
-  }),
-});
+import { carryDayIds } from '../../plan/planUtils';
+import { uid } from '../../core/ids';
 
 export function ImportReviewScreen({
   navigation,
@@ -65,18 +51,34 @@ export function ImportReviewScreen({
     0,
   );
 
+  /** Plan as it will be stored, plus how the file's day ids map onto it. */
+  const resolve = (mode: 'new' | 'replace') => {
+    if (mode === 'replace' && old) return carryDayIds(plan, old);
+    // Never overwrite a different plan that happens to share the id.
+    const clash = useStore.getState().plans.some(p => p.id === plan.id);
+    return {
+      plan: clash ? { ...plan, id: uid('p') } : plan,
+      dayMap: {} as Record<string, string>,
+    };
+  };
+
+  const importHistory = (target: Plan, dayMap: Record<string, string>) => {
+    if (!withHistory || !parsed.sessions.length) return;
+    importSessions(
+      parsed.sessions.map(s => ({
+        ...s,
+        planId: target.id,
+        planName: target.name,
+        dayId: dayMap[s.dayId] ?? s.dayId,
+      })),
+    );
+  };
+
   const finish = (mode: 'new' | 'replace') => {
-    if (mode === 'replace' && old) savePlan(carryDayIds(plan, old));
-    else addPlan(plan);
-    if (withHistory && parsed.sessions.length) {
-      importSessions(
-        parsed.sessions.map(s => ({
-          ...s,
-          planId: plan.id,
-          planName: plan.name,
-        })),
-      );
-    }
+    const { plan: target, dayMap } = resolve(mode);
+    if (mode === 'replace' && old) savePlan(target);
+    else addPlan(target);
+    importHistory(target, dayMap);
     completeOnboarding();
     useDraft.setState({ parsed: null, replacesPlanId: null });
     toast(mode === 'replace' ? 'Scheda aggiornata' : 'Scheda salvata');
@@ -84,7 +86,10 @@ export function ImportReviewScreen({
   };
 
   const edit = () => {
-    useDraft.setState({ editing: old ? carryDayIds(plan, old) : plan });
+    const { plan: target, dayMap } = resolve(old ? 'replace' : 'new');
+    // History is independent of the plan: keep it even if editing is cancelled.
+    importHistory(target, dayMap);
+    useDraft.setState({ editing: target, parsed: { ...parsed, sessions: [] } });
     navigation.navigate('PlanEditor');
   };
 

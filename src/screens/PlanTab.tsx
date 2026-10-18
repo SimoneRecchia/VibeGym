@@ -214,9 +214,12 @@ export function PlanTab() {
               ) : null}
               <View style={styles.heroActions}>
                 <Button
-                  title="Inizia"
+                  title={
+                    allExercises(nextDay).length ? 'Inizia' : 'Giorno vuoto'
+                  }
                   icon="play"
                   onPress={() => start(nextDay)}
+                  disabled={!allExercises(nextDay).length}
                   style={styles.flex}
                 />
                 <IconButton

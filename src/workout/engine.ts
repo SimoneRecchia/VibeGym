@@ -53,24 +53,27 @@ export const buildWorkout = (
     exercises: b.exercises.map(ex => {
       const key = keyOf(ex);
       const last = lastPerformance(sessions, key);
-      // If the plan was edited after the last session, trust the new targets.
-      const planNewer = last
-        ? new Date(plan.updatedAt).getTime() >
-          new Date(last.session.endedAt).getTime()
-        : true;
       const lastDone = last?.ex.sets.filter(s => s.done) ?? [];
+      const lastTarget = last?.ex.target ?? [];
+      /** The plan's load for this set changed since the last session. */
+      const targetChanged = (i: number, kg: number | undefined) =>
+        lastTarget.length > 0 &&
+        (lastTarget[Math.min(i, lastTarget.length - 1)]?.kg ?? 0) !==
+          (kg ?? 0);
       const sets: LoggedSet[] = ex.sets.map((t, i) => {
         const prev = last?.ex.sets[i]?.done
           ? last.ex.sets[i]
           : lastDone[lastDone.length - 1];
+        // What you actually lifted last time, unless the plan's load was
+        // edited since then (then the new target wins).
+        const useLast = prev?.kg != null && !targetChanged(i, t.kg);
         const s: LoggedSet = { done: false };
         if (ex.kind === 'reps') {
           s.reps = t.reps ?? prev?.reps ?? 10;
-          s.kg =
-            !planNewer && prev?.kg != null ? prev.kg : t.kg ?? prev?.kg ?? 0;
+          s.kg = useLast ? prev!.kg : t.kg ?? prev?.kg ?? 0;
         } else if (ex.kind === 'time') {
           s.sec = t.sec ?? prev?.sec ?? 30;
-          s.kg = !planNewer && prev?.kg != null ? prev.kg : t.kg ?? 0;
+          s.kg = useLast ? prev!.kg : t.kg ?? 0;
         } else {
           s.sec = t.sec ?? prev?.sec;
           s.km = t.km ?? prev?.km;
@@ -144,12 +147,32 @@ export const workoutProgress = (
  * the exercise that closes it) and none after the very last set.
  */
 export const restAfter = (w: ActiveWorkout, ref: SetRef): number => {
-  const ex = w.blocks[ref.bi].exercises[ref.ei];
+  const block = w.blocks[ref.bi];
+  const ex = block.exercises[ref.ei];
   const others = orderedRefs(w).some(
     r =>
       !(r.bi === ref.bi && r.ei === ref.ei && r.si === ref.si) && !isDone(w, r),
   );
-  return others ? ex.restSec : 0;
+  if (!others) return 0;
+  // Still inside the round: only the (usually zero) transition pause.
+  const laterInRound = block.exercises.some(
+    (e, ei) => ei > ref.ei && !!e.sets[ref.si],
+  );
+  if (laterInRound) return ex.restSec;
+  // The round is over (even when the closing exercise has fewer sets).
+  const closing = block.exercises[block.exercises.length - 1];
+  return Math.max(ex.restSec, closing.restSec);
+};
+
+/** First pending set outside block `bi`, going forward then wrapping. */
+export const nextOutsideBlock = (w: ActiveWorkout, bi: number): SetRef | null => {
+  const refs = orderedRefs(w);
+  let lastIdx = -1;
+  refs.forEach((r, i) => {
+    if (r.bi === bi) lastIdx = i;
+  });
+  const order = [...refs.slice(lastIdx + 1), ...refs.slice(0, lastIdx + 1)];
+  return order.find(r => r.bi !== bi && !isDone(w, r)) ?? null;
 };
 
 /** Deep-ish clone sufficient for immutable updates of the workout. */

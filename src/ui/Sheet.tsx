@@ -15,7 +15,10 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { Glass, NATIVE_GLASS } from './Glass';
 import { T } from './Text';
@@ -45,8 +48,9 @@ export function Sheet({
   maxHeight = 0.88,
 }: Props) {
   const { c } = useTheme();
-  const insets = useSafeAreaInsets();
   const [mounted, setMounted] = useState(visible);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const progress = useRef(new Animated.Value(0)).current;
   const drag = useRef(new Animated.Value(0)).current;
   const H = Dimensions.get('window').height;
@@ -76,7 +80,7 @@ export function Sheet({
         g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
       onPanResponderMove: (_, g) => drag.setValue(Math.max(0, g.dy)),
       onPanResponderRelease: (_, g) => {
-        if (g.dy > 90 || g.vy > 1.1) onClose();
+        if (g.dy > 90 || g.vy > 1.1) onCloseRef.current();
         else
           Animated.spring(drag, {
             toValue: 0,
@@ -104,83 +108,97 @@ export function Sheet({
       statusBarTranslucent
       navigationBarTranslucent
     >
-      <KeyboardAvoidingView
-        style={styles.fill}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: c.scrim, opacity: progress },
-          ]}
+      {/* Own provider: the modal window draws under the system bars. */}
+      <SafeAreaProvider>
+        <KeyboardAvoidingView
+          style={styles.fill}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <Pressable
-            style={styles.fill}
-            onPress={onClose}
-            accessibilityLabel="Chiudi"
-          />
-        </Animated.View>
-        <Animated.View
-          style={[
-            styles.panelWrap,
-            {
-              paddingBottom: Math.max(insets.bottom, 8),
-              maxHeight: H * maxHeight,
-              transform: [{ translateY }],
-            },
-          ]}
-        >
-          <Glass
-            flat
-            style={[styles.panel, !NATIVE_GLASS && { backgroundColor: c.card }]}
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFill,
+              { backgroundColor: c.scrim, opacity: progress },
+            ]}
           >
-            <View {...pan.panHandlers}>
-              <View style={[styles.grabber, { backgroundColor: c.tertiary }]} />
-              {title || action ? (
-                <View style={styles.header}>
-                  <IconButton
-                    icon="xmark"
-                    onPress={onClose}
-                    size={36}
-                    accessibilityLabel="Chiudi"
-                  />
-                  <View style={styles.headerText}>
-                    {title ? (
-                      <T v="headline" align="center" numberOfLines={1}>
-                        {title}
-                      </T>
-                    ) : null}
-                    {subtitle ? (
-                      <T
-                        v="footnote"
-                        color="secondary"
-                        align="center"
-                        numberOfLines={1}
-                      >
-                        {subtitle}
-                      </T>
-                    ) : null}
-                  </View>
-                  <View style={styles.headerSide}>{action}</View>
-                </View>
-              ) : null}
-            </View>
-            <Content
-              style={scroll ? styles.scroll : undefined}
-              contentContainerStyle={scroll ? styles.content : undefined}
-              keyboardShouldPersistTaps="handled"
+            <Pressable
+              style={styles.fill}
+              onPress={onClose}
+              accessibilityLabel="Chiudi"
+            />
+          </Animated.View>
+          <Animated.View
+            style={[
+              styles.panelWrap,
+              {
+                maxHeight: H * maxHeight,
+                transform: [{ translateY }],
+              },
+            ]}
+          >
+            <Glass
+              flat
+              style={[
+                styles.panel,
+                !NATIVE_GLASS && { backgroundColor: c.card },
+              ]}
             >
-              {scroll ? (
-                children
-              ) : (
-                <View style={styles.content}>{children}</View>
-              )}
-            </Content>
-          </Glass>
-        </Animated.View>
-      </KeyboardAvoidingView>
+              <View {...pan.panHandlers}>
+                <View
+                  style={[styles.grabber, { backgroundColor: c.tertiary }]}
+                />
+                {title || action ? (
+                  <View style={styles.header}>
+                    <IconButton
+                      icon="xmark"
+                      onPress={onClose}
+                      size={36}
+                      accessibilityLabel="Chiudi"
+                    />
+                    <View style={styles.headerText}>
+                      {title ? (
+                        <T v="headline" align="center" numberOfLines={1}>
+                          {title}
+                        </T>
+                      ) : null}
+                      {subtitle ? (
+                        <T
+                          v="footnote"
+                          color="secondary"
+                          align="center"
+                          numberOfLines={1}
+                        >
+                          {subtitle}
+                        </T>
+                      ) : null}
+                    </View>
+                    <View style={styles.headerSide}>{action}</View>
+                  </View>
+                ) : null}
+              </View>
+              <Content
+                style={scroll ? styles.scroll : undefined}
+                contentContainerStyle={scroll ? styles.content : undefined}
+                keyboardShouldPersistTaps="handled"
+              >
+                {scroll ? (
+                  children
+                ) : (
+                  <View style={styles.content}>{children}</View>
+                )}
+              </Content>
+            </Glass>
+            <BottomGap />
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </SafeAreaProvider>
     </Modal>
   );
+}
+
+/** Space between the floating sheet and the bottom edge / navigation bar. */
+function BottomGap() {
+  const insets = useSafeAreaInsets();
+  return <View style={{ height: Math.max(insets.bottom, 8) }} />;
 }
 
 const styles = StyleSheet.create({

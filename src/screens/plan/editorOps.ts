@@ -82,15 +82,23 @@ export const ops = {
     }),
   deleteExercise: (dayId: string, blockId: string, exerciseId: string) =>
     editDraft(p => {
-      const { day, block, bi, ei } = findExercise(
+      const { day, block, bi, ei, ex } = findExercise(
         p,
         dayId,
         blockId,
         exerciseId,
       );
-      if (!day || !block) return;
+      if (!day || !block || !ex) return;
+      const wasLast = ei === block.exercises.length - 1;
       block.exercises.splice(ei, 1);
-      if (!block.exercises.length) day.blocks.splice(bi, 1);
+      if (!block.exercises.length) {
+        day.blocks.splice(bi, 1);
+        return;
+      }
+      // The exercise closing the superset carried the round's rest: hand it over.
+      const closing = block.exercises[block.exercises.length - 1];
+      if (wasLast) closing.restSec = Math.max(closing.restSec, ex.restSec);
+      if (block.exercises.length === 1 && !closing.restSec) closing.restSec = 90;
     }),
   duplicateExercise: (dayId: string, blockId: string, exerciseId: string) =>
     editDraft(p => {

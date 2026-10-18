@@ -1,5 +1,11 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, Linking, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Platform,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { useStore } from '../../data/store';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Screen } from '../../ui/Screen';
@@ -19,8 +25,9 @@ export function ScaleSettings() {
   const scale = useStore(s => s.settings.scale);
   const unit = useStore(s => s.settings.unit);
   const update = useStore(s => s.updateSettings);
-  const { status, found, start, stop } = useScale({ discover: true });
-  const searching = status === 'scanning' || status === 'measuring';
+  const { status, found, start, stop, slow } = useScale({ discover: true });
+  const searching =
+    status === 'scanning' || status === 'measuring' || status === 'waiting';
 
   useEffect(() => stop, [stop]);
 
@@ -119,8 +126,14 @@ export function ScaleSettings() {
         {searching ? (
           <View style={styles.searching}>
             <ActivityIndicator color={c.accent} />
-            <T v="subhead" color="secondary">
-              Sali sulla bilancia…
+            <T v="subhead" color="secondary" style={styles.flex}>
+              {status === 'waiting'
+                ? 'Attendo il Bluetooth…'
+                : slow && !found.length
+                ? Platform.OS === 'android' && Platform.Version < 31
+                  ? 'Ancora niente: salici sopra e attiva la Localizzazione (necessaria su questa versione di Android).'
+                  : 'Ancora niente: salici sopra per accenderla e tieni il telefono vicino.'
+                : 'Sali sulla bilancia…'}
             </T>
           </View>
         ) : null}

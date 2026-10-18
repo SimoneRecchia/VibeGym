@@ -173,21 +173,42 @@ const legacyDay = (raw: Any, index: number): Day => {
   };
 };
 
+/** Keys that only exist in the current (v3) format. */
+const V3_KEYS = [
+  'ripetizioni',
+  'carico_kg',
+  'superset',
+  'durata_min',
+  'catalogo',
+  'a_cedimento',
+  'distanza_km',
+  'circuito',
+];
+
+/**
+ * Old app files: schema_version 2, or v1 shapes (stringy `peso_suggerito`,
+ * `reps` objects, `tipo: "superset"` with nested `esercizi`). Anything using
+ * v3 keys goes to the current parser, which also understands `reps`/`durata_sec`.
+ */
 export const isLegacyPlan = (raw: unknown): boolean => {
   if (!raw || typeof raw !== 'object') return false;
   const o = raw as Any;
   if (o.schema_version === 2) return true;
   if (o.formato || o.versione === 3) return false;
   if (!Array.isArray(o.giorni)) return false;
-  return (o.giorni as Any[]).some(g =>
-    ((g?.esercizi ?? []) as Any[]).some(
+  const exercises = (o.giorni as Any[]).flatMap(g =>
+    ((g?.esercizi ?? []) as Any[]).filter(e => e && typeof e === 'object'),
+  );
+  if (exercises.some(e => V3_KEYS.some(k => k in e))) return false;
+  return (
+    Array.isArray(o.storico) ||
+    exercises.some(
       e =>
-        e &&
-        ('reps' in e ||
-          'peso_suggerito' in e ||
-          e.tipo === 'superset' ||
-          ('durata_sec' in e && !('tipo' in e))),
-    ),
+        'peso_suggerito' in e ||
+        'note_coach' in e ||
+        (e.reps && typeof e.reps === 'object') ||
+        (e.tipo === 'superset' && Array.isArray(e.esercizi)),
+    )
   );
 };
 

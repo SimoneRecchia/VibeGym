@@ -46,7 +46,8 @@ export const SLICE_KEYS: SliceKey[] = [
 const storageKey = (k: SliceKey) => `vg3:${k}`;
 const META_KEY = 'vg3:meta';
 
-export const EMPTY_STATE: PersistedState = {
+/** Fresh empty state (new arrays every time: callers may mutate them). */
+export const emptyState = (): PersistedState => ({
   onboarded: false,
   plans: [],
   activePlanId: null,
@@ -56,7 +57,7 @@ export const EMPTY_STATE: PersistedState = {
   profile: {},
   settings: DEFAULT_SETTINGS,
   workout: null,
-};
+});
 
 /** Merge stored settings over defaults (new settings get their default). */
 export const mergeSettings = (s: Partial<Settings> | undefined): Settings => ({
@@ -95,7 +96,7 @@ export const loadState = async (): Promise<PersistedState> => {
   const pairs = await AsyncStorage.multiGet(SLICE_KEYS.map(storageKey)).catch(
     () => [] as readonly [string, string | null][],
   );
-  const state: PersistedState = { ...EMPTY_STATE };
+  const state: PersistedState = emptyState();
   pairs.forEach(([k, v]) => {
     if (v == null) return;
     const slice = k.slice(4) as SliceKey;
@@ -186,7 +187,7 @@ const migrateLegacyStorage = async (): Promise<PersistedState> => {
   ]);
 
   const state: PersistedState = {
-    ...EMPTY_STATE,
+    ...emptyState(),
     settings: mergeSettings(undefined),
   };
   const legacyPlans: any[] = Array.isArray(plansRaw)

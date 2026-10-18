@@ -62,14 +62,23 @@ const toNumber = (v: unknown): number | undefined => {
 };
 
 /** Number, array of numbers, or "12/10/8" string → number[] (may be empty). */
-const toNumberList = (v: unknown): number[] => {
+/**
+ * Number, array of numbers, or a list in a string ("12/10/8", "12, 10, 8")
+ * → number[] (may be empty). For integer fields (reps, seconds) a bare comma
+ * also separates values ("12,10,8"); for loads "62,5" stays a decimal.
+ */
+const toNumberList = (v: unknown, integers = false): number[] => {
   if (Array.isArray(v))
     return v.map(toNumber).filter((x): x is number => x != null);
-  if (typeof v === 'string' && /[/;]|,\s/.test(v)) {
-    return v
-      .split(/[/;]|,\s/)
-      .map(toNumber)
-      .filter((x): x is number => x != null);
+  if (typeof v === 'string') {
+    const commas = (v.match(/,/g) ?? []).length;
+    const sep = integers || commas > 1 ? /[/;,]/ : /[/;]|,\s/;
+    if (sep.test(v)) {
+      return v
+        .split(sep)
+        .map(toNumber)
+        .filter((x): x is number => x != null);
+    }
   }
   const n = toNumber(v);
   return n == null ? [] : [n];
@@ -133,12 +142,13 @@ const parseExercise = (
   if (!catalogId) catalogId = matchCatalog(name);
   if (!catalogId) ctx.unmatched++;
 
-  const repsList = toNumberList(raw.ripetizioni ?? raw.reps);
+  const repsList = toNumberList(raw.ripetizioni ?? raw.reps, true);
   const kgList = toNumberList(
     raw.carico_kg ?? raw.kg ?? raw.peso_kg ?? raw.carico,
   );
   const secList = toNumberList(
     raw.durata_sec ?? (raw.durata_min != null ? undefined : raw.secondi),
+    true,
   );
   const minList = toNumberList(raw.durata_min);
   const kmList = toNumberList(raw.distanza_km);

@@ -91,14 +91,16 @@ export const scheduleRestEnd = async (endAt: number, nextLabel: string) => {
           : 'Pronto per la prossima serie',
         android: {
           channelId: CH_TIMER,
-          smallIcon: 'ic_launcher',
+          smallIcon: 'ic_stat_notify',
           pressAction: { id: 'default' },
           timestamp: endAt,
           showTimestamp: true,
         },
         ios: { sound: 'default', interruptionLevel: 'timeSensitive' },
       },
-      trigger(endAt, undefined, false),
+      // Exact alarm: a rest timer late by minutes is useless. notify-kit falls
+      // back to an inexact alarm if the user didn't allow exact ones.
+      trigger(endAt, undefined, true),
     );
   } catch {
     /* permission missing or module unavailable */
@@ -164,7 +166,7 @@ const reminder = (
       body,
       android: {
         channelId: CH_REMINDERS,
-        smallIcon: 'ic_launcher',
+        smallIcon: 'ic_stat_notify',
         pressAction: { id: 'default' },
       },
     },

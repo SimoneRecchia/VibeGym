@@ -201,3 +201,40 @@ export const duplicatePlan = (p: Plan): Plan => {
 
 export const dayLetter = (i: number): string =>
   String.fromCharCode(65 + (i % 26));
+
+/**
+ * Keep the old plan id and day ids (same name first, then same position), so
+ * "last done" info and the day rotation survive a modify. Each old id is used
+ * once. Returns the mapping new day id → kept id.
+ */
+export const carryDayIds = (
+  next: Plan,
+  old: Plan,
+): { plan: Plan; dayMap: Record<string, string> } => {
+  const norm = (n: string) => n.trim().toLowerCase();
+  const used = new Set<string>();
+  const ids: (string | undefined)[] = next.days.map(d => {
+    const same = old.days.find(
+      o => !used.has(o.id) && norm(o.name) === norm(d.name),
+    );
+    if (same) used.add(same.id);
+    return same?.id;
+  });
+  next.days.forEach((_, i) => {
+    const byPos = old.days[i];
+    if (!ids[i] && byPos && !used.has(byPos.id)) {
+      ids[i] = byPos.id;
+      used.add(byPos.id);
+    }
+  });
+  const dayMap: Record<string, string> = {};
+  const days = next.days.map((d, i) => {
+    const id = ids[i] ?? d.id;
+    dayMap[d.id] = id;
+    return { ...d, id };
+  });
+  return {
+    plan: { ...next, id: old.id, createdAt: old.createdAt, days },
+    dayMap,
+  };
+};

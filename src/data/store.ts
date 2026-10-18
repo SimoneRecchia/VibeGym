@@ -12,7 +12,7 @@ import {
   Settings,
 } from '../core/types';
 import {
-  EMPTY_STATE,
+  emptyState,
   PersistedState,
   SLICE_KEYS,
   SliceKey,
@@ -72,7 +72,7 @@ const sortByDate = <T extends { date: string }>(a: T[]): T[] =>
   a.slice().sort((x, y) => x.date.localeCompare(y.date));
 
 export const useStore = create<AppStore>()((set, get) => ({
-  ...EMPTY_STATE,
+  ...emptyState(),
   hydrated: false,
 
   hydrate: async () => {
@@ -115,7 +115,7 @@ export const useStore = create<AppStore>()((set, get) => ({
     const { plans, sessions } = get();
     const plan = plans.find(p => p.id === planId);
     const day = plan?.days.find(d => d.id === dayId);
-    if (!plan || !day) return null;
+    if (!plan || !day || !day.blocks.some(b => b.exercises.length)) return null;
     const workout = buildWorkout(plan, day, sessions);
     set({ workout });
     return workout;
@@ -133,12 +133,12 @@ export const useStore = create<AppStore>()((set, get) => ({
       if (!ex?.sets[si]) return;
       Object.assign(ex.sets[si], patch);
       if (propagate) {
-        // Carry a changed load / reps / time to the following sets not yet done.
+        // Carry the changed values to the following sets not yet done.
         for (let i = si + 1; i < ex.sets.length; i++) {
           if (ex.sets[i].done) continue;
-          if (patch.kg !== undefined) ex.sets[i].kg = patch.kg;
-          if (patch.sec !== undefined && ex.kind !== 'reps')
-            ex.sets[i].sec = patch.sec;
+          for (const k of ['kg', 'reps', 'sec', 'km'] as const) {
+            if (k in patch) ex.sets[i][k] = patch[k];
+          }
         }
       }
     }),
@@ -147,6 +147,8 @@ export const useStore = create<AppStore>()((set, get) => ({
     if (!workout) return null;
     const session = toSession(workout, sessions);
     set({ sessions: [...sessions, session], workout: null });
+    // Write history and the cleared workout together, right away.
+    flushPersistence();
     return session;
   },
   discardWorkout: () => set({ workout: null }),
@@ -179,14 +181,14 @@ export const useStore = create<AppStore>()((set, get) => ({
 
   replaceAll: incoming =>
     set(() => ({
-      ...EMPTY_STATE,
+      ...emptyState(),
       ...incoming,
       settings: mergeSettings(incoming.settings),
       onboarded: true,
     })),
   resetAll: async () => {
     await clearAll();
-    set({ ...EMPTY_STATE, hydrated: true });
+    set({ ...emptyState(), hydrated: true });
   },
 }));
 

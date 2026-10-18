@@ -24,6 +24,7 @@ jest.mock('@react-native-clipboard/clipboard', () => ({
 jest.mock('@react-native-documents/picker', () => ({
   pick: jest.fn(() => Promise.resolve([])),
   keepLocalCopy: jest.fn(() => Promise.resolve([])),
+  saveDocuments: jest.fn(() => Promise.resolve([])),
   types: { allFiles: '*/*', json: 'application/json', plainText: 'text/plain' },
   errorCodes: { OPERATION_CANCELED: 'OPERATION_CANCELED' },
   isErrorWithCode: () => false,

@@ -14,6 +14,8 @@ export type TimerPhase = 'idle' | 'rest' | 'work';
 
 export interface TimerState {
   phase: TimerPhase;
+  /** epoch ms when the phase started (elapsed time = wall clock). */
+  startedAt: number;
   endAt: number;
   total: number;
   remaining: number;
@@ -28,6 +30,7 @@ export interface TimerState {
 
 const IDLE: TimerState = {
   phase: 'idle',
+  startedAt: 0,
   endAt: 0,
   total: 0,
   remaining: 0,
@@ -90,7 +93,9 @@ const end = (elapsedOverride?: number) => {
     playEnd();
     haptic('success');
   }
-  const elapsed = elapsedOverride ?? s.total;
+  // Wall-clock duration: stays right after −15 s / +15 s adjustments.
+  const elapsed =
+    elapsedOverride ?? Math.max(1, Math.round((s.endAt - s.startedAt) / 1000));
   listeners.forEach(l => l(s, elapsed));
   if (s.phase === 'work' && s.restAfter > 0) {
     // Chain the rest; if we were in background, account for the time already spent.
@@ -122,6 +127,7 @@ const begin = (
   const endAt = from + sec * 1000;
   useTimer.setState({
     phase,
+    startedAt: from,
     endAt,
     total: sec,
     remaining: Math.max(0, Math.ceil((endAt - Date.now()) / 1000)),
@@ -170,10 +176,7 @@ export const finishNow = () => {
     useTimer.setState({ ...IDLE });
     return;
   }
-  const elapsed = Math.max(
-    1,
-    Math.round(s.total - Math.max(0, (s.endAt - Date.now()) / 1000)),
-  );
+  const elapsed = Math.max(1, Math.round((Date.now() - s.startedAt) / 1000));
   useTimer.setState({ endAt: Date.now(), restAfter: s.restAfter });
   end(elapsed);
 };

@@ -1,8 +1,14 @@
 /**
  * Weigh-in: straight from the Xiaomi scale over Bluetooth, or by hand.
  */
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Linking, StyleSheet, View } from 'react-native';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { Animated, Linking, Platform, StyleSheet, View } from 'react-native';
 import { Sheet } from '../../ui/Sheet';
 import { Segmented } from '../../ui/Segmented';
 import { Stepper } from '../../ui/Stepper';
@@ -13,7 +19,7 @@ import { toast } from '../../ui/Toast';
 import { useTheme } from '../../theme/ThemeProvider';
 import { selectLatestWeight, useStore } from '../../data/store';
 import { openBluetoothSettings, useScale } from '../../scale/useScale';
-import { SCALE_MODEL_LABEL } from '../../scale/miScale';
+import { SCALE_MODEL_LABEL, ScaleReading } from '../../scale/miScale';
 import { computeComposition } from '../../body/composition';
 import { ageFrom } from '../../core/dates';
 import { fmtNum } from '../../core/format';
@@ -103,8 +109,21 @@ function ScaleReader({ onDone }: { onDone: () => void }) {
   const body = useStore(s => s.body);
   const add = useStore(s => s.addBodyEntry);
   const updateSettings = useStore(s => s.updateSettings);
-  const { status, reading, device, start } = useScale({
+  // The scale keeps broadcasting its last measurement: skip the saved ones and
+  // wait for the new weigh-in.
+  const savedStamps = useMemo(
+    () => new Set(body.map(b => b.scaleStamp).filter(Boolean)),
+    [body],
+  );
+  const skipRef = useRef(savedStamps);
+  skipRef.current = savedStamps;
+  const skip = useCallback(
+    (r: ScaleReading) => !!r.timestamp && skipRef.current.has(r.timestamp),
+    [],
+  );
+  const { status, reading, device, start, slow } = useScale({
     deviceId: settings.deviceId,
+    skip,
   });
   const [saved, setSaved] = useState(false);
   const pulse = useRef(new Animated.Value(0)).current;
@@ -269,8 +288,19 @@ function ScaleReader({ onDone }: { onDone: () => void }) {
               })`
           : status === 'measuring'
           ? 'Resta fermo, sto stabilizzando…'
+          : status === 'waiting'
+          ? 'Attendo il Bluetooth…'
           : 'Sali sulla bilancia a piedi nudi'}
       </T>
+      {slow && !reading ? (
+        <T v="footnote" color="tertiary" align="center">
+          Non trovo la bilancia: salici sopra per accenderla e tieni il telefono
+          vicino.
+          {Platform.OS === 'android' && Platform.Version < 31
+            ? ' Su questa versione di Android serve anche la Localizzazione attiva.'
+            : ''}
+        </T>
+      ) : null}
       {done && reading.model === 'mi-body-composition' && !reading.impedance ? (
         <T v="footnote" color="tertiary" align="center">
           Impedenza non ricevuta: per la composizione corporea sali a piedi nudi

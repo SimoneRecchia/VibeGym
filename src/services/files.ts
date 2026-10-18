@@ -7,6 +7,7 @@ import {
   isErrorWithCode,
   keepLocalCopy,
   pick,
+  saveDocuments,
   types,
 } from '@react-native-documents/picker';
 import RNFS from 'react-native-fs';
@@ -25,9 +26,20 @@ export const pickTextFile = async (): Promise<string | null> => {
       files: [{ uri: file.uri, fileName: file.name ?? 'import.json' }],
       destination: 'cachesDirectory',
     });
-    const uri = copy.status === 'success' ? copy.localUri : file.uri;
-    const path = decodeURIComponent(uri.replace(/^file:\/\//, ''));
-    return await RNFS.readFile(path, 'utf8');
+    if (copy.status === 'success') {
+      // localUri is a percent-encoded file:// URI.
+      return await RNFS.readFile(
+        decodeURIComponent(copy.localUri.replace(/^file:\/\//, '')),
+        'utf8',
+      );
+    }
+    // Fallback: RNFS reads content:// URIs as they are (no decoding).
+    return await RNFS.readFile(
+      file.uri.startsWith('file://')
+        ? decodeURIComponent(file.uri.replace(/^file:\/\//, ''))
+        : file.uri,
+      'utf8',
+    );
   } catch (e) {
     if (isErrorWithCode(e) && e.code === errorCodes.OPERATION_CANCELED)
       return null;
@@ -35,13 +47,26 @@ export const pickTextFile = async (): Promise<string | null> => {
   }
 };
 
-/** Share a JSON export: a real file on iOS, text on Android. */
+/**
+ * Export a JSON file. iOS: share sheet with the file (Save to Files, AirDrop,
+ * mail…). Android: "save as" dialog (Downloads, Drive…), which also works for
+ * backups too big for a text share.
+ */
 export const shareJson = async (fileName: string, json: string) => {
+  const path = `${RNFS.CachesDirectoryPath}/${fileName}`;
+  await RNFS.writeFile(path, json, 'utf8');
   if (Platform.OS === 'ios') {
-    const path = `${RNFS.CachesDirectoryPath}/${fileName}`;
-    await RNFS.writeFile(path, json, 'utf8');
     await Share.share({ url: `file://${path}` });
-  } else {
-    await Share.share({ message: json, title: fileName });
+    return;
+  }
+  try {
+    await saveDocuments({
+      sourceUris: [`file://${path}`],
+      mimeType: 'application/json',
+      fileName,
+    });
+  } catch (e) {
+    if (isErrorWithCode(e) && e.code === errorCodes.OPERATION_CANCELED) return;
+    throw e;
   }
 };

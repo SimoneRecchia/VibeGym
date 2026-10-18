@@ -3,7 +3,7 @@
  * floating glass navigation buttons and a soft scroll-edge effect, as in
  * iOS 26 navigation bars.
  */
-import React, { createContext, useContext, useRef } from 'react';
+import React, { createContext, useContext, useMemo, useRef } from 'react';
 import {
   Animated,
   KeyboardAvoidingView,
@@ -114,15 +114,17 @@ export function Screen({
       <IconButton icon="xmark" onPress={goBack} accessibilityLabel="Chiudi" />
     ) : null);
 
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y } } }],
-    {
-      useNativeDriver: true,
-      listener: onScroll
-        ? (e: NativeSyntheticEvent<NativeScrollEvent>) =>
-            onScroll(e.nativeEvent.contentOffset.y)
-        : undefined,
-    },
+  // Created once: re-creating a native-driven event detaches it every render.
+  const onScrollRef = useRef(onScroll);
+  onScrollRef.current = onScroll;
+  const handleScroll = useMemo(
+    () =>
+      Animated.event([{ nativeEvent: { contentOffset: { y } } }], {
+        useNativeDriver: true,
+        listener: (e: NativeSyntheticEvent<NativeScrollEvent>) =>
+          onScrollRef.current?.(e.nativeEvent.contentOffset.y),
+      }),
+    [y],
   );
 
   const body = (

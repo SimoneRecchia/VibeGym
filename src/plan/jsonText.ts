@@ -49,16 +49,8 @@ const fixQuotes = (s: string): string =>
 
 export class JsonTextError extends Error {}
 
-export const extractJson = (text: string): unknown => {
-  let s = fixQuotes(text.trim());
-  if (!s) throw new JsonTextError('Il testo è vuoto.');
-  const fence = s.match(/```(?:json|JSON)?\s*([\s\S]*?)```/);
-  if (fence) s = fence[1].trim();
-  try {
-    return JSON.parse(s);
-  } catch {
-    /* fall through to lenient parsing */
-  }
+/** Lenient parse of an object/array found somewhere in the text. */
+const lenientParse = (s: string): unknown => {
   const startObj = s.indexOf('{');
   const startArr = s.indexOf('[');
   const start =
@@ -76,13 +68,36 @@ export const extractJson = (text: string): unknown => {
     throw new JsonTextError(
       'Il JSON sembra incompleto: manca la parentesi di chiusura.',
     );
-  const body = stripTrailingCommas(stripComments(s.slice(start, end + 1)));
+  return JSON.parse(
+    stripTrailingCommas(stripComments(s.slice(start, end + 1))),
+  );
+};
+
+export const extractJson = (text: string): unknown => {
+  let s = text.trim();
+  if (!s) throw new JsonTextError('Il testo è vuoto.');
+  const fence = s.match(/```(?:json|JSON)?\s*([\s\S]*?)```/);
+  if (fence) s = fence[1].trim();
+  // Valid JSON first: typographic quotes inside strings (“Toro”) are fine there.
   try {
-    return JSON.parse(body);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    throw new JsonTextError(
-      `Il JSON non è valido (${msg}). Chiedi all'AI di rimandarlo completo.`,
-    );
+    return JSON.parse(s);
+  } catch {
+    /* fall through to lenient parsing */
   }
+  let lastError: unknown;
+  // Then tolerate prose, comments and trailing commas; as a last resort,
+  // chat apps that turned every " into “ ” are fixed too.
+  for (const candidate of [s, fixQuotes(s)]) {
+    try {
+      return lenientParse(candidate);
+    } catch (e) {
+      if (e instanceof JsonTextError) throw e;
+      lastError = e;
+    }
+  }
+  const msg =
+    lastError instanceof Error ? lastError.message : String(lastError);
+  throw new JsonTextError(
+    `Il JSON non è valido (${msg}). Chiedi all'AI di rimandarlo completo.`,
+  );
 };

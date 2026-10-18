@@ -23,6 +23,7 @@ import { EditField } from './SetTable';
 import {
   SetRef,
   isBlockDone,
+  nextOutsideBlock,
   nextInBlock,
   nextPending,
   workoutProgress,
@@ -177,14 +178,7 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
             label: 'Salta esercizio',
             onPress: () => {
               const w = useStore.getState().workout;
-              const next = w
-                ? nextPending({
-                    ...w,
-                    blocks: w.blocks.map((b, i) =>
-                      i === bi ? { ...b, exercises: [] } : b,
-                    ),
-                  })
-                : null;
+              const next = w ? nextOutsideBlock(w, bi) : null;
               if (next) goTo(next.bi);
             },
           },

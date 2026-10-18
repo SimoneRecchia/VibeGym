@@ -33,8 +33,11 @@ export function DataSettings({ navigation }: SettingsProps<'DataSettings'>) {
         `vibegym-backup-${new Date().toISOString().slice(0, 10)}.json`,
         json,
       );
-    } catch {
-      /* user dismissed the share sheet */
+    } catch (e) {
+      Alert.alert(
+        'Esportazione non riuscita',
+        e instanceof Error ? e.message : String(e),
+      );
     }
   };
 

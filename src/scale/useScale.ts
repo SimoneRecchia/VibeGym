@@ -4,11 +4,17 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, PermissionsAndroid, Platform } from 'react-native';
-import BleManager, { BleState, Peripheral } from 'react-native-ble-manager';
+import BleManager, {
+  BleScanMode,
+  BleState,
+  Peripheral,
+} from 'react-native-ble-manager';
 import { parseAdvertisement, ScaleReading } from './miScale';
 
 export type ScaleStatus =
   | 'idle'
+  /** Bluetooth stack still starting (iOS reports "unknown" at first). */
+  | 'waiting'
   | 'permission-denied'
   | 'bluetooth-off'
   | 'unsupported'
@@ -64,7 +70,12 @@ interface Options {
   discover?: boolean;
   /** How long to wait for the impedance after a stable weight (ms). */
   impedanceWaitMs?: number;
+  /** Ignore readings already handled (the scale keeps re-broadcasting the last one). */
+  skip?: (r: ScaleReading) => boolean;
 }
+
+/** After this long without readings, show a hint (location on old Android…). */
+const SLOW_MS = 20000;
 
 export function useScale(opts: Options = {}) {
   const [status, setStatus] = useState<ScaleStatus>('idle');
@@ -74,18 +85,30 @@ export function useScale(opts: Options = {}) {
   );
   const [found, setFound] = useState<FoundScale[]>([]);
   const [error, setError] = useState<string | null>(null);
+  /** No reading after a while: probably asleep, out of range or location off. */
+  const [slow, setSlow] = useState(false);
   const subs = useRef<{ remove: () => void }[]>([]);
   const finalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const optsRef = useRef(opts);
   optsRef.current = opts;
   const doneRef = useRef(false);
+  const scanningRef = useRef(false);
+  const gotReading = useRef(false);
+
+  const clearTimers = () => {
+    if (finalTimer.current) clearTimeout(finalTimer.current);
+    if (slowTimer.current) clearTimeout(slowTimer.current);
+    finalTimer.current = null;
+    slowTimer.current = null;
+  };
 
   const cleanup = useCallback(() => {
     subs.current.forEach(s => s.remove());
     subs.current = [];
-    if (finalTimer.current) clearTimeout(finalTimer.current);
-    finalTimer.current = null;
-    BleManager.stopScan().catch(() => {});
+    clearTimers();
+    if (scanningRef.current) BleManager.stopScan().catch(() => {});
+    scanningRef.current = false;
   }, []);
 
   const finish = useCallback(
@@ -110,6 +133,8 @@ export function useScale(opts: Options = {}) {
       const o = optsRef.current;
       const name = p.name || p.advertising?.localName || 'Bilancia Xiaomi';
       if (o.discover) {
+        gotReading.current = true;
+        setSlow(false);
         setFound(prev => {
           const others = prev.filter(f => f.id !== p.id);
           return [...others, { id: p.id, name, reading: r, rssi: p.rssi }].sort(
@@ -119,7 +144,9 @@ export function useScale(opts: Options = {}) {
         return;
       }
       if (o.deviceId && p.id !== o.deviceId) return;
-      if (doneRef.current) return;
+      if (doneRef.current || o.skip?.(r)) return;
+      gotReading.current = true;
+      setSlow(false);
       setDevice({ id: p.id, name });
       setReading(r);
       setStatus('measuring');
@@ -133,55 +160,79 @@ export function useScale(opts: Options = {}) {
       if (!finalTimer.current) {
         finalTimer.current = setTimeout(
           () => finish(r),
-          o.impedanceWaitMs ?? 4000,
+          o.impedanceWaitMs ?? 6000,
         );
       }
     },
     [finish],
   );
 
+  const scan = useCallback(async () => {
+    if (scanningRef.current) return;
+    scanningRef.current = true;
+    subs.current.push(BleManager.onDiscoverPeripheral(onPeripheral));
+    // Low latency: the scale only advertises for a few seconds.
+    await BleManager.scan({
+      serviceUUIDs: [],
+      seconds: 0,
+      allowDuplicates: true,
+      scanMode: BleScanMode.LowLatency,
+    });
+    setStatus('scanning');
+    slowTimer.current = setTimeout(() => {
+      if (!gotReading.current) setSlow(true);
+    }, SLOW_MS);
+  }, [onPeripheral]);
+
+  /** React to Bluetooth being switched on/off or authorised while open. */
+  const applyState = useCallback(
+    (state: BleState) => {
+      if (state === BleState.On) {
+        scan().catch(e => {
+          setError(e instanceof Error ? e.message : String(e));
+          setStatus('error');
+        });
+        return;
+      }
+      if (scanningRef.current) {
+        BleManager.stopScan().catch(() => {});
+        scanningRef.current = false;
+      }
+      if (state === BleState.Unauthorized) setStatus('permission-denied');
+      else if (state === BleState.Unsupported) setStatus('unsupported');
+      else if (state === BleState.Off || state === BleState.TurningOff)
+        setStatus('bluetooth-off');
+      else setStatus('waiting');
+    },
+    [scan],
+  );
+
   const start = useCallback(async () => {
     cleanup();
     doneRef.current = false;
+    gotReading.current = false;
     setReading(null);
     setFound([]);
     setError(null);
+    setSlow(false);
     try {
       if (!(await requestBlePermissions())) {
         setStatus('permission-denied');
         return;
       }
+      setStatus('waiting');
       await ensureStarted();
-      const state = await BleManager.checkState();
-      if (state === BleState.Unsupported) {
-        setStatus('unsupported');
-        return;
-      }
-      if (state === BleState.Unauthorized) {
-        setStatus('permission-denied');
-        return;
-      }
-      if (state !== BleState.On) {
-        setStatus('bluetooth-off');
-        subs.current.push(
-          BleManager.onDidUpdateState(({ state: st }) => {
-            if (st === BleState.On) start();
-          }),
-        );
-        return;
-      }
-      subs.current.push(BleManager.onDiscoverPeripheral(onPeripheral));
-      await BleManager.scan({
-        serviceUUIDs: [],
-        seconds: 0,
-        allowDuplicates: true,
-      });
-      setStatus('scanning');
+      subs.current.push(
+        BleManager.onDidUpdateState(({ state }) => {
+          if (!doneRef.current) applyState(state);
+        }),
+      );
+      applyState(await BleManager.checkState());
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setStatus('error');
     }
-  }, [cleanup, onPeripheral]);
+  }, [cleanup, applyState]);
 
   const stop = useCallback(() => {
     cleanup();
@@ -190,5 +241,5 @@ export function useScale(opts: Options = {}) {
 
   useEffect(() => cleanup, [cleanup]);
 
-  return { status, reading, device, found, error, start, stop };
+  return { status, reading, device, found, error, slow, start, stop };
 }
