@@ -316,6 +316,7 @@ const adaptive = `<?xml version="1.0" encoding="utf-8"?>
 </adaptive-icon>
 `;
 write(path.join(RES, 'mipmap-anydpi-v26', 'ic_launcher.xml'), adaptive);
+write(path.join(RES, 'mipmap-anydpi-v26', 'ic_launcher_round.xml'), adaptive);
 // minSdk 26: the adaptive icon is always used, the old PNGs are dead weight.
 for (const dpi of ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi'])
   fs.rmSync(path.join(RES, `mipmap-${dpi}`), { recursive: true, force: true });
