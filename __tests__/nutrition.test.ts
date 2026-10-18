@@ -227,3 +227,38 @@ describe('energy and targets', () => {
     expect(kcalTarget(g, { day: 1300, typical: 1300 })).toBe(1200);
   });
 });
+
+describe('photo findings', () => {
+  const { interpretPhoto, LABEL_FOODS } = require('../src/nutrition/photo');
+  const { genericFood } = require('../src/nutrition/foods');
+
+  it('maps every recognisable label to a bundled food', () => {
+    for (const slug of Object.values(LABEL_FOODS) as string[])
+      expect(genericFood(`g:${slug}`)).toBeDefined();
+  });
+
+  it('prefers a barcode, then the biggest label text, then the foods seen', () => {
+    const f = interpretPhoto({
+      barcodes: ['8001505005707'],
+      lines: [
+        { text: 'Valori nutrizionali per 100 g', h: 0.03 },
+        { text: 'Panna da cucina', h: 0.09 },
+        { text: 'Parmalat', h: 0.06 },
+        { text: 'Energia 195 kcal', h: 0.02 },
+      ],
+      labels: [
+        { name: 'Food', confidence: 0.95 },
+        { name: 'banana', confidence: 0.6 },
+        { name: 'Apple', confidence: 0.8 },
+      ],
+      errors: ['ocr:downloading'],
+    });
+    expect(f.barcode).toBe('8001505005707');
+    expect(f.query).toBe('Panna da cucina Parmalat');
+    expect(f.foods.map((x: { id: string }) => x.id)).toEqual([
+      'g:mela',
+      'g:banana',
+    ]);
+    expect(f.downloading).toBe(true);
+  });
+});

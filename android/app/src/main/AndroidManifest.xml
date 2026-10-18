@@ -37,6 +37,11 @@
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="${usesCleartextTraffic}"
       android:supportsRtl="true">
+      <!-- On-device models for label text (ocr) and photo recognition (ica),
+           downloaded by Google Play Services after install -->
+      <meta-data
+        android:name="com.google.mlkit.vision.DEPENDENCIES"
+        android:value="ocr,ica" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

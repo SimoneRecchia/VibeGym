@@ -36,6 +36,12 @@ interface Props {
 
 const QUICK_G = [50, 100, 150, 200];
 const QUICK_ML = [100, 200, 250, 330];
+const FRACTIONS = [
+  { v: 0.25, label: '¼' },
+  { v: 0.5, label: '½' },
+  { v: 0.75, label: '¾' },
+  { v: 1, label: 'Tutta' },
+];
 
 export function FoodEntrySheet({
   visible,
@@ -85,14 +91,17 @@ export function FoodEntrySheet({
   const portion: Portion | undefined =
     unitIdx >= 0 ? portions[unitIdx] : undefined;
   const qty = portion ? amount * portion.g : amount;
+  // Part of a package, e.g. half a pack of cooking cream on the plate.
+  const pack = portion?.label === 'confezione';
   const n = nutrientsFor(food, qty);
 
   const pickUnit = (i: number) => {
     if (i === unitIdx) return;
     // Keep the same quantity when switching unit.
-    if (i >= 0)
-      setAmount(Math.max(0.5, Math.round((qty / portions[i].g) * 2) / 2));
-    else setAmount(Math.round(qty));
+    if (i >= 0) {
+      const k = portions[i].label === 'confezione' ? 4 : 2;
+      setAmount(Math.max(1 / k, Math.round((qty / portions[i].g) * k) / k));
+    } else setAmount(Math.round(qty));
     setUnitIdx(i);
   };
 
@@ -151,14 +160,27 @@ export function FoodEntrySheet({
       <Stepper
         value={amount}
         onChange={setAmount}
-        step={portion ? 0.5 : u === 'ml' ? 10 : 5}
-        min={portion ? 0.5 : 1}
+        step={pack ? 0.25 : portion ? 0.5 : u === 'ml' ? 10 : 5}
+        min={pack ? 0.25 : portion ? 0.5 : 1}
         max={portion ? 50 : 5000}
-        decimals={portion ? 1 : 0}
+        decimals={pack ? 2 : portion ? 1 : 0}
         unit={
           portion ? (amount === 1 ? portion.label : `× ${portion.label}`) : u
         }
       />
+
+      {pack ? (
+        <View style={styles.quick}>
+          {FRACTIONS.map(f => (
+            <Chip
+              key={f.v}
+              label={f.label}
+              selected={amount === f.v}
+              onPress={() => setAmount(f.v)}
+            />
+          ))}
+        </View>
+      ) : null}
 
       {!portion ? (
         <View style={styles.quick}>

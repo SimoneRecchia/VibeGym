@@ -1,9 +1,14 @@
 /**
- * Barcode scanner: point at the code, the product comes from your foods or
- * Open Food Facts, then pick the quantity. Unknown products can be created
- * from the label and are found instantly next time.
+ * Food scanner, all on the device:
+ *  - Codice: point at the barcode, the product comes from your foods or
+ *    Open Food Facts, then pick the quantity.
+ *  - Foto: shoot the label or the plate. A barcode in the photo (even the
+ *    package behind the plate) is looked up; otherwise the product name is
+ *    read from the label and the foods in the photo are suggested.
+ * Unknown products can be created from the label and are found instantly
+ * next time.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,21 +20,28 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Camera } from 'react-native-camera-kit';
+import { Camera, type CameraApi } from 'react-native-camera-kit';
+import { analyzeImage, visionAvailable } from 'vibe-vision';
 import { useStore } from '../../data/store';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Glass } from '../../ui/Glass';
 import { IconButton, Button } from '../../ui/Button';
 import { T } from '../../ui/Text';
+import { Tap } from '../../ui/Pressable';
+import { Sheet } from '../../ui/Sheet';
+import { Chip } from '../../ui/Chip';
 import { toast } from '../../ui/Toast';
 import { haptic } from '../../services/haptics';
 import { Food } from '../../core/types';
-import { MEAL_LABEL } from '../../nutrition/foods';
-import { fetchProduct } from '../../nutrition/off';
+import { GENERIC, MEAL_LABEL, searchFoods } from '../../nutrition/foods';
+import { fetchProduct, searchProducts } from '../../nutrition/off';
+import { PhotoFindings, interpretPhoto } from '../../nutrition/photo';
+import { fmtNum } from '../../core/format';
 import { ScreenProps } from '../../navigation/types';
 import { FoodEntrySheet } from './FoodEntrySheet';
 
 type Perm = 'unknown' | 'granted' | 'denied';
+type Mode = 'code' | 'photo';
 
 const FOOD_CODES = ['ean-13', 'ean-8', 'upc-a', 'upc-e'] as const;
 
@@ -40,12 +52,15 @@ export function ScannerScreen({ route, navigation }: ScreenProps<'Scanner'>) {
   const lib = useStore(s => s.foodLib);
   const logFood = useStore(s => s.logFood);
   const cacheFood = useStore(s => s.cacheFood);
+  const camera = useRef<CameraApi>(null);
   const [perm, setPerm] = useState<Perm>(
     Platform.OS === 'ios' ? 'granted' : 'unknown',
   );
+  const [mode, setMode] = useState<Mode>('code');
   const [torch, setTorch] = useState(false);
   const [busy, setBusy] = useState(false);
   const [food, setFood] = useState<Food | null>(null);
+  const [findings, setFindings] = useState<PhotoFindings | null>(null);
   const [typing, setTyping] = useState(false);
   const [typed, setTyped] = useState('');
   const handled = useRef<string | null>(null);
@@ -55,7 +70,7 @@ export function ScannerScreen({ route, navigation }: ScreenProps<'Scanner'>) {
     PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA, {
       title: 'Fotocamera',
       message:
-        'Serve per leggere il codice a barre degli alimenti. Le immagini restano sul telefono.',
+        'Serve per leggere il codice a barre e l’etichetta degli alimenti. Le immagini restano sul telefono.',
       buttonPositive: 'Consenti',
     })
       .then(r =>
@@ -68,7 +83,7 @@ export function ScannerScreen({ route, navigation }: ScreenProps<'Scanner'>) {
 
   const lookup = async (raw: string) => {
     const code = raw.replace(/\D/g, '');
-    if (code.length < 6 || busy || food || handled.current === code) return;
+    if (code.length < 6 || food || handled.current === code) return;
     handled.current = code;
     haptic('success');
     const local =
@@ -117,15 +132,34 @@ export function ScannerScreen({ route, navigation }: ScreenProps<'Scanner'>) {
     );
   };
 
-  const frameW = 280;
-  const frameH = 170;
+  const shoot = async () => {
+    if (busy || !camera.current) return;
+    setBusy(true);
+    try {
+      const { uri } = await camera.current.capture();
+      const f = interpretPhoto(await analyzeImage(uri));
+      setBusy(false);
+      haptic('light');
+      if (f.barcode) {
+        handled.current = null;
+        lookup(f.barcode);
+      } else setFindings(f);
+    } catch {
+      setBusy(false);
+      Alert.alert('Foto non analizzata', 'Riprova inquadrando da più vicino.');
+    }
+  };
+
+  const frameW = mode === 'code' ? 280 : 300;
+  const frameH = mode === 'code' ? 170 : 300;
 
   return (
     <View style={styles.root}>
       {perm === 'granted' ? (
         <Camera
+          ref={camera as any}
           style={StyleSheet.absoluteFill}
-          scanBarcode
+          scanBarcode={mode === 'code'}
           allowedBarcodeTypes={[...FOOD_CODES]}
           onReadCode={e => lookup(e.nativeEvent.codeStringValue)}
           scanThrottleDelay={800}
@@ -144,8 +178,12 @@ export function ScannerScreen({ route, navigation }: ScreenProps<'Scanner'>) {
           {perm === 'denied'
             ? 'Consenti l’uso della fotocamera per scansionare'
             : busy
-            ? 'Cerco il prodotto…'
-            : 'Inquadra il codice a barre'}
+            ? mode === 'code'
+              ? 'Cerco il prodotto…'
+              : 'Analizzo la foto…'
+            : mode === 'code'
+            ? 'Inquadra il codice a barre'
+            : 'Fotografa l’etichetta, il prodotto o il piatto'}
         </T>
         <T v="footnote" color="rgba(255,255,255,0.7)" align="center">
           Si aggiunge a {MEAL_LABEL[meal].toLowerCase()}
@@ -201,14 +239,72 @@ export function ScannerScreen({ route, navigation }: ScreenProps<'Scanner'>) {
             />
           </Glass>
         ) : (
-          <Button
-            title="Inserisci il codice a mano"
-            icon="pencil"
-            variant="glass"
-            onPress={() => setTyping(true)}
-          />
+          <>
+            {mode === 'photo' ? (
+              <Tap
+                onPress={shoot}
+                disabled={busy}
+                style={styles.shutterWrap}
+                scaleTo={0.9}
+                accessibilityRole="button"
+                accessibilityLabel="Scatta la foto"
+              >
+                <View style={styles.shutter}>
+                  <View style={styles.shutterInner} />
+                </View>
+              </Tap>
+            ) : null}
+            {visionAvailable ? (
+              <Glass style={styles.modes}>
+                {(['code', 'photo'] as Mode[]).map(m => (
+                  <Tap
+                    key={m}
+                    onPress={() => setMode(m)}
+                    style={styles.modeItem}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: mode === m }}
+                  >
+                    <View
+                      style={[
+                        styles.modeInner,
+                        mode === m && { backgroundColor: c.fill2 },
+                      ]}
+                    >
+                      <T
+                        v="subheadStrong"
+                        color={mode === m ? 'label' : 'secondary'}
+                      >
+                        {m === 'code' ? 'Codice a barre' : 'Foto'}
+                      </T>
+                    </View>
+                  </Tap>
+                ))}
+              </Glass>
+            ) : null}
+            {mode === 'code' ? (
+              <Button
+                title="Inserisci il codice a mano"
+                icon="pencil"
+                variant="glass"
+                onPress={() => setTyping(true)}
+              />
+            ) : null}
+          </>
         )}
       </View>
+
+      <FindingsSheet
+        findings={findings}
+        onClose={() => setFindings(null)}
+        onPick={f => {
+          setFindings(null);
+          setFood(f);
+        }}
+        onSearch={() => {
+          setFindings(null);
+          navigation.replace('FoodAdd', { day, meal });
+        }}
+      />
 
       <FoodEntrySheet
         visible={!!food}
@@ -231,8 +327,142 @@ export function ScannerScreen({ route, navigation }: ScreenProps<'Scanner'>) {
   );
 }
 
+/** What the photo showed: label text and recognised foods. */
+function FindingsSheet({
+  findings,
+  onClose,
+  onPick,
+  onSearch,
+}: {
+  findings: PhotoFindings | null;
+  onClose: () => void;
+  onPick: (f: Food) => void;
+  onSearch: () => void;
+}) {
+  const { c } = useTheme();
+  const lib = useStore(s => s.foodLib);
+  const cacheFood = useStore(s => s.cacheFood);
+  const [online, setOnline] = useState<Food[] | 'loading' | 'error' | null>(
+    null,
+  );
+  const query = findings?.query;
+
+  const local = useMemo(
+    () =>
+      query
+        ? searchFoods(query, [...lib.custom, ...lib.cache, ...GENERIC], 6)
+        : [],
+    [query, lib],
+  );
+
+  useEffect(() => {
+    setOnline(null);
+    if (!query) return;
+    let alive = true;
+    setOnline('loading');
+    searchProducts(query)
+      .then(r => alive && setOnline(r.slice(0, 8)))
+      .catch(() => alive && setOnline('error'));
+    return () => {
+      alive = false;
+    };
+  }, [query]);
+
+  const nothing = findings && !query && !findings.foods.length;
+  const products = Array.isArray(online) ? online : [];
+
+  return (
+    <Sheet
+      visible={!!findings}
+      onClose={onClose}
+      title={nothing ? 'Niente di riconoscibile' : 'Cosa ho trovato'}
+      subtitle={query ? `Dall’etichetta: «${query}»` : undefined}
+      scroll
+    >
+      {findings?.downloading ? (
+        <T v="footnote" color="secondary" style={styles.note}>
+          Il modello per leggere le foto si sta scaricando da Google Play
+          Services: tra un minuto i risultati saranno completi.
+        </T>
+      ) : null}
+
+      {findings?.foods.length ? (
+        <>
+          <T v="footnoteStrong" color="secondary" style={styles.head}>
+            NELLA FOTO
+          </T>
+          <View style={styles.chips}>
+            {findings.foods.map(f => (
+              <Chip
+                key={f.id}
+                label={f.name}
+                tinted
+                onPress={() => onPick(f)}
+              />
+            ))}
+          </View>
+        </>
+      ) : null}
+
+      {query ? (
+        <>
+          <T v="footnoteStrong" color="secondary" style={styles.head}>
+            PRODOTTI
+          </T>
+          {online === 'loading' ? (
+            <ActivityIndicator color={c.accent} style={styles.loading} />
+          ) : null}
+          {[...products, ...local].map(f => (
+            <Tap
+              key={f.id}
+              onPress={() => {
+                cacheFood(f);
+                onPick(f);
+              }}
+              scaleTo={0.98}
+            >
+              <View style={[styles.result, { borderBottomColor: c.separator }]}>
+                <View style={styles.flex}>
+                  <T v="body" numberOfLines={1}>
+                    {f.name}
+                  </T>
+                  <T v="footnote" color="secondary" numberOfLines={1}>
+                    {f.brand ??
+                      (f.source === 'generic' ? 'Alimento comune' : 'Prodotto')}
+                  </T>
+                </View>
+                <T v="subheadStrong">{fmtNum(f.kcal, 0)} kcal</T>
+              </View>
+            </Tap>
+          ))}
+          {online === 'error' ? (
+            <T v="footnote" color="secondary" style={styles.note}>
+              Senza connessione cerco solo tra gli alimenti salvati.
+            </T>
+          ) : null}
+        </>
+      ) : null}
+
+      {nothing ? (
+        <T v="subhead" color="secondary" style={styles.note}>
+          Avvicinati all’etichetta o al codice a barre, oppure cerca l’alimento
+          per nome.
+        </T>
+      ) : null}
+      <Button
+        title="Cerca per nome"
+        icon="search"
+        variant="tinted"
+        onPress={onSearch}
+        style={styles.searchBtn}
+      />
+    </Sheet>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
+  flex: { flex: 1, minWidth: 0 },
   center: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',
@@ -262,6 +492,38 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     bottom: 0,
+    gap: 14,
+    alignItems: 'stretch',
+  },
+  shutterWrap: { alignSelf: 'center' },
+  shutter: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 4,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shutterInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#fff',
+  },
+  modes: {
+    flexDirection: 'row',
+    borderRadius: 24,
+    padding: 4,
+    alignSelf: 'center',
+  },
+  modeItem: { minWidth: 130 },
+  modeInner: {
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
   },
   typeBox: {
     flexDirection: 'row',
@@ -273,4 +535,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   typeInput: { flex: 1, fontSize: 17 },
+  head: { marginTop: 8, marginBottom: 8 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  result: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 11,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  loading: { marginVertical: 12 },
+  note: { marginVertical: 8 },
+  searchBtn: { marginTop: 16 },
 });

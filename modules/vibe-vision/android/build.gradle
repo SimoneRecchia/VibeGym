@@ -1,0 +1,46 @@
+apply plugin: "com.android.library"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+
+def ext = { name, fallback -> rootProject.ext.has(name) ? rootProject.ext.get(name) : fallback }
+
+android {
+  namespace "com.vibegym.vision"
+  compileSdkVersion ext("compileSdkVersion", 36)
+
+  defaultConfig {
+    minSdkVersion ext("minSdkVersion", 26)
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+
+  sourceSets {
+    main {
+      java.srcDirs += ["${project.buildDir}/generated/source/codegen/java"]
+    }
+  }
+}
+
+repositories {
+  google()
+  mavenCentral()
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+  // Unbundled models: downloaded by Google Play Services (a few hundred KB
+  // in the APK instead of several MB).
+  implementation "com.google.android.gms:play-services-mlkit-text-recognition:19.0.0"
+  implementation "com.google.android.gms:play-services-mlkit-image-labeling:16.0.8"
+  // Same artifact as react-native-camera-kit, so it is not duplicated.
+  implementation "com.google.mlkit:barcode-scanning:17.3.0"
+}
+
+react {
+  jsRootDir = file("../src/")
+  libraryName = "VibeVisionSpec"
+  codegenJavaPackageName = "com.vibegym.vision"
+}

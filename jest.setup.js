@@ -119,3 +119,8 @@ jest.mock('react-native-camera-kit', () => {
   );
   return { Camera, CameraType: { Back: 'back', Front: 'front' } };
 });
+
+jest.mock('vibe-vision', () => ({
+  visionAvailable: false,
+  analyzeImage: jest.fn(),
+}));
