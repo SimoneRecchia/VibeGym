@@ -144,19 +144,20 @@ export function PlanTab() {
               icon="flame"
               color={c.orange}
               value={String(week.filter(Boolean).length)}
-              label="Questa settimana"
+              label="Settimana"
             />
             <StatTile
               icon="trophy"
               color={c.yellow}
               value={String(streak)}
-              label={streak === 1 ? 'Settimana di fila' : 'Settimane di fila'}
+              unit="sett."
+              label="Di fila"
             />
             <StatTile
               icon="chart"
               color={c.accent}
               value={String(sessions.length)}
-              label="Allenamenti"
+              label="Totali"
             />
           </StatRow>
 

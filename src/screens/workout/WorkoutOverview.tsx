@@ -16,12 +16,12 @@ import { toDisplay } from '../../core/units';
 import { numeric } from '../../theme/typography';
 import { withAlpha } from '../../theme/colors';
 import { workoutProgress } from '../../workout/engine';
+import { useNow } from '../../ui/useNow';
 
 interface Props {
   visible: boolean;
   workout: ActiveWorkout;
   page: number;
-  now: number;
   unit: DisplayUnit;
   onClose: () => void;
   onGo: (bi: number) => void;
@@ -33,12 +33,12 @@ export function WorkoutOverview({
   visible,
   workout,
   page,
-  now,
   unit,
   onClose,
   onGo,
 }: Props) {
   const { c } = useTheme();
+  const now = useNow(1000, visible);
   const progress = workoutProgress(workout);
   const volumeKg = workout.blocks.reduce(
     (sum, b) =>

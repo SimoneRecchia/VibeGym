@@ -35,12 +35,16 @@ def adb(*args, binary=False, check=True):
 
 def nodes():
     for _ in range(3):
-        adb('shell', 'uiautomator', 'dump', '/sdcard/ui.xml', check=False)
+        # A failed dump (screen never idle) leaves the previous file behind:
+        # remove it first so a stale screen is never read.
+        adb('shell', 'rm', '-f', '/sdcard/ui.xml', check=False)
+        msg = adb('shell', 'uiautomator', 'dump', '/sdcard/ui.xml', check=False)
         raw = adb('exec-out', 'cat', '/sdcard/ui.xml', binary=True, check=False)
         try:
             root = ET.fromstring(raw)
             break
         except ET.ParseError:
+            log('   dump:', msg.strip()[:120])
             time.sleep(1)
     else:
         return []

@@ -14,11 +14,14 @@ export function StatTile({
   icon,
   color,
   value,
+  unit,
   label,
 }: {
   icon: IconName;
   color: string;
   value: string;
+  /** Small unit after the value ("sett."). */
+  unit?: string;
   label: string;
 }) {
   const { c } = useTheme();
@@ -29,6 +32,11 @@ export function StatTile({
       </View>
       <T style={[numeric(24), { color: c.label }]} numberOfLines={1}>
         {value}
+        {unit ? (
+          <T v="footnoteStrong" color="secondary">
+            {` ${unit}`}
+          </T>
+        ) : null}
       </T>
       <T v="caption" color="secondary" numberOfLines={1}>
         {label}

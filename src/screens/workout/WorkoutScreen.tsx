@@ -51,7 +51,6 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
   const updateWorkout = useStore(s => s.updateWorkout);
   const phase = useTimer(s => s.phase);
   const timerRef = useTimer(s => s.ref);
-  const now = useNow(1000, !!workout);
   const scroll = useRef<ScrollView>(null);
   const cardY = useRef<number[]>([]);
   const [edit, setEdit] = useState<{ ref: SetRef; field: EditField } | null>(
@@ -284,7 +283,7 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
           <View style={styles.topCenter}>
             <T v="caption2" color={color} weight="700">
               GIORNO {dayLetter(dayIndex)} ·{' '}
-              {fmtClock((now - workout.startedAt) / 1000)}
+              <Elapsed since={workout.startedAt} />
             </T>
             <T v="headline" numberOfLines={1}>
               {workout.dayName}
@@ -350,7 +349,6 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
         visible={overview}
         workout={workout}
         page={cursor}
-        now={now}
         unit={settings.unit}
         onClose={() => setOverview(false)}
         onGo={i => {
@@ -376,6 +374,12 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
       />
     </View>
   );
+}
+
+/** Workout clock: ticks on its own, so the list doesn't re-render each second. */
+function Elapsed({ since }: { since: number }) {
+  const now = useNow(1000);
+  return <>{fmtClock((now - since) / 1000)}</>;
 }
 
 /** Background fade under the floating bars. */

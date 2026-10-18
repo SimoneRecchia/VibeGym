@@ -52,7 +52,8 @@ export function BottomFade({ height }: { height: number }) {
         <Defs>
           <LinearGradient id="bottomFade" x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={c.bg} stopOpacity={0} />
-            <Stop offset="0.45" stopColor={c.bg} stopOpacity={EDGE_MID} />
+            <Stop offset="0.3" stopColor={c.bg} stopOpacity={EDGE_MID} />
+            <Stop offset="0.55" stopColor={c.bg} stopOpacity={EDGE_TOP} />
             <Stop offset="1" stopColor={c.bg} stopOpacity={EDGE_TOP} />
           </LinearGradient>
         </Defs>
