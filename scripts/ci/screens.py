@@ -66,9 +66,20 @@ def find(label, timeout=20, scroll=False):
     end = time.time() + timeout
     swipes = 0
     while time.time() < end:
-        for n in nodes():
+        found = nodes()
+        for n in found:
             if label in (n['text'], n['desc']):
                 return n
+        # The emulator's own apps sometimes freeze ("Pixel Launcher isn't
+        # responding") and the dialog covers ours: dismiss it.
+        if any("isn't responding" in n['text'] for n in found):
+            wait = next((n for n in found if n['text'] == 'Wait'), None)
+            if wait:
+                log('   chiudo il dialogo di sistema "non risponde"')
+                x1, y1, x2, y2 = wait['bounds']
+                adb('shell', 'input', 'tap', str((x1 + x2) // 2), str((y1 + y2) // 2))
+                time.sleep(1)
+                continue
         if scroll and swipes < 4:
             # Below the fold: scroll the content up a bit.
             adb('shell', 'input', 'swipe', '540', '1700', '540', '700', '300')
