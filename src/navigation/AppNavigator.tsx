@@ -30,6 +30,8 @@ import { BodyScreen } from '../screens/body/BodyScreen';
 import { WeighSettings } from '../screens/settings/WeighSettings';
 import { NutritionSettings } from '../screens/settings/NutritionSettings';
 import { HealthSettings } from '../screens/settings/HealthSettings';
+import { IntegrationsSettings } from '../screens/settings/IntegrationsSettings';
+import { HeartRateSettings } from '../screens/settings/HeartRateSettings';
 import { FoodAddScreen } from '../screens/nutrition/FoodAddScreen';
 import { CustomFoodScreen } from '../screens/nutrition/CustomFoodScreen';
 import { ScannerScreen } from '../screens/nutrition/ScannerScreen';
@@ -80,6 +82,14 @@ function SettingsNavigator() {
         component={NutritionSettings}
       />
       <SettingsStack.Screen name="HealthSettings" component={HealthSettings} />
+      <SettingsStack.Screen
+        name="IntegrationsSettings"
+        component={IntegrationsSettings}
+      />
+      <SettingsStack.Screen
+        name="HeartRateSettings"
+        component={HeartRateSettings}
+      />
     </SettingsStack.Navigator>
   );
 }

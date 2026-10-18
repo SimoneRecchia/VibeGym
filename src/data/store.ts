@@ -55,7 +55,7 @@ export interface AppStore extends PersistedState {
     patch: Partial<LoggedSet>,
     propagate?: boolean,
   ) => void;
-  finishWorkout: () => Session | null;
+  finishWorkout: (extra?: Pick<Session, 'hr'>) => Session | null;
   discardWorkout: () => void;
 
   /* History */
@@ -182,10 +182,10 @@ export const useStore = create<AppStore>()((set, get) => ({
         }
       }
     }),
-  finishWorkout: () => {
+  finishWorkout: extra => {
     const { workout, sessions } = get();
     if (!workout) return null;
-    const session = toSession(workout, sessions);
+    const session = { ...toSession(workout, sessions), ...extra };
     set({ sessions: [...sessions, session], workout: null });
     // Write history and the cleared workout together, right away.
     flushPersistence();

@@ -112,6 +112,7 @@ export const mergeSettings = (s: Partial<Settings> | undefined): Settings => ({
     },
   },
   scale: { ...DEFAULT_SETTINGS.scale, ...(s?.scale ?? {}) },
+  hr: { ...DEFAULT_SETTINGS.hr, ...(s?.hr ?? {}) },
 });
 
 export const loadState = async (): Promise<PersistedState> => {

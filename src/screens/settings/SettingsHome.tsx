@@ -15,7 +15,6 @@ import { capitalize, greeting } from '../../core/format';
 import buildInfo from '../../buildInfo.json';
 import { WeightCard } from '../body/WeightCard';
 import { fmtInterval } from '../../body/schedule';
-import { healthPlatformName } from '../../services/health';
 
 const THEME_LABEL = { system: 'Automatico', light: 'Chiaro', dark: 'Scuro' };
 
@@ -26,6 +25,11 @@ export function SettingsHome({ navigation }: SettingsProps<'SettingsHome'>) {
   const plan = useStore(selectActivePlan);
   const plansCount = useStore(s => s.plans.length);
   const root = navigation.getParent();
+  const integrations = [
+    settings.health.enabled,
+    !!settings.scale.deviceId,
+    !!settings.hr.deviceId,
+  ].filter(Boolean).length;
   const age = ageFrom(profile.birthDate);
   const n = settings.notifications;
   const g = settings.nutrition;
@@ -123,14 +127,6 @@ export function SettingsHome({ navigation }: SettingsProps<'SettingsHome'>) {
           onPress={() => navigation.navigate('NutritionSettings')}
         />
         <Row
-          icon="heart"
-          iconBg={ACCENTS.pink.light}
-          title={healthPlatformName}
-          value={settings.health.enabled ? 'Collegato' : 'Non collegato'}
-          chevron
-          onPress={() => navigation.navigate('HealthSettings')}
-        />
-        <Row
           icon="scale"
           iconBg={ACCENTS.mint.light}
           title="Pesata"
@@ -149,12 +145,18 @@ export function SettingsHome({ navigation }: SettingsProps<'SettingsHome'>) {
           onPress={() => navigation.navigate('NotificationSettings')}
         />
         <Row
-          icon="bluetooth"
-          iconBg={ACCENTS.blue.light}
-          title="Bilancia"
-          value={settings.scale.deviceName ?? 'Non collegata'}
+          icon="link"
+          iconBg={ACCENTS.cyan.light}
+          title="Integrazioni"
+          value={
+            integrations
+              ? integrations === 1
+                ? '1 attiva'
+                : `${integrations} attive`
+              : 'Nessuna'
+          }
           chevron
-          onPress={() => navigation.navigate('ScaleSettings')}
+          onPress={() => navigation.navigate('IntegrationsSettings')}
         />
         <Row
           icon="palette"

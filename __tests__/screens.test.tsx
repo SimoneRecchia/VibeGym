@@ -294,6 +294,8 @@ test('settings and submenus', async () => {
     'WeighSettings',
     'NutritionSettings',
     'HealthSettings',
+    'IntegrationsSettings',
+    'HeartRateSettings',
   ] as const) {
     await go('Settings', { screen });
   }

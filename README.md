@@ -10,6 +10,8 @@ App per la palestra in React Native (iOS e Android), ridisegnata seguendo il des
 
 In alto a destra, su ogni sezione, l'avatar apre **profilo e impostazioni**: lì trovi anche **peso e corpo** (media mobile, obiettivo, BMI, composizione dalla bilancia Xiaomi, misure).
 
+In **Profilo → Integrazioni** trovi tutto ciò che si collega: Health Connect / Salute (e gli smartwatch che ci sincronizzano), la bilancia Xiaomi via Bluetooth, le altre bilance tramite la loro app e la fascia cardio.
+
 Con **Health Connect** o **Salute** collegati, VibeGym completa altezza, età e sesso se nel profilo mancano, importa le pesate delle altre bilance (Withings, Renpho, Eufy, Garmin, Fitbit, Zepp, Huawei, Samsung…) e mostra in Progressi il **recupero**: sonno della notte e battito a riposo, con un avviso sulla scheda se hai dormito poco.
 
 ### Nutrizione
@@ -26,11 +28,12 @@ Ogni N giorni, settimane o mesi (Profilo → Pesata). Quando è scaduta, all'ape
 
 ### Allenamento live
 
-- Una pagina per esercizio (scorri a destra/sinistra), animazione del movimento in alto.
-- Il bottone grande registra la serie successiva con i valori già compilati (quelli dell'ultima volta): **un tocco per serie**.
+- Tutta la giornata in un'unica lista, come una scheda di carta: ogni esercizio è una card con le sue serie (tocca la riga quando l'hai fatta, tocca peso o ripetizioni per cambiarli) e un bottone per la serie successiva. Il colore del giorno accompagna tutta la sessione; in alto l'anello dell'avanzamento, in basso riepilogo e fine.
+- Il bottone registra la serie successiva con i valori già compilati (quelli dell'ultima volta): **un tocco per serie**.
 - Il recupero parte da solo, flotta sopra il bottone (−15 s / +15 s / salta) e si ingrandisce a schermo intero. Con il telefono bloccato arriva una notifica a fine recupero.
 - Supportati: ripetizioni con carico, corpo libero e zavorra, **a tempo** (plank, isometrie: countdown e registrazione automatica), **cardio** (durata e distanza), **superset/circuiti** (serie alternate, recupero dopo il giro), **piramidali** (valori diversi per serie), serie a cedimento.
 - Suggerimento di progressione: se l'ultima volta hai completato tutte le serie, propone +2,5 kg (metà per gli esercizi di isolamento).
+- **Fascia cardio Bluetooth** (Polar, Garmin, Wahoo, Coospo o lo smartwatch che trasmette il battito): battito dal vivo colorato per zona, a fine sessione media, massimo, grafico e calorie dal battito (Keytel), usate nel consumo del giorno.
 - Record personali a fine allenamento; l'allenamento in corso sopravvive alla chiusura dell'app. Su iOS 26 resta visibile come accessorio della tab bar (stile "in riproduzione" di Musica).
 
 ### Schede con l'AI

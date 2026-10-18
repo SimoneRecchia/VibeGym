@@ -21,6 +21,8 @@ export type SettingsStackParams = {
   WeighSettings: undefined;
   NutritionSettings: undefined;
   HealthSettings: undefined;
+  IntegrationsSettings: undefined;
+  HeartRateSettings: undefined;
 };
 
 export type RootStackParams = {

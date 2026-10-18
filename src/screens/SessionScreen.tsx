@@ -21,6 +21,7 @@ import { sessionSetsDone, sessionVolume } from '../stats/metrics';
 import { recordText } from './components/recordText';
 import { ScreenProps } from '../navigation/types';
 import { Tap } from '../ui/Pressable';
+import { HeartRateCard } from './components/HeartRateCard';
 
 export function SessionScreen({ route, navigation }: ScreenProps<'Session'>) {
   const { c } = useTheme();
@@ -101,6 +102,10 @@ export function SessionScreen({ route, navigation }: ScreenProps<'Session'>) {
             </T>
           ))}
         </Card>
+      ) : null}
+
+      {session.hr ? (
+        <HeartRateCard hr={session.hr} style={styles.block} />
       ) : null}
 
       {session.notes ? (

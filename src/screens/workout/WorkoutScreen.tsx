@@ -19,6 +19,7 @@ import { showMenu } from '../../ui/Menu';
 import { useNow } from '../../ui/useNow';
 import { ExerciseCard, EditField } from './ExerciseCard';
 import { RestDock } from './RestDock';
+import { HeartRateBadge } from './HeartRateBadge';
 import { SetEditSheet } from './SetEditSheet';
 import { FinishSheet } from './FinishSheet';
 import { WorkoutOverview } from './WorkoutOverview';
@@ -289,6 +290,7 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
               {workout.dayName}
             </T>
           </View>
+          <HeartRateBadge />
           <Ring
             progress={progress.total ? progress.done / progress.total : 0}
             size={48}

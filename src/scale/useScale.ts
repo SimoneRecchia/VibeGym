@@ -3,13 +3,17 @@
  * No connection or pairing is needed: readings are broadcast in the clear.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, PermissionsAndroid, Platform } from 'react-native';
 import BleManager, {
   BleScanMode,
   BleState,
   Peripheral,
 } from 'react-native-ble-manager';
 import { parseAdvertisement, ScaleReading } from './miScale';
+import {
+  ensureBleStarted,
+  openBluetoothSettings,
+  requestBlePermissions,
+} from '../services/ble';
 
 export type ScaleStatus =
   | 'idle'
@@ -30,38 +34,7 @@ export interface FoundScale {
   rssi: number;
 }
 
-let started: Promise<void> | null = null;
-const ensureStarted = () => {
-  if (!started)
-    started = BleManager.start({ showAlert: false }).catch(e => {
-      started = null;
-      throw e;
-    });
-  return started;
-};
-
-export const requestBlePermissions = async (): Promise<boolean> => {
-  if (Platform.OS !== 'android') return true;
-  const v =
-    typeof Platform.Version === 'number'
-      ? Platform.Version
-      : parseInt(String(Platform.Version), 10);
-  const perms =
-    v >= 31
-      ? [
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-        ]
-      : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
-  const res = await PermissionsAndroid.requestMultiple(perms);
-  return perms.every(p => res[p] === PermissionsAndroid.RESULTS.GRANTED);
-};
-
-export const openBluetoothSettings = () => {
-  if (Platform.OS === 'android')
-    BleManager.enableBluetooth().catch(() => Linking.openSettings());
-  else Linking.openSettings();
-};
+export { openBluetoothSettings, requestBlePermissions };
 
 interface Options {
   /** Only accept readings from this device (when the user saved one). */
@@ -221,7 +194,7 @@ export function useScale(opts: Options = {}) {
         return;
       }
       setStatus('waiting');
-      await ensureStarted();
+      await ensureBleStarted();
       subs.current.push(
         BleManager.onDidUpdateState(({ state }) => {
           if (!doneRef.current) applyState(state);

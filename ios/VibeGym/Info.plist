@@ -40,7 +40,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>VibeGym usa la fotocamera per leggere il codice a barre e l'etichetta degli alimenti. Le immagini restano sul telefono.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>VibeGym usa il Bluetooth per leggere il peso dalla tua bilancia Xiaomi.</string>
+	<string>VibeGym usa il Bluetooth per leggere il peso dalla tua bilancia Xiaomi e il battito dalla fascia cardio.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

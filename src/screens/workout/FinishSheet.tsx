@@ -5,7 +5,9 @@ import { Button } from '../../ui/Button';
 import { T } from '../../ui/Text';
 import { Icon } from '../../ui/Icon';
 import { useTheme } from '../../theme/ThemeProvider';
-import { useStore } from '../../data/store';
+import { selectLatestWeight, useStore } from '../../data/store';
+import { workoutHeartRate } from '../../hr/hrRuntime';
+import { ageFrom } from '../../core/dates';
 import { toSession, workoutProgress } from '../../workout/engine';
 import { sessionVolume } from '../../stats/metrics';
 import { fmtClock, fmtNum } from '../../core/format';
@@ -37,7 +39,13 @@ export function FinishSheet({ visible, onClose, onSaved, onDiscarded }: Props) {
     useStore.getState().updateWorkout(w => {
       w.notes = notes.trim() || undefined;
     });
-    const s = useStore.getState().finishWorkout();
+    const st = useStore.getState();
+    const hr = workoutHeartRate({
+      kg: selectLatestWeight(st)?.weightKg,
+      age: ageFrom(st.profile.birthDate),
+      sex: st.profile.sex,
+    });
+    const s = st.finishWorkout(hr ? { hr } : undefined);
     if (s) onSaved(s.id);
   };
 

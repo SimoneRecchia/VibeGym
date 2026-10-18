@@ -85,7 +85,16 @@ export const dayEnergy = (opts: {
     steps != null
       ? Math.round(steps * kcalPerStep(kg, profile.heightCm, profile.sex))
       : 0;
-  const wk = sessions.reduce((a, s) => a + workoutKcal(s.durationSec, kg), 0);
+  // With a heart-rate sensor the workout energy comes from the beats; minus
+  // the basal share of that time, which is already counted.
+  const wk = sessions.reduce(
+    (a, s) =>
+      a +
+      (s.hr?.kcal != null
+        ? Math.max(0, Math.round(s.hr.kcal - (basal * s.durationSec) / 86400))
+        : workoutKcal(s.durationSec, kg)),
+    0,
+  );
 
   // A total close to the basal burn so far is an all-day figure (it already
   // contains basal energy); a smaller one only covers exercise sessions.

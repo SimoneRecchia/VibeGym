@@ -14,6 +14,12 @@ import { setHapticsEnabled } from './src/services/haptics';
 import { setSoundEnabled } from './src/services/sound';
 import { syncReminders } from './src/services/notifications';
 import {
+  connectHr,
+  disconnectHr,
+  startHrRecording,
+  stopHrRecording,
+} from './src/hr/hrRuntime';
+import {
   useHealthSync,
   writeWeightToHealth,
   writeWorkoutToHealth,
@@ -38,6 +44,20 @@ function Runtime() {
   useEffect(() => {
     if (hydrated) syncReminders(useStore.getState().settings, lastWeigh);
   }, [hydrated, lastWeigh]);
+
+  // The heart-rate sensor is connected for the length of a workout (also
+  // after a restart with a workout in progress).
+  const inWorkout = useStore(s => !!s.workout);
+  const hrId = useStore(s => s.settings.hr.deviceId);
+  useEffect(() => {
+    if (!hydrated || !inWorkout || !hrId) return;
+    connectHr(hrId);
+    startHrRecording();
+    return () => {
+      stopHrRecording();
+      disconnectHr();
+    };
+  }, [hydrated, inWorkout, hrId]);
 
   // Profile gaps and other scales' weigh-ins come from Health Connect /
   // Salute; finished workouts and new weigh-ins go to it.

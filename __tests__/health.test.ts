@@ -78,3 +78,51 @@ describe('health import', () => {
     expect(sleepHint(undefined)).toBeUndefined();
   });
 });
+
+describe('heart rate', () => {
+  const {
+    parseHeartRate,
+    summarizeHeartRate,
+    hrZone,
+    maxHeartRate,
+    keytelKcalPerMin,
+    isUuid,
+  } = require('../src/hr/heartRate');
+
+  it('parses 8 and 16 bit measurements', () => {
+    expect(parseHeartRate([0x00, 72])).toBe(72);
+    expect(parseHeartRate([0x01, 0x8c, 0x00])).toBe(140);
+    expect(parseHeartRate([0x16, 0])).toBeNull(); // no contact, 0 bpm
+    expect(parseHeartRate([0x01, 5])).toBeNull();
+  });
+
+  it('matches short and full UUIDs', () => {
+    expect(isUuid('2a37', '2A37')).toBe(true);
+    expect(isUuid('00002a37-0000-1000-8000-00805f9b34fb', '2A37')).toBe(true);
+    expect(isUuid('2a38', '2A37')).toBe(false);
+  });
+
+  it('summarizes a session with energy for the person', () => {
+    const t0 = 1_700_000_000_000;
+    const samples: [number, number][] = Array.from({ length: 600 }, (_, i) => [
+      t0 + i * 1000,
+      i < 300 ? 100 : 140,
+    ]);
+    const s = summarizeHeartRate(samples, { kg: 80, age: 30, sex: 'male' });
+    expect(s.avg).toBe(120);
+    expect(s.max).toBe(140);
+    expect(s.series).toHaveLength(20);
+    // 10 minutes around 120 bpm: roughly 100 kcal.
+    expect(s.kcal).toBeGreaterThan(80);
+    expect(s.kcal).toBeLessThan(130);
+    expect(summarizeHeartRate(samples.slice(0, 5))).toBeUndefined();
+  });
+
+  it('computes zones from the age', () => {
+    const max = maxHeartRate(30); // 187
+    expect(max).toBe(187);
+    expect(hrZone(100, max)).toBe(1);
+    expect(hrZone(170, max)).toBe(5);
+    expect(keytelKcalPerMin(60, 70, 30, 'female')).toBeGreaterThanOrEqual(0);
+  });
+});

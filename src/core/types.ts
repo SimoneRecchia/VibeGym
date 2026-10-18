@@ -6,6 +6,8 @@
  * are a presentation concern handled in `core/units.ts`.
  */
 
+import type { HeartRateSummary } from '../hr/heartRate';
+
 /* ------------------------------------------------------------------ */
 /*  Plan (scheda)                                                      */
 /* ------------------------------------------------------------------ */
@@ -117,6 +119,8 @@ export interface Session {
   exercises: SessionExercise[];
   records?: PersonalRecord[];
   notes?: string;
+  /** From a Bluetooth heart-rate sensor. */
+  hr?: HeartRateSummary;
 }
 
 /** Workout in progress — persisted so it survives an app restart. */
@@ -351,6 +355,11 @@ export interface Settings {
     model?: ScaleModel;
     autoSave: boolean;
   };
+  /** Bluetooth heart-rate sensor (chest strap, watch broadcasting). */
+  hr: {
+    deviceId?: string;
+    deviceName?: string;
+  };
 }
 
 export type ScaleModel = 'mi-scale' | 'mi-body-composition';
@@ -404,4 +413,5 @@ export const DEFAULT_SETTINGS: Settings = {
     measures: { enabled: false, time: '09:00' },
   },
   scale: { autoSave: true },
+  hr: {},
 };
