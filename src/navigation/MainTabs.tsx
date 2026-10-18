@@ -4,8 +4,8 @@
  *    minimizes on scroll and hosts the workout as bottom accessory (iOS 26).
  *  - Android: floating glass capsule drawn in JS.
  */
-import React, { useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TabView from 'react-native-bottom-tabs';
 import { useTheme } from '../theme/ThemeProvider';
@@ -97,13 +97,30 @@ function NativeTabs() {
 }
 
 const JS_BAR_H = 64;
+const BAR_PAD = 6;
+const PILL_H = JS_BAR_H - BAR_PAD * 2;
 
 function JsTabs() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const [index, setIndex] = useState(1);
   const [loaded, setLoaded] = useState<TabKey[]>(['plan']);
+  const [barW, setBarW] = useState(0);
+  const x = useRef(new Animated.Value(0)).current;
+  const itemW = barW > 0 ? (barW - BAR_PAD * 2) / ROUTES.length : 0;
   const inset = JS_BAR_H + Math.max(insets.bottom, 12) + 8;
+
+  // One pill that slides under the selected tab. It is always mounted with
+  // its background, so Android keeps the rounded corners (a background
+  // added to a view later loses them).
+  useEffect(() => {
+    Animated.spring(x, {
+      toValue: index * itemW,
+      useNativeDriver: true,
+      speed: 22,
+      bounciness: 5,
+    }).start();
+  }, [index, itemW, x]);
   const select = (i: number) => {
     const k = ROUTES[i].key;
     if (!loaded.includes(k)) setLoaded(l => [...l, k]);
@@ -128,6 +145,24 @@ function JsTabs() {
           style={[styles.barWrap, { bottom: Math.max(insets.bottom, 12) }]}
         >
           <Glass style={styles.bar}>
+            <View
+              style={styles.measure}
+              pointerEvents="none"
+              onLayout={e => setBarW(e.nativeEvent.layout.width)}
+            />
+            {itemW > 0 ? (
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.pill,
+                  {
+                    width: itemW - 4,
+                    backgroundColor: c.fill3,
+                    transform: [{ translateX: x }],
+                  },
+                ]}
+              />
+            ) : null}
             {ROUTES.map((r, i) => {
               const on = i === index;
               return (
@@ -140,12 +175,7 @@ function JsTabs() {
                   accessibilityState={{ selected: on }}
                   accessibilityLabel={r.title}
                 >
-                  <View
-                    style={[
-                      styles.itemInner,
-                      on && { backgroundColor: c.fill3 },
-                    ]}
-                  >
+                  <View style={styles.itemInner}>
                     <Icon
                       name={r.icon}
                       size={24}
@@ -188,16 +218,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     height: JS_BAR_H,
     borderRadius: JS_BAR_H / 2,
-    paddingHorizontal: 6,
+    paddingHorizontal: BAR_PAD,
     alignItems: 'center',
     width: '86%',
     maxWidth: 420,
   },
-  item: { flex: 1 },
+  measure: { ...StyleSheet.absoluteFill },
+  pill: {
+    position: 'absolute',
+    top: BAR_PAD,
+    left: BAR_PAD + 2,
+    height: PILL_H,
+    borderRadius: PILL_H / 2,
+  },
+  // Android's Yoga stretches flex children to the bar height even with
+  // alignItems: center, so the content is centred inside the item too.
+  item: { flex: 1, justifyContent: 'center' },
   itemInner: {
-    height: JS_BAR_H - 12,
-    borderRadius: (JS_BAR_H - 12) / 2,
-    marginHorizontal: 2,
+    height: PILL_H,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,

@@ -10,6 +10,8 @@ import { useTheme } from '../theme/ThemeProvider';
 import { T } from './Text';
 import { haptic } from '../services/haptics';
 
+const THUMB_DARK = '#636366';
+
 interface Props<K extends string> {
   options: { key: K; label: string }[];
   value: K;
@@ -60,7 +62,8 @@ export function Segmented<K extends string>({
               width: segW,
               height: h - 4,
               borderRadius: (h - 4) / 2,
-              backgroundColor: dark ? c.cardElevated : c.card,
+              // iOS segmented thumb: white in light mode, #636366 in dark.
+              backgroundColor: dark ? THUMB_DARK : c.card,
               transform: [{ translateX: x }],
             },
           ]}
