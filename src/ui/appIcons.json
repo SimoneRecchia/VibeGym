@@ -1,0 +1,100 @@
+{
+  "default": "blu",
+  "transform": "translate(50 50) rotate(-35) scale(0.86) translate(-50 -50)",
+  "paths": [
+    {
+      "d": "M30 46 H70 A4 4 0 0 1 74 50 V50 A4 4 0 0 1 70 54 H30 A4 4 0 0 1 26 50 V50 A4 4 0 0 1 30 46 Z",
+      "alpha": 1
+    },
+    {
+      "d": "M23.5 29 H25.5 A4.5 4.5 0 0 1 30 33.5 V66.5 A4.5 4.5 0 0 1 25.5 71 H23.5 A4.5 4.5 0 0 1 19 66.5 V33.5 A4.5 4.5 0 0 1 23.5 29 Z",
+      "alpha": 1
+    },
+    {
+      "d": "M74.5 29 H76.5 A4.5 4.5 0 0 1 81 33.5 V66.5 A4.5 4.5 0 0 1 76.5 71 H74.5 A4.5 4.5 0 0 1 70 66.5 V33.5 A4.5 4.5 0 0 1 74.5 29 Z",
+      "alpha": 1
+    },
+    {
+      "d": "M15 36 H16 A4 4 0 0 1 20 40 V60 A4 4 0 0 1 16 64 H15 A4 4 0 0 1 11 60 V40 A4 4 0 0 1 15 36 Z",
+      "alpha": 0.82
+    },
+    {
+      "d": "M84 36 H85 A4 4 0 0 1 89 40 V60 A4 4 0 0 1 85 64 H84 A4 4 0 0 1 80 60 V40 A4 4 0 0 1 84 36 Z",
+      "alpha": 0.82
+    }
+  ],
+  "colors": [
+    {
+      "key": "blu",
+      "label": "Blu",
+      "bg": [
+        "#55B4FF",
+        "#0A5BFF"
+      ]
+    },
+    {
+      "key": "viola",
+      "label": "Viola",
+      "bg": [
+        "#8F7CFF",
+        "#4B2BD6"
+      ]
+    },
+    {
+      "key": "rosa",
+      "label": "Rosa",
+      "bg": [
+        "#FF8FC4",
+        "#E0287A"
+      ]
+    },
+    {
+      "key": "rosso",
+      "label": "Rosso",
+      "bg": [
+        "#FF8A73",
+        "#E5243B"
+      ]
+    },
+    {
+      "key": "arancione",
+      "label": "Arancione",
+      "bg": [
+        "#FFC04D",
+        "#FF5E00"
+      ]
+    },
+    {
+      "key": "giallo",
+      "label": "Giallo",
+      "bg": [
+        "#FFDD55",
+        "#F2A200"
+      ]
+    },
+    {
+      "key": "verde",
+      "label": "Verde",
+      "bg": [
+        "#5BE3A5",
+        "#059669"
+      ]
+    },
+    {
+      "key": "azzurro",
+      "label": "Azzurro",
+      "bg": [
+        "#5EE7F2",
+        "#0891B2"
+      ]
+    },
+    {
+      "key": "grafite",
+      "label": "Grafite",
+      "bg": [
+        "#5A5A60",
+        "#141416"
+      ]
+    }
+  ]
+}

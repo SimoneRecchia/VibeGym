@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { useStore } from '../../data/store';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Screen } from '../../ui/Screen';
@@ -8,6 +8,10 @@ import { Tap } from '../../ui/Pressable';
 import { Icon } from '../../ui/Icon';
 import { ACCENTS, ACCENT_ORDER } from '../../theme/colors';
 import { ThemePref } from '../../core/types';
+import { T } from '../../ui/Text';
+import { toast } from '../../ui/Toast';
+import { APP_ICONS, AppIcon } from '../../ui/AppIcon';
+import { appIconAvailable, useAppIcon } from '../../services/appIcon';
 
 const THEMES: { key: ThemePref; label: string }[] = [
   { key: 'system', label: 'Automatico' },
@@ -16,7 +20,27 @@ const THEMES: { key: ThemePref; label: string }[] = [
 ];
 
 export function AppearanceSettings() {
-  const { dark } = useTheme();
+  const { c, dark } = useTheme();
+  const { icon, change } = useAppIcon();
+
+  const pickIcon = (key: string) => {
+    if (key === icon) return;
+    change(key)
+      .then(() => {
+        // iOS confirms with its own alert; Android launchers refresh shortly.
+        if (Platform.OS === 'android')
+          toast(
+            'Icona cambiata: la schermata Home si aggiorna tra poco',
+            'check',
+          );
+      })
+      .catch(() =>
+        Alert.alert(
+          'Icona non cambiata',
+          'Il telefono non ha accettato la nuova icona.',
+        ),
+      );
+  };
   const theme = useStore(s => s.settings.theme);
   const accent = useStore(s => s.settings.accent);
   const update = useStore(s => s.updateSettings);
@@ -65,6 +89,42 @@ export function AppearanceSettings() {
           })}
         </View>
       </Section>
+      {appIconAvailable ? (
+        <Section
+          title="Icona dell'app"
+          footer="Il colore dell'icona sulla schermata Home."
+        >
+          <View style={styles.icons}>
+            {APP_ICONS.map(i => {
+              const on = i.key === icon;
+              return (
+                <Tap
+                  key={i.key}
+                  onPress={() => pickIcon(i.key)}
+                  accessibilityLabel={`Icona ${i.label}`}
+                  accessibilityState={{ selected: on }}
+                  scaleTo={0.92}
+                  style={styles.iconItem}
+                >
+                  <View
+                    style={[styles.iconRing, on && { borderColor: c.accent }]}
+                  >
+                    <AppIcon color={i.key} size={56} />
+                  </View>
+                  <T
+                    v="caption"
+                    color={on ? 'accent' : 'secondary'}
+                    align="center"
+                    numberOfLines={1}
+                  >
+                    {i.label}
+                  </T>
+                </Tap>
+              );
+            })}
+          </View>
+        </Section>
+      ) : null}
     </Screen>
   );
 }
@@ -85,4 +145,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   on: { transform: [{ scale: 1.08 }] },
+  icons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  iconItem: { width: '33.33%', alignItems: 'center', paddingVertical: 6 },
+  iconRing: {
+    borderColor: 'transparent',
+    borderWidth: 2.5,
+    borderRadius: 19,
+    padding: 3,
+    marginBottom: 4,
+  },
 });

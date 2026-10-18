@@ -1,5 +1,6 @@
-# Runs the release APK on an Android emulator and prints screenshots and the
-# native view bounds to the log: layout checks on a real Android renderer.
+# Runs the release APK on an Android emulator and saves screenshots and the
+# native view bounds as assets of the "ci-screens" pre-release: layout checks
+# on a real Android renderer.
 name: Android · Schermate
 
 on:
@@ -11,6 +12,9 @@ on:
       - scripts/ci/screens.py
       - .github/workflows/android-screens.yml
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 concurrency:
   group: android-screens-${{ github.ref }}
@@ -58,4 +62,14 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          script: python3 scripts/ci/screens.py android/app/build/outputs/apk/release/app-release.apk
+          script: python3 scripts/ci/screens.py android/app/build/outputs/apk/release/app-release.apk screens
+      - name: Pubblica le schermate
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls screens
+          gh release view ci-screens >/dev/null 2>&1 || gh release create ci-screens \
+            --prerelease --target "$GITHUB_SHA" --title "Schermate di verifica (CI)" \
+            --notes "Schermate dell'emulatore Android per controllare il layout. Non è una versione dell'app."
+          gh release upload ci-screens screens/* --clobber

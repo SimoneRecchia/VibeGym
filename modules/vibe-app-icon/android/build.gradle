@@ -1,0 +1,40 @@
+apply plugin: "com.android.library"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+
+def ext = { name, fallback -> rootProject.ext.has(name) ? rootProject.ext.get(name) : fallback }
+
+android {
+  namespace "com.vibegym.appicon"
+  compileSdkVersion ext("compileSdkVersion", 36)
+
+  defaultConfig {
+    minSdkVersion ext("minSdkVersion", 26)
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+
+  sourceSets {
+    main {
+      java.srcDirs += ["${project.buildDir}/generated/source/codegen/java"]
+    }
+  }
+}
+
+repositories {
+  google()
+  mavenCentral()
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+}
+
+react {
+  jsRootDir = file("../src/")
+  libraryName = "VibeAppIconSpec"
+  codegenJavaPackageName = "com.vibegym.appicon"
+}

@@ -298,3 +298,15 @@ test('settings and submenus', async () => {
   }
   expect(allText(r)).toContain('Dati e backup');
 });
+
+test('app icon color picker', async () => {
+  const icons = jest.requireMock('vibe-app-icon');
+  await go('Settings', { screen: 'AppearanceSettings' });
+  expect(allText(r)).toContain("ICONA DELL'APP");
+  expect(allText(r)).toContain('Viola');
+  const [viola] = r.root.findAll(
+    n => n.props.accessibilityLabel === 'Icona Viola' && n.props.onPress,
+  );
+  await act(async () => viola.props.onPress());
+  expect(icons.setAppIcon).toHaveBeenCalledWith('viola', 'blu');
+});

@@ -1,163 +1,54 @@
 #!/usr/bin/env node
 /**
- * Generates the app icon from one of the proposed concepts:
- *  - Android adaptive icon (vector foreground + gradient background +
- *    monochrome layer for themed icons), API 26+.
- *  - iOS 26 Liquid Glass icon: Icon Composer bundle ios/VibeGym/AppIcon.icon
- *    (background gradient in icon.json, glyph and accent as glass layers);
- *    Xcode renders the glass and derives icons for older iOS versions.
- *  - docs/icon/<concept>.svg: flat 1024 px artwork, and docs/icon/play-store.png
- *    (512 px, rendered with Chromium when available).
+ * Generates the app icon (dumbbell) in every color offered in Impostazioni:
+ *  - Android: adaptive icons (vector foreground + gradient background +
+ *    monochrome layer for themed icons) and one launcher activity-alias per
+ *    color in AndroidManifest.xml (the app enables one of them).
+ *  - iOS 26: Icon Composer bundles (Liquid Glass): ios/VibeGym/AppIcon.icon
+ *    for the default color, AppIcon-<color>.icon as alternate icons. Xcode
+ *    renders the glass and derives icons for older iOS versions.
+ *  - src/ui/appIcons.json: shapes and colors for the in-app picker.
+ *  - docs/icon/manubrio.svg and docs/icon/play-store.png (512 px, rendered
+ *    with Chromium when available).
  *
- * Usage: node scripts/build-icon.js <manubrio|battito|disco|kettlebell|trend|monogramma|anello|neurale>
+ * Usage: node scripts/build-icon.js
  *
  * Shapes are drawn on a 100 × 100 grid, centred.
  */
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
-const R = (x, y, w, h, rx) => ({ t: 'rect', x, y, w, h, rx });
-const C = (cx, cy, r) => ({ t: 'circle', cx, cy, r });
-const P = (d, o = {}) => ({ t: 'path', d, ...o });
-const S = (d, width) => ({
-  t: 'path',
-  d,
-  stroke: width,
-});
-const SPARK = (cx, cy, r) => {
-  const k = r * 0.09;
-  return P(
-    `M${cx} ${cy - r} C${cx + k} ${cy - r * 0.38} ${cx + r * 0.38} ${cy - k} ${
-      cx + r
-    } ${cy} ` +
-      `C${cx + r * 0.38} ${cy + k} ${cx + k} ${cy + r * 0.38} ${cx} ${
-        cy + r
-      } ` +
-      `C${cx - k} ${cy + r * 0.38} ${cx - r * 0.38} ${cy + k} ${
-        cx - r
-      } ${cy} ` +
-      `C${cx - r * 0.38} ${cy - k} ${cx - k} ${cy - r * 0.38} ${cx} ${
-        cy - r
-      } Z`,
-  );
-};
-const RING = (cx, cy, r, hole) =>
-  P(
-    `M${cx - r} ${cy} A${r} ${r} 0 1 0 ${cx + r} ${cy} A${r} ${r} 0 1 0 ${
-      cx - r
-    } ${cy} Z ` +
-      `M${cx - hole} ${cy} A${hole} ${hole} 0 1 1 ${
-        cx + hole
-      } ${cy} A${hole} ${hole} 0 1 1 ${cx - hole} ${cy} Z`,
-    { evenOdd: true },
-  );
+const ROOT = path.join(__dirname, '..');
 
-// bg: gradient top → bottom; glyph / accent colors; g: { scale, rotate, dx, dy }
-const CONCEPTS = {
-  manubrio: {
-    bg: ['#55B4FF', '#0A5BFF'],
-    glyph: '#FFFFFF',
-    g: { scale: 0.86, rotate: -35 },
-    shapes: [
-      R(26, 46, 48, 8, 4),
-      R(19, 29, 11, 42, 4.5),
-      R(70, 29, 11, 42, 4.5),
-      R(11, 36, 9, 28, 4),
-      R(80, 36, 9, 28, 4),
-    ],
-  },
-  battito: {
-    bg: ['#FF8A73', '#E5243B'],
-    glyph: '#FFFFFF',
-    g: { scale: 0.9 },
-    shapes: [
-      R(12, 31, 10, 38, 4.5),
-      R(22, 38, 7, 24, 3),
-      R(78, 31, 10, 38, 4.5),
-      R(71, 38, 7, 24, 3),
-      S('M29 50 H39 L44.5 36 L52 65 L57.5 43 L61 50 H71', 5.5),
-    ],
-  },
-  disco: {
-    bg: ['#4A4A4E', '#121214'],
-    glyph: '#FFFFFF',
-    accent: '#D4FF3A',
-    g: { scale: 0.94 },
-    shapes: [RING(50, 50, 34, 13)],
-    accentShapes: [SPARK(50, 50, 10)],
-  },
-  kettlebell: {
-    bg: ['#8F7CFF', '#4B2BD6'],
-    glyph: '#FFFFFF',
-    g: { scale: 0.88, dx: -3, dy: -1 },
-    // Wide, squat handle and a flat base: reads as a kettlebell, not a padlock.
-    shapes: [
-      S('M33 52 V37 Q33 24 46 24 H54 Q67 24 67 37 V52', 9),
-      P('M38.13 82 A25 25 0 1 1 61.87 82 Z'),
-    ],
-    accentShapes: [SPARK(81, 18, 7.5)],
-  },
-  trend: {
-    bg: ['#4ADE9F', '#047857'],
-    glyph: '#FFFFFF',
-    g: { scale: 0.94 },
-    shapes: [
-      R(20, 62, 15, 20, 5),
-      R(42.5, 50, 15, 32, 5),
-      R(65, 38, 15, 44, 5),
-      S('M20 44 L38 31 L50 37 L73 18', 5),
-      S('M62 17 H74 V29', 5),
-    ],
-  },
-  monogramma: {
-    bg: ['#2A2A2C', '#000000'],
-    glyph: '#D4FF3A',
-    g: { dy: 2 },
-    shapes: [
-      S('M28 28 L50 76 L72 28', 10),
-      RING(28, 28, 12, 4),
-      RING(72, 28, 12, 4),
-    ],
-  },
-  anello: {
-    bg: ['#FFC04D', '#FF5E00'],
-    glyph: '#FFFFFF',
-    g: { scale: 0.9 },
-    shapes: [
-      S('M50 18 A32 32 0 1 1 19.93 39.06', 9),
-      R(37, 47.5, 26, 5, 2.5),
-      R(31, 39, 7.5, 22, 3),
-      R(61.5, 39, 7.5, 22, 3),
-    ],
-  },
-  neurale: {
-    bg: ['#41D8F8', '#5145F0'],
-    glyph: '#FFFFFF',
-    g: {},
-    shapes: [
-      S(
-        'M24 31 V69 M76 31 V69 M24 31 L50 50 L24 69 M76 31 L50 50 L76 69 M30 50 H70',
-        3.2,
-      ),
-      C(24, 31, 6),
-      C(24, 50, 6),
-      C(24, 69, 6),
-      C(76, 31, 6),
-      C(76, 50, 6),
-      C(76, 69, 6),
-      C(50, 50, 8),
-    ],
-  },
+// Rounded rect; `alpha` < 1 sets a plate apart from its neighbour.
+const R = (x, y, w, h, rx, alpha = 1) => ({ x, y, w, h, rx, alpha });
+
+// Dumbbell, rotated as if lifted: bar, inner and outer plates.
+const GLYPH = {
+  transform: { scale: 0.86, rotate: -35, dx: 0, dy: 0 },
+  shapes: [
+    R(26, 46, 48, 8, 4),
+    R(19, 29, 11, 42, 4.5),
+    R(70, 29, 11, 42, 4.5),
+    R(11, 36, 9, 28, 4, 0.82),
+    R(80, 36, 9, 28, 4, 0.82),
+  ],
 };
 
-const key = process.argv[2];
-const concept = CONCEPTS[key];
-if (!concept) {
-  console.error(
-    `Usage: node scripts/build-icon.js <${Object.keys(CONCEPTS).join('|')}>`,
-  );
-  process.exit(1);
-}
+// Background gradient top → bottom. The first one is the default icon.
+const COLORS = [
+  { key: 'blu', label: 'Blu', bg: ['#55B4FF', '#0A5BFF'] },
+  { key: 'viola', label: 'Viola', bg: ['#8F7CFF', '#4B2BD6'] },
+  { key: 'rosa', label: 'Rosa', bg: ['#FF8FC4', '#E0287A'] },
+  { key: 'rosso', label: 'Rosso', bg: ['#FF8A73', '#E5243B'] },
+  { key: 'arancione', label: 'Arancione', bg: ['#FFC04D', '#FF5E00'] },
+  { key: 'giallo', label: 'Giallo', bg: ['#FFDD55', '#F2A200'] },
+  { key: 'verde', label: 'Verde', bg: ['#5BE3A5', '#059669'] },
+  { key: 'azzurro', label: 'Azzurro', bg: ['#5EE7F2', '#0891B2'] },
+  { key: 'grafite', label: 'Grafite', bg: ['#5A5A60', '#141416'] },
+];
+const DEFAULT = COLORS[0];
 
 /* ------------------------------------------------------------------ */
 /*  Geometry                                                           */
@@ -165,16 +56,8 @@ if (!concept) {
 
 const f = n => Number(n.toFixed(3));
 
-const toPath = s => {
-  if (s.t === 'path') return s.d;
-  if (s.t === 'circle') {
-    const { cx, cy, r } = s;
-    return `M${f(cx - r)} ${cy} A${r} ${r} 0 1 0 ${f(
-      cx + r,
-    )} ${cy} A${r} ${r} 0 1 0 ${f(cx - r)} ${cy} Z`;
-  }
-  const { x, y, w, h } = s;
-  const r = Math.min(s.rx, w / 2, h / 2);
+const toPath = ({ x, y, w, h, rx }) => {
+  const r = Math.min(rx, w / 2, h / 2);
   return (
     `M${f(x + r)} ${y} H${f(x + w - r)} A${r} ${r} 0 0 1 ${f(x + w)} ${f(
       y + r,
@@ -187,69 +70,44 @@ const toPath = s => {
     )} ${y} Z`
   );
 };
+const PATHS = GLYPH.shapes.map(s => ({ d: toPath(s), alpha: s.alpha }));
 
-const g = { scale: 1, rotate: 0, dx: 0, dy: 0, ...concept.g };
+const g = GLYPH.transform;
 const svgTransform = `translate(${50 + g.dx} ${50 + g.dy}) rotate(${
   g.rotate
 }) scale(${g.scale}) translate(-50 -50)`;
 
-const svgShape = (s, color) =>
-  s.stroke
-    ? `<path d="${toPath(s)}" fill="none" stroke="${color}" stroke-width="${
-        s.stroke
-      }" stroke-linecap="round" stroke-linejoin="round"/>`
-    : `<path d="${toPath(s)}" fill="${color}"${
-        s.evenOdd ? ' fill-rule="evenodd"' : ''
-      }/>`;
-
 /** SVG on a size × size canvas; `box` = side of the 100-grid inside it. */
-const svg = ({ size, box, layers, background }) => {
+const svg = ({ size, box, background, solid }) => {
   const k = box / 100;
   const off = (size - box) / 2;
   const defs = background
     ? `<defs><linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="${background[0]}"/><stop offset="1" stop-color="${background[1]}"/></linearGradient></defs><rect width="${size}" height="${size}" fill="url(#bg)"/>`
     : '';
-  const body = layers
-    .map(
-      ({ shapes, color }) =>
-        `<g transform="translate(${off} ${off}) scale(${k}) ${svgTransform}">${shapes
-          .map(s => svgShape(s, color))
-          .join('')}</g>`,
-    )
-    .join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${defs}${body}</svg>\n`;
+  const body = PATHS.map(
+    p =>
+      `<path d="${p.d}" fill="#FFFFFF"${
+        !solid && p.alpha < 1 ? ` fill-opacity="${p.alpha}"` : ''
+      }/>`,
+  ).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${defs}<g transform="translate(${off} ${off}) scale(${k}) ${svgTransform}">${body}</g></svg>\n`;
+};
+
+const write = (file, text) => {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, text);
 };
 
 /* ------------------------------------------------------------------ */
 /*  Android                                                            */
 /* ------------------------------------------------------------------ */
 
-const RES = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res');
-const write = (file, text) => {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, text);
-};
-
-const vectorPaths = (shapes, color) =>
-  shapes
-    .map(s =>
-      s.stroke
-        ? `      <path android:pathData="${toPath(
-            s,
-          )}" android:strokeColor="${color}" android:strokeWidth="${
-            s.stroke
-          }" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000"/>`
-        : `      <path android:pathData="${toPath(
-            s,
-          )}" android:fillColor="${color}"${
-            s.evenOdd ? ' android:fillType="evenOdd"' : ''
-          }/>`,
-    )
-    .join('\n');
+const RES = path.join(ROOT, 'android', 'app', 'src', 'main', 'res');
+const suffix = c => (c === DEFAULT ? '' : `_${c.key}`);
 
 // 100-grid → 72 dp centred in the 108 dp canvas: the drawing stays inside
 // the 66 dp safe zone of every launcher mask.
-const vector = layers => `<?xml version="1.0" encoding="utf-8"?>
+const vector = (color, solid) => `<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -261,32 +119,18 @@ const vector = layers => `<?xml version="1.0" encoding="utf-8"?>
     }"
         android:scaleX="${g.scale}" android:scaleY="${g.scale}"
         android:translateX="${g.dx}" android:translateY="${g.dy}">
-${layers.map(l => vectorPaths(l.shapes, l.color)).join('\n')}
+${PATHS.map(
+  p =>
+    `      <path android:pathData="${p.d}" android:fillColor="${color}"${
+      !solid && p.alpha < 1 ? ` android:fillAlpha="${p.alpha}"` : ''
+    }/>`,
+).join('\n')}
     </group>
   </group>
 </vector>
 `;
 
-const accentLayer = concept.accentShapes
-  ? [{ shapes: concept.accentShapes, color: concept.accent ?? concept.glyph }]
-  : [];
-
-write(
-  path.join(RES, 'drawable', 'ic_launcher_foreground.xml'),
-  vector([{ shapes: concept.shapes, color: concept.glyph }, ...accentLayer]),
-);
-write(
-  path.join(RES, 'drawable', 'ic_launcher_monochrome.xml'),
-  vector([
-    {
-      shapes: [...concept.shapes, ...(concept.accentShapes ?? [])],
-      color: '#FFFFFFFF',
-    },
-  ]),
-);
-write(
-  path.join(RES, 'drawable', 'ic_launcher_background.xml'),
-  `<?xml version="1.0" encoding="utf-8"?>
+const background = c => `<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -301,184 +145,248 @@ write(
           android:startY="0"
           android:endX="38"
           android:endY="108"
-          android:startColor="${concept.bg[0]}"
-          android:endColor="${concept.bg[1]}"/>
+          android:startColor="${c.bg[0]}"
+          android:endColor="${c.bg[1]}"/>
     </aapt:attr>
   </path>
 </vector>
-`,
-);
-const adaptive = `<?xml version="1.0" encoding="utf-8"?>
+`;
+
+const adaptive = c => `<?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@drawable/ic_launcher_background"/>
+    <background android:drawable="@drawable/ic_launcher_background${suffix(
+      c,
+    )}"/>
     <foreground android:drawable="@drawable/ic_launcher_foreground"/>
     <monochrome android:drawable="@drawable/ic_launcher_monochrome"/>
 </adaptive-icon>
 `;
-write(path.join(RES, 'mipmap-anydpi-v26', 'ic_launcher.xml'), adaptive);
-write(path.join(RES, 'mipmap-anydpi-v26', 'ic_launcher_round.xml'), adaptive);
-// minSdk 26: the adaptive icon is always used, the old PNGs are dead weight.
-for (const dpi of ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi'])
-  fs.rmSync(path.join(RES, `mipmap-${dpi}`), { recursive: true, force: true });
+
+for (const name of fs.readdirSync(path.join(RES, 'drawable')))
+  if (/^ic_launcher_background_/.test(name))
+    fs.rmSync(path.join(RES, 'drawable', name));
+fs.rmSync(path.join(RES, 'mipmap-anydpi-v26'), {
+  recursive: true,
+  force: true,
+});
+
+write(
+  path.join(RES, 'drawable', 'ic_launcher_foreground.xml'),
+  vector('#FFFFFF'),
+);
+write(
+  path.join(RES, 'drawable', 'ic_launcher_monochrome.xml'),
+  vector('#FFFFFFFF', true),
+);
+for (const c of COLORS) {
+  write(
+    path.join(RES, 'drawable', `ic_launcher_background${suffix(c)}.xml`),
+    background(c),
+  );
+  write(
+    path.join(RES, 'mipmap-anydpi-v26', `ic_launcher${suffix(c)}.xml`),
+    adaptive(c),
+  );
+}
+// The manifest's roundIcon.
+write(
+  path.join(RES, 'mipmap-anydpi-v26', 'ic_launcher_round.xml'),
+  adaptive(DEFAULT),
+);
+
+// Launcher aliases, between the markers in the manifest.
+const MANIFEST = path.join(
+  ROOT,
+  'android',
+  'app',
+  'src',
+  'main',
+  'AndroidManifest.xml',
+);
+const START = '<!-- icon-aliases:start (scripts/build-icon.js) -->';
+const END = '<!-- icon-aliases:end -->';
+const cap = k => k.charAt(0).toUpperCase() + k.slice(1);
+const aliases = COLORS.map(
+  c => `      <activity-alias
+        android:name=".Icon${cap(c.key)}"
+        android:targetActivity=".MainActivity"
+        android:icon="@mipmap/ic_launcher${suffix(c)}"
+        android:roundIcon="@mipmap/ic_launcher${suffix(c)}"
+        android:enabled="${c === DEFAULT}"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity-alias>`,
+).join('\n');
+let manifest = fs.readFileSync(MANIFEST, 'utf8');
+const a = manifest.indexOf(START);
+const b = manifest.indexOf(END);
+if (a < 0 || b < 0)
+  throw new Error('AndroidManifest.xml: icon-aliases markers not found');
+manifest = `${manifest.slice(
+  0,
+  a + START.length,
+)}\n${aliases}\n      ${manifest.slice(b)}`;
+fs.writeFileSync(MANIFEST, manifest);
 
 /* ------------------------------------------------------------------ */
-/*  iOS: Icon Composer bundle                                          */
+/*  iOS: Icon Composer bundles                                         */
 /* ------------------------------------------------------------------ */
 
-const IOS = path.join(__dirname, '..', 'ios', 'VibeGym', 'AppIcon.icon');
+const IOS = path.join(ROOT, 'ios', 'VibeGym');
+const iconName = c => (c === DEFAULT ? 'AppIcon' : `AppIcon-${c.key}`);
 const srgb = hex =>
   `srgb:${[1, 3, 5]
     .map(i => (parseInt(hex.slice(i, i + 2), 16) / 255).toFixed(5))
     .join(',')},1.00000`;
-fs.rmSync(IOS, { recursive: true, force: true });
-// Layers on the 1024 pt canvas; the glyph keeps the same proportions.
-write(
-  path.join(IOS, 'Assets', 'glyph.svg'),
-  svg({
-    size: 1024,
-    box: 840,
-    layers: [{ shapes: concept.shapes, color: concept.glyph }],
-  }),
-);
-if (concept.accentShapes)
+
+for (const name of fs.readdirSync(IOS))
+  if (/^AppIcon(-[a-z]+)?\.icon$/.test(name))
+    fs.rmSync(path.join(IOS, name), { recursive: true, force: true });
+
+for (const c of COLORS) {
+  const dir = path.join(IOS, `${iconName(c)}.icon`);
+  // Layers on the 1024 pt canvas.
   write(
-    path.join(IOS, 'Assets', 'accent.svg'),
-    svg({
-      size: 1024,
-      box: 840,
-      layers: [
-        {
-          shapes: concept.accentShapes,
-          color: concept.accent ?? concept.glyph,
-        },
-      ],
-    }),
+    path.join(dir, 'Assets', 'glyph.svg'),
+    svg({ size: 1024, box: 840, solid: true }),
   );
-const layer = (name, file) => ({
-  name,
-  'image-name': file,
-  glass: true,
-  'fill-specializations': [
-    { appearance: 'tinted', value: { solid: 'extended-gray:1.00000,1.00000' } },
-  ],
-});
-const icon = {
-  'fill-specializations': [
-    {
-      value: { 'linear-gradient': [srgb(concept.bg[0]), srgb(concept.bg[1])] },
-    },
-    {
-      appearance: 'dark',
-      value: {
-        'linear-gradient': [
-          'srgb:0.17000,0.17000,0.18000,1.00000',
-          'srgb:0.05000,0.05000,0.06000,1.00000',
-        ],
-      },
-    },
-  ],
-  groups: [
-    ...(concept.accentShapes
-      ? [
-          {
-            name: 'Accent',
-            layers: [layer('accent', 'accent.svg')],
-            lighting: 'combined',
-            specular: true,
-            shadow: { kind: 'layer-color', opacity: 0.5 },
-            translucency: { enabled: true, value: 0.3 },
-          },
-        ]
-      : []),
-    {
-      name: 'Glyph',
-      layers: [
-        {
-          ...layer('glyph', 'glyph.svg'),
-          'fill-specializations': [
-            {
-              appearance: 'dark',
-              value: { 'automatic-gradient': srgb(concept.bg[0]) },
-            },
-            {
-              appearance: 'tinted',
-              value: { solid: 'extended-gray:1.00000,1.00000' },
-            },
+  const icon = {
+    'fill-specializations': [
+      { value: { 'linear-gradient': [srgb(c.bg[0]), srgb(c.bg[1])] } },
+      {
+        appearance: 'dark',
+        value: {
+          'linear-gradient': [
+            'srgb:0.17000,0.17000,0.18000,1.00000',
+            'srgb:0.05000,0.05000,0.06000,1.00000',
           ],
         },
-      ],
-      lighting: 'combined',
-      specular: true,
-      shadow: { kind: 'neutral', opacity: 0.5 },
-      translucency: { enabled: true, value: 0.4 },
-    },
-  ],
-  'supported-platforms': { squares: ['iOS'] },
-};
-write(path.join(IOS, 'icon.json'), JSON.stringify(icon, null, 2) + '\n');
-
-// Xcode 26 builds every size (and older iOS versions) from the .icon bundle.
-fs.rmSync(
-  path.join(
-    __dirname,
-    '..',
-    'ios',
-    'VibeGym',
-    'Images.xcassets',
-    'AppIcon.appiconset',
-  ),
-  { recursive: true, force: true },
-);
-
-// Reference the bundle in the Xcode project (once).
-const PBX = path.join(
-  __dirname,
-  '..',
-  'ios',
-  'VibeGym.xcodeproj',
-  'project.pbxproj',
-);
-let pbx = fs.readFileSync(PBX, 'utf8');
-if (!pbx.includes('AppIcon.icon')) {
-  const FILE = 'A1C0B0010000000000000001';
-  const BUILD = 'A1C0B0010000000000000002';
-  const insertAfter = (marker, line) => {
-    const at = pbx.indexOf(marker);
-    if (at < 0) throw new Error(`project.pbxproj: "${marker}" not found`);
-    const end = pbx.indexOf('\n', at) + 1;
-    pbx = pbx.slice(0, end) + line + '\n' + pbx.slice(end);
+      },
+    ],
+    groups: [
+      {
+        name: 'Glyph',
+        layers: [
+          {
+            name: 'glyph',
+            'image-name': 'glyph.svg',
+            glass: true,
+            'fill-specializations': [
+              {
+                appearance: 'dark',
+                value: { 'automatic-gradient': srgb(c.bg[0]) },
+              },
+              {
+                appearance: 'tinted',
+                value: { solid: 'extended-gray:1.00000,1.00000' },
+              },
+            ],
+          },
+        ],
+        lighting: 'combined',
+        specular: true,
+        shadow: { kind: 'neutral', opacity: 0.5 },
+        translucency: { enabled: true, value: 0.4 },
+      },
+    ],
+    'supported-platforms': { squares: ['iOS'] },
   };
-  insertAfter(
-    '/* Begin PBXBuildFile section */',
-    `\t\t${BUILD} /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = ${FILE} /* AppIcon.icon */; };`,
-  );
-  insertAfter(
-    '/* Begin PBXFileReference section */',
-    `\t\t${FILE} /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = AppIcon.icon; path = VibeGym/AppIcon.icon; sourceTree = "<group>"; };`,
-  );
-  insertAfter(
-    '13B07FB51A68108700A75B9A /* Images.xcassets */,',
-    `\t\t\t\t${FILE} /* AppIcon.icon */,`,
-  );
-  insertAfter(
-    '13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,',
-    `\t\t\t\t${BUILD} /* AppIcon.icon in Resources */,`,
-  );
-  fs.writeFileSync(PBX, pbx);
+  write(path.join(dir, 'icon.json'), JSON.stringify(icon, null, 2) + '\n');
 }
 
+// Xcode 26 builds every size from the .icon bundles.
+fs.rmSync(path.join(IOS, 'Images.xcassets', 'AppIcon.appiconset'), {
+  recursive: true,
+  force: true,
+});
+
+// Xcode project: one file reference + resource per bundle, alternate icons.
+const PBX = path.join(ROOT, 'ios', 'VibeGym.xcodeproj', 'project.pbxproj');
+let pbx = fs.readFileSync(PBX, 'utf8');
+pbx = pbx
+  .split('\n')
+  .filter(
+    l =>
+      !/AppIcon(-[a-z]+)?\.icon/.test(l) && !/ALTERNATE_APPICON_NAMES/.test(l),
+  )
+  .join('\n');
+const insertAfter = (marker, lines) => {
+  let at = pbx.indexOf(marker);
+  if (at < 0) throw new Error(`project.pbxproj: "${marker}" not found`);
+  while (at >= 0) {
+    const end = pbx.indexOf('\n', at) + 1;
+    pbx = pbx.slice(0, end) + lines + pbx.slice(end);
+    at = pbx.indexOf(marker, end + lines.length);
+  }
+};
+const id = (i, kind) =>
+  `A1C0B001${'0'.repeat(12)}${String(i).padStart(3, '0')}${kind}`;
+const items = COLORS.map((c, i) => ({
+  name: `${iconName(c)}.icon`,
+  file: id(i, '1'),
+  build: id(i, '2'),
+}));
+insertAfter(
+  '/* Begin PBXBuildFile section */',
+  items
+    .map(
+      x =>
+        `\t\t${x.build} /* ${x.name} in Resources */ = {isa = PBXBuildFile; fileRef = ${x.file} /* ${x.name} */; };\n`,
+    )
+    .join(''),
+);
+insertAfter(
+  '/* Begin PBXFileReference section */',
+  items
+    .map(
+      x =>
+        `\t\t${x.file} /* ${x.name} */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = ${x.name}; path = VibeGym/${x.name}; sourceTree = "<group>"; };\n`,
+    )
+    .join(''),
+);
+insertAfter(
+  '13B07FB51A68108700A75B9A /* Images.xcassets */,',
+  items.map(x => `\t\t\t\t${x.file} /* ${x.name} */,\n`).join(''),
+);
+insertAfter(
+  '13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,',
+  items.map(x => `\t\t\t\t${x.build} /* ${x.name} in Resources */,\n`).join(''),
+);
+insertAfter(
+  'ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;',
+  `\t\t\t\tASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "${COLORS.filter(
+    c => c !== DEFAULT,
+  )
+    .map(iconName)
+    .join(' ')}";\n`,
+);
+fs.writeFileSync(PBX, pbx);
+
 /* ------------------------------------------------------------------ */
-/*  Flat artwork (Play Store 512 px, previews)                         */
+/*  In-app picker, Play Store artwork                                  */
 /* ------------------------------------------------------------------ */
 
-const DOCS = path.join(__dirname, '..', 'docs', 'icon');
-const flat = svg({
-  size: 1024,
-  box: 760,
-  background: concept.bg,
-  layers: [{ shapes: concept.shapes, color: concept.glyph }, ...accentLayer],
-});
-write(path.join(DOCS, `${key}.svg`), flat);
+write(
+  path.join(ROOT, 'src', 'ui', 'appIcons.json'),
+  JSON.stringify(
+    {
+      default: DEFAULT.key,
+      transform: svgTransform,
+      paths: PATHS,
+      colors: COLORS.map(({ key, label, bg }) => ({ key, label, bg })),
+    },
+    null,
+    2,
+  ) + '\n',
+);
+
+const DOCS = path.join(ROOT, 'docs', 'icon');
+fs.rmSync(DOCS, { recursive: true, force: true });
+const flat = svg({ size: 1024, box: 760, background: DEFAULT.bg });
+write(path.join(DOCS, 'manubrio.svg'), flat);
 
 // Play Store listing icon: 512 × 512 full-bleed PNG (Google applies the mask).
 const chrome = [
@@ -488,7 +396,6 @@ const chrome = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
 ].find(p => p && fs.existsSync(p));
 if (chrome) {
-  const os = require('os');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'icon-'));
   const html = path.join(tmp, 'icon.html');
   fs.writeFileSync(
@@ -520,5 +427,5 @@ if (chrome) {
 }
 
 console.log(
-  `Icon "${key}": Android adaptive icon, ios/VibeGym/AppIcon.icon, docs/icon/${key}.svg`,
+  `Icon: ${COLORS.length} colors (default ${DEFAULT.key}) for Android, iOS and the in-app picker`,
 );

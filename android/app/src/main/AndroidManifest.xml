@@ -50,15 +50,122 @@
         android:screenOrientation="portrait"
         android:windowSoftInputMode="adjustResize"
         android:exported="true">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
         <!-- Health Connect privacy rationale (Android 13 and earlier) -->
         <intent-filter>
             <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
         </intent-filter>
       </activity>
+      <!-- Launcher icons, one per color chosen in Impostazioni → Icona -->
+      <!-- icon-aliases:start (scripts/build-icon.js) -->
+      <activity-alias
+        android:name=".IconBlu"
+        android:targetActivity=".MainActivity"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:enabled="true"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity-alias>
+      <activity-alias
+        android:name=".IconViola"
+        android:targetActivity=".MainActivity"
+        android:icon="@mipmap/ic_launcher_viola"
+        android:roundIcon="@mipmap/ic_launcher_viola"
+        android:enabled="false"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity-alias>
+      <activity-alias
+        android:name=".IconRosa"
+        android:targetActivity=".MainActivity"
+        android:icon="@mipmap/ic_launcher_rosa"
+        android:roundIcon="@mipmap/ic_launcher_rosa"
+        android:enabled="false"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity-alias>
+      <activity-alias
+        android:name=".IconRosso"
+        android:targetActivity=".MainActivity"
+        android:icon="@mipmap/ic_launcher_rosso"
+        android:roundIcon="@mipmap/ic_launcher_rosso"
+        android:enabled="false"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity-alias>
+      <activity-alias
+        android:name=".IconArancione"
+        android:targetActivity=".MainActivity"
+        android:icon="@mipmap/ic_launcher_arancione"
+        android:roundIcon="@mipmap/ic_launcher_arancione"
+        android:enabled="false"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity-alias>
+      <activity-alias
+        android:name=".IconGiallo"
+        android:targetActivity=".MainActivity"
+        android:icon="@mipmap/ic_launcher_giallo"
+        android:roundIcon="@mipmap/ic_launcher_giallo"
+        android:enabled="false"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity-alias>
+      <activity-alias
+        android:name=".IconVerde"
+        android:targetActivity=".MainActivity"
+        android:icon="@mipmap/ic_launcher_verde"
+        android:roundIcon="@mipmap/ic_launcher_verde"
+        android:enabled="false"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity-alias>
+      <activity-alias
+        android:name=".IconAzzurro"
+        android:targetActivity=".MainActivity"
+        android:icon="@mipmap/ic_launcher_azzurro"
+        android:roundIcon="@mipmap/ic_launcher_azzurro"
+        android:enabled="false"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity-alias>
+      <activity-alias
+        android:name=".IconGrafite"
+        android:targetActivity=".MainActivity"
+        android:icon="@mipmap/ic_launcher_grafite"
+        android:roundIcon="@mipmap/ic_launcher_grafite"
+        android:enabled="false"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity-alias>
+      <!-- icon-aliases:end -->
       <!-- Health Connect privacy rationale (Android 14+) -->
       <activity-alias
         android:name="ViewPermissionUsageActivity"

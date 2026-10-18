@@ -102,10 +102,10 @@ Controlli: `npx tsc --noEmit`, `npm run lint`, `npm test`.
 
 ### Icona
 
-Generata da `scripts/build-icon.js` (8 varianti: `manubrio`, `battito`, `disco`, `kettlebell`, `trend`, `monogramma`, `anello`, `neurale`). Per cambiarla: `node scripts/build-icon.js <variante>`.
+Il manubrio, generato da `scripts/build-icon.js` in 9 colori (blu predefinito); il colore si sceglie in *Impostazioni → Aspetto → Icona dell'app*. Dopo una modifica allo script: `node scripts/build-icon.js`.
 
-- **iOS 26**: `ios/VibeGym/AppIcon.icon` (formato Icon Composer) con sfondo e simbolo su livelli di vetro: riflessi, rifrazione e le versioni chiara, scura e a tinta le genera il sistema. Xcode ricava da qui anche le icone per iOS precedenti. Si può rifinire aprendo il file con Icon Composer.
-- **Android**: icona adattiva vettoriale con livello monocromatico per le icone a tema (Android 13+).
+- **iOS 26**: `ios/VibeGym/AppIcon.icon` e le icone alternative `AppIcon-<colore>.icon` (formato Icon Composer) con il simbolo su un livello di vetro: riflessi, rifrazione e le versioni chiara, scura e a tinta le genera il sistema; Xcode ricava anche le icone per iOS precedenti. Il cambio usa le icone alternative di iOS (il sistema mostra un avviso).
+- **Android**: icone adattive vettoriali con livello monocromatico (icone a tema, Android 13+); un `activity-alias` per colore nel manifest, il modulo `vibe-app-icon` attiva quello scelto. Il launcher può impiegare qualche secondo ad aggiornare l'icona.
 - **Play Store**: `docs/icon/play-store.png` (512 × 512).
 
 ## Build e rilasci automatici
@@ -135,8 +135,9 @@ src/
   navigation/  stack, tab nativa iOS / tab glass Android, accessorio allenamento
   screens/     schermate
 modules/vibe-vision/       modulo nativo: codici a barre, testo e cibi in una foto (ML Kit / Vision)
+modules/vibe-app-icon/     modulo nativo: colore dell'icona sulla schermata Home
 scripts/build-catalog.js   rigenera src/catalog/catalog.json dal dataset
 scripts/build-foods.js     rigenera src/nutrition/generic.json (USDA via tempo-food-db)
 scripts/build-media-map.js abbina gli esercizi alle animazioni di Workout Guide
-scripts/build-icon.js      icona dell'app (iOS Icon Composer, Android adattiva, Play Store)
+scripts/build-icon.js      icona dell'app nei vari colori (iOS Icon Composer, Android adattiva, Play Store)
 ```

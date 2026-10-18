@@ -124,3 +124,9 @@ jest.mock('vibe-vision', () => ({
   visionAvailable: false,
   analyzeImage: jest.fn(),
 }));
+
+jest.mock('vibe-app-icon', () => ({
+  appIconAvailable: true,
+  getAppIcon: jest.fn(async () => 'blu'),
+  setAppIcon: jest.fn(async () => {}),
+}));
