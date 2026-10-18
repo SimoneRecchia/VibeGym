@@ -12,6 +12,7 @@ import { ACCENTS } from '../../theme/colors';
 import { SettingsProps } from '../../navigation/types';
 import { ageFrom } from '../../core/dates';
 import { capitalize, greeting } from '../../core/format';
+import buildInfo from '../../buildInfo.json';
 
 const THEME_LABEL = { system: 'Automatico', light: 'Chiaro', dark: 'Scuro' };
 
@@ -131,8 +132,10 @@ export function SettingsHome({ navigation }: SettingsProps<'SettingsHome'>) {
       </Section>
 
       <T v="footnote" color="tertiary" align="center" style={styles.footer}>
-        VibeGym 2.0 · I tuoi dati restano su questo dispositivo.{'\n'}Animazioni
-        degli esercizi: free-exercise-db (pubblico dominio).
+        VibeGym {buildInfo.version}
+        {buildInfo.commit ? ` (${buildInfo.commit})` : ''} · I tuoi dati restano
+        su questo dispositivo.{'\n'}Animazioni degli esercizi: free-exercise-db
+        (pubblico dominio).
       </T>
     </Screen>
   );

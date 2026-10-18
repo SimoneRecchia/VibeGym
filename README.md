@@ -86,6 +86,10 @@ Dopo l'aggiornamento serve rifare `pod install` (sono cambiate le dipendenze nat
 
 Controlli: `npx tsc --noEmit`, `npm run lint`, `npm test`.
 
+## Build e rilasci automatici
+
+GitHub Actions compila l'APK quando vuoi (pubblicato come pre-release scaricabile dal telefono) e, quando pubblichi una Release `vX.Y.Z`, carica l'AAB firmato su Google Play. Configurazione passo passo: [`docs/RILASCI.md`](docs/RILASCI.md).
+
 ## Dati e migrazione
 
 Al primo avvio i dati della versione precedente (schede, storico, pesate, profilo, impostazioni) vengono convertiti automaticamente nel nuovo modello. La sincronizzazione GitHub è stata rimossa: i dati restano sul telefono e si possono esportare/ripristinare da *Impostazioni → Dati e backup*. Se avevi dati solo su GitHub, importa il file della scheda da *Nuova scheda → Importa un file* (lo storico contenuto nel file viene recuperato).

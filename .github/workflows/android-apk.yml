@@ -1,0 +1,85 @@
+# Test APK on demand: Actions → "Android · APK di prova" → Run workflow.
+# The APK is published as a GitHub pre-release, downloadable from the phone.
+name: Android · APK di prova
+
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: Note da mostrare nella release (facoltative)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Versione
+        run: bash scripts/ci/version.sh
+
+      - name: Chiave di firma
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: bash scripts/ci/keystore.sh
+
+      - name: Build APK
+        working-directory: android
+        env:
+          ORG_GRADLE_PROJECT_VIBEGYM_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_VIBEGYM_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_VIBEGYM_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        # Phones only (no x86 emulator ABIs): faster build, smaller APK.
+        run: >
+          ./gradlew assembleRelease --no-daemon
+          -PappVersionCode="$APP_VERSION_CODE"
+          -PappVersionName="$APP_VERSION_NAME"
+          -PreactNativeArchitectures=armeabi-v7a,arm64-v8a
+          -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
+
+      - name: Prepara il file
+        run: mv android/app/build/outputs/apk/release/app-release.apk "VibeGym-$APP_VERSION_NAME.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VibeGym-${{ env.APP_VERSION_NAME }}
+          path: VibeGym-*.apk
+          retention-days: 30
+
+      - name: Pubblica la pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ env.APP_VERSION_CODE }}
+          target_commitish: ${{ github.sha }}
+          name: VibeGym ${{ env.APP_VERSION_NAME }} (prova)
+          prerelease: true
+          files: VibeGym-*.apk
+          body: |
+            Build di prova da `${{ github.ref_name }}` (commit ${{ env.APP_COMMIT }}).
+
+            ${{ inputs.notes }}
+
+            **Installazione:** apri questa pagina dal telefono, scarica il file `.apk` e consenti l'installazione da fonti sconosciute se richiesto.

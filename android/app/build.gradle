@@ -82,8 +82,9 @@ android {
         applicationId "com.vibegym"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Set by CI (see .github/workflows): -PappVersionCode=… -PappVersionName=…
+        versionCode((findProperty("appVersionCode") ?: "1") as Integer)
+        versionName((findProperty("appVersionName") ?: "2.0.0-dev") as String)
     }
     signingConfigs {
         debug {
@@ -92,15 +93,25 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Upload key for the Play Store. Provided by CI secrets (or by
+        // ~/.gradle/gradle.properties for local builds); never committed.
+        if (findProperty("VIBEGYM_UPLOAD_STORE_FILE")) {
+            release {
+                storeFile file(findProperty("VIBEGYM_UPLOAD_STORE_FILE"))
+                storePassword findProperty("VIBEGYM_UPLOAD_STORE_PASSWORD")
+                keyAlias findProperty("VIBEGYM_UPLOAD_KEY_ALIAS")
+                keyPassword findProperty("VIBEGYM_UPLOAD_KEY_PASSWORD")
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Signed with the upload key when available, otherwise with the
+            // debug key (installable test builds, not accepted by the Play Store).
+            signingConfig signingConfigs.findByName("release") ?: signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

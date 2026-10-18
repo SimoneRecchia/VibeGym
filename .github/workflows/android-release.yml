@@ -1,0 +1,100 @@
+# Store release: publishing a GitHub Release with a tag like v2.1.0 builds the
+# signed bundle, uploads it to Google Play and attaches APK + AAB to the release.
+# Pre-releases are ignored (they are the test builds of android-apk.yml).
+name: Android · Release Play Store
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HAS_PLAY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Never ship a build that doesn't pass the checks.
+      - name: Typecheck e test
+        run: |
+          npx tsc --noEmit
+          npm test -- --ci
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Versione
+        run: bash scripts/ci/version.sh
+
+      - name: Chiave di firma
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          REQUIRED: '1'
+        run: bash scripts/ci/keystore.sh
+
+      - name: Build AAB e APK
+        working-directory: android
+        env:
+          ORG_GRADLE_PROJECT_VIBEGYM_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_VIBEGYM_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_VIBEGYM_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: >
+          ./gradlew bundleRelease assembleRelease --no-daemon
+          -PappVersionCode="$APP_VERSION_CODE"
+          -PappVersionName="$APP_VERSION_NAME"
+          -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
+
+      - name: Prepara i file
+        env:
+          NOTES: ${{ github.event.release.body }}
+        run: |
+          mv android/app/build/outputs/bundle/release/app-release.aab "VibeGym-$APP_VERSION_NAME.aab"
+          mv android/app/build/outputs/apk/release/app-release.apk "VibeGym-$APP_VERSION_NAME.apk"
+          # Release notes become the Play Store "What's new" (max 500 characters).
+          mkdir -p whatsnew
+          printf '%s' "${NOTES:-Miglioramenti e correzioni.}" | head -c 500 > whatsnew/whatsnew-it-IT
+
+      - name: Carica su Google Play
+        if: env.HAS_PLAY == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.vibegym
+          releaseFiles: VibeGym-${{ env.APP_VERSION_NAME }}.aab
+          track: ${{ vars.PLAY_TRACK || 'internal' }}
+          status: ${{ vars.PLAY_STATUS || 'completed' }}
+          whatsNewDirectory: whatsnew
+
+      - name: Google Play non configurato
+        if: env.HAS_PLAY != 'true'
+        run: |
+          echo "::warning::Secret PLAY_SERVICE_ACCOUNT_JSON assente, build allegata alla release ma non caricata su Google Play."
+
+      - name: Allega APK e AAB alla release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            VibeGym-*.apk
+            VibeGym-*.aab
