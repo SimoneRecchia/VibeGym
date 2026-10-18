@@ -1,0 +1,61 @@
+# Runs the release APK on an Android emulator and prints screenshots and the
+# native view bounds to the log: layout checks on a real Android renderer.
+name: Android · Schermate
+
+on:
+  push:
+    branches-ignore: [main]
+    paths:
+      - src/ui/**
+      - src/navigation/**
+      - scripts/ci/screens.py
+      - .github/workflows/android-screens.yml
+  workflow_dispatch:
+
+concurrency:
+  group: android-screens-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screens:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Versione
+        run: bash scripts/ci/version.sh
+      - name: Build APK (x86_64)
+        working-directory: android
+        run: >
+          ./gradlew assembleRelease --no-daemon
+          -PappVersionCode="$APP_VERSION_CODE"
+          -PappVersionName="$APP_VERSION_NAME"
+          -PreactNativeArchitectures=x86_64
+          -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
+      - name: KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - run: pip install pillow
+      - name: Emulatore e schermate
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: python3 scripts/ci/screens.py android/app/build/outputs/apk/release/app-release.apk
