@@ -13,6 +13,7 @@ import { BodyEntry } from '../../core/types';
 import { COMPOSITION, bmiCategory } from '../../stats/body';
 import { BODY_TYPES } from '../../body/composition';
 import { SCALE_MODEL_LABEL } from '../../scale/miScale';
+import { healthPlatformName } from '../../services/health';
 import { fmtDate, fmtNum, fmtTime } from '../../core/format';
 import { toDisplay } from '../../core/units';
 import { numeric } from '../../theme/typography';
@@ -56,6 +57,8 @@ export function WeighDetailSheet({
                 ? e.scaleModel
                   ? SCALE_MODEL_LABEL[e.scaleModel]
                   : 'Bilancia'
+                : e.source === 'health'
+                ? `${e.sourceApp ?? 'Altra app'} via ${healthPlatformName}`
                 : 'Inserita a mano'
             }`
           : undefined

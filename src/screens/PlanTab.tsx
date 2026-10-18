@@ -41,6 +41,8 @@ import { Nav } from '../navigation/types';
 import { useDraft } from '../data/draft';
 import { Day } from '../core/types';
 import { workoutProgress } from '../workout/engine';
+import { useHealthRecovery } from '../services/health';
+import { sleepHint } from '../stats/health';
 
 export function PlanTab() {
   const nav = useNavigation<Nav>();
@@ -50,6 +52,7 @@ export function PlanTab() {
   const sessions = useStore(s => s.sessions);
   const workout = useStore(s => s.workout);
   const startWorkout = useStore(s => s.startWorkout);
+  const restHint = sleepHint(useHealthRecovery()?.sleepMin);
 
   const nextId = useMemo(
     () => (plan ? nextDayId(plan, sessions) : undefined),
@@ -213,6 +216,14 @@ export function PlanTab() {
                   ? ` · ${dayMuscles(nextDay).slice(0, 3).join(', ')}`
                   : ''}
               </T>
+              {restHint ? (
+                <View style={styles.heroHint}>
+                  <Icon name="moon" size={14} color="#FFFFFF" />
+                  <T v="footnote" color="#FFFFFF" style={styles.flex}>
+                    {restHint}
+                  </T>
+                </View>
+              ) : null}
               <View style={styles.heroActions}>
                 <HeroButton
                   title={
@@ -365,6 +376,16 @@ const styles = StyleSheet.create({
   rowGap: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
   heroTitle: { marginTop: 6, marginBottom: 4 },
+  heroHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+  },
   heroBtn: { marginTop: 16 },
   heroActions: {
     flexDirection: 'row',

@@ -10,6 +10,8 @@ App per la palestra in React Native (iOS e Android), ridisegnata seguendo il des
 
 In alto a destra, su ogni sezione, l'avatar apre **profilo e impostazioni**: lì trovi anche **peso e corpo** (media mobile, obiettivo, BMI, composizione dalla bilancia Xiaomi, misure).
 
+Con **Health Connect** o **Salute** collegati, VibeGym completa altezza, età e sesso se nel profilo mancano, importa le pesate delle altre bilance (Withings, Renpho, Eufy, Garmin, Fitbit, Zepp, Huawei, Samsung…) e mostra in Progressi il **recupero**: sonno della notte e battito a riposo, con un avviso sulla scheda se hai dormito poco.
+
 ### Nutrizione
 
 - **Obiettivo calorie** automatico (dal consumo del giorno o da quello abituale, per dimagrire, mantenere o prendere massa a 0,25–1 kg a settimana) oppure fisso; **macro** in percentuale (preset bilanciata, sportiva, iperproteica, low carb) o in grammi, con le proteine per kg.

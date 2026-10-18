@@ -21,6 +21,8 @@ Puoi esportare e cancellare tutti i dati da *Profilo → Dati e backup*. Disinst
 Se attivi il collegamento, VibeGym:
 
 - **legge** passi, calorie attive e calorie totali del giorno, solo per stimare quanto consumi nella sezione Nutrizione;
+- **legge** altezza, peso e massa grassa (e su iOS data di nascita e sesso), per completare i campi vuoti del profilo e mostrare nell'andamento del peso le pesate fatte con altre bilance o app;
+- **legge** il battito a riposo e il sonno dell'ultima notte, per mostrarti il recupero prima dell'allenamento;
 - **scrive**, se lo consenti, gli allenamenti completati e le pesate (peso e massa grassa).
 
 I dati di salute letti non lasciano il telefono, non vengono condivisi con terzi, non sono usati per pubblicità né per altri scopi. Puoi revocare l'accesso in qualsiasi momento dalle impostazioni di Health Connect o di Salute. L'uso dei dati ricevuti da Health Connect rispetta le [norme sulle autorizzazioni di Health Connect](https://support.google.com/googleplay/android-developer/answer/12991134), compresi i requisiti di uso limitato.

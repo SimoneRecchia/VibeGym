@@ -28,6 +28,7 @@ import { buildWorkout, cloneWorkout, toSession } from '../workout/engine';
 import { duplicatePlan as dupPlan } from '../plan/planUtils';
 import { uid } from '../core/ids';
 import { enrichBodyEntry } from '../stats/body';
+import { weighInKey } from '../stats/health';
 
 export interface AppStore extends PersistedState {
   hydrated: boolean;
@@ -63,6 +64,8 @@ export interface AppStore extends PersistedState {
 
   /* Body */
   addBodyEntry: (e: Omit<BodyEntry, 'id'>) => BodyEntry;
+  /** Weigh-ins read from Health Connect / Apple Health. */
+  importBodyEntries: (list: Omit<BodyEntry, 'id'>[]) => void;
   deleteBodyEntry: (id: string) => void;
   addMeasure: (values: MeasureEntry['values'], date?: string) => void;
   deleteMeasure: (id: string) => void;
@@ -208,7 +211,28 @@ export const useStore = create<AppStore>()((set, get) => ({
     set(s => ({ body: sortByDate([...s.body, entry]) }));
     return entry;
   },
-  deleteBodyEntry: id => set(s => ({ body: s.body.filter(x => x.id !== id) })),
+  importBodyEntries: list =>
+    set(s => ({
+      body: sortByDate([
+        ...s.body,
+        ...list.map(e => ({ ...enrichBodyEntry(e, s.profile), id: uid('b') })),
+      ]),
+    })),
+  deleteBodyEntry: id =>
+    set(s => {
+      const e = s.body.find(x => x.id === id);
+      const body = s.body.filter(x => x.id !== id);
+      if (e?.source !== 'health') return { body };
+      // Remember it, or the next import would bring it back.
+      const ignored = [...(s.settings.health.ignored ?? []), weighInKey(e)];
+      return {
+        body,
+        settings: {
+          ...s.settings,
+          health: { ...s.settings.health, ignored: ignored.slice(-200) },
+        },
+      };
+    }),
   addMeasure: (values, date) =>
     set(s => ({
       measures: sortByDate([

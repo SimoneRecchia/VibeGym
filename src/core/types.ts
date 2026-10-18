@@ -143,7 +143,10 @@ export interface BodyEntry {
   /** ISO datetime. */
   date: string;
   weightKg: number;
-  source: 'manual' | 'scale';
+  /** 'health': imported from Health Connect / Apple Health. */
+  source: 'manual' | 'scale' | 'health';
+  /** App that recorded an imported weigh-in (e.g. "Withings"). */
+  sourceApp?: string;
   /** Raw bio-impedance in ohm (Mi Body Composition Scale). */
   impedance?: number;
   /** Measurement time reported by the scale (de-duplication). */
@@ -359,6 +362,12 @@ export interface HealthSettings {
   writeWorkouts: boolean;
   /** Write weigh-ins (weight, body fat). */
   writeWeight: boolean;
+  /** Import weigh-ins made with other scales and apps. */
+  importWeight: boolean;
+  /** Last import (ms). */
+  lastSync?: number;
+  /** Imported weigh-ins the user deleted, so they don't come back. */
+  ignored?: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -382,7 +391,12 @@ export const DEFAULT_SETTINGS: Settings = {
     pct: { protein: 30, carbs: 40, fat: 30 },
     grams: { protein: 140, carbs: 220, fat: 65 },
   },
-  health: { enabled: false, writeWorkouts: true, writeWeight: true },
+  health: {
+    enabled: false,
+    writeWorkouts: true,
+    writeWeight: true,
+    importWeight: true,
+  },
   notifications: {
     restEnd: true,
     workout: { enabled: false, time: '18:00', weekdays: [1, 3, 5] },

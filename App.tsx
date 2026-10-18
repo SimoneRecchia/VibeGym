@@ -14,6 +14,7 @@ import { setHapticsEnabled } from './src/services/haptics';
 import { setSoundEnabled } from './src/services/sound';
 import { syncReminders } from './src/services/notifications';
 import {
+  useHealthSync,
   writeWeightToHealth,
   writeWorkoutToHealth,
 } from './src/services/health';
@@ -38,7 +39,9 @@ function Runtime() {
     if (hydrated) syncReminders(useStore.getState().settings, lastWeigh);
   }, [hydrated, lastWeigh]);
 
-  // Finished workouts and new weigh-ins go to Health Connect / Salute.
+  // Profile gaps and other scales' weigh-ins come from Health Connect /
+  // Salute; finished workouts and new weigh-ins go to it.
+  useHealthSync();
   useEffect(
     () =>
       useStore.subscribe((s, prev) => {
@@ -53,7 +56,7 @@ function Runtime() {
         if (h.writeWeight && s.body !== prev.body) {
           const known = new Set(prev.body.map(b => b.id));
           s.body
-            .filter(b => !known.has(b.id))
+            .filter(b => !known.has(b.id) && b.source !== 'health')
             .forEach(b => writeWeightToHealth(b));
         }
       }),

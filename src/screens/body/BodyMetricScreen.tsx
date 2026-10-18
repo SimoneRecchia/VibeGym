@@ -23,6 +23,7 @@ import { toDisplay } from '../../core/units';
 import { BodyEntry, MeasureKey } from '../../core/types';
 import { SettingsProps } from '../../navigation/types';
 import { WeighDetailSheet } from './WeighDetail';
+import { healthPlatformName } from '../../services/health';
 
 interface Row {
   id: string;
@@ -62,7 +63,12 @@ export function BodyMetricScreen({ route }: SettingsProps<'BodyMetric'>) {
           id: b.id,
           date: b.date,
           value: toDisplay(b.weightKg, unit),
-          sub: b.source === 'scale' ? 'Bilancia' : 'A mano',
+          sub:
+            b.source === 'scale'
+              ? 'Bilancia'
+              : b.source === 'health'
+              ? b.sourceApp ?? healthPlatformName
+              : 'A mano',
         })),
       };
     }

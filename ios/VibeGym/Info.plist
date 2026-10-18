@@ -34,7 +34,7 @@
 		<true/>
 	</dict>
 	<key>NSHealthShareUsageDescription</key>
-	<string>VibeGym legge passi e calorie attive per stimare quanto consumi ogni giorno.</string>
+	<string>VibeGym legge passi e calorie attive per stimare quanto consumi ogni giorno, altezza, età e sesso per completare il profilo, le pesate delle altre bilance, il sonno e il battito a riposo.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>VibeGym salva in Salute i tuoi allenamenti e le pesate.</string>
 	<key>NSCameraUsageDescription</key>

@@ -43,6 +43,7 @@ import { allExercises, keyOf } from '../plan/planUtils';
 import { sessionSetsDone } from '../stats/metrics';
 import { Nav } from '../navigation/types';
 import { WeightCard } from './body/WeightCard';
+import { RecoveryCard } from './components/RecoveryCard';
 import { useDayNutrition } from '../nutrition/useDayNutrition';
 import { DAY_MS, dayKey } from '../core/dates';
 import { logNutrients } from '../nutrition/foods';
@@ -109,6 +110,7 @@ export function ProgressTab() {
     return (
       <Screen title="Progressi" right={<ProfileButton />}>
         {weight}
+        <RecoveryCard style={styles.block} />
         {food ? <FoodWeek data={food} /> : null}
         <Card>
           <Empty
@@ -136,6 +138,7 @@ export function ProgressTab() {
   return (
     <Screen title="Progressi" right={<ProfileButton />}>
       {weight}
+      <RecoveryCard style={styles.block} />
 
       {/* This month */}
       <View style={styles.tiles}>
