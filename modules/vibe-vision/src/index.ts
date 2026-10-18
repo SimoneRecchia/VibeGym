@@ -15,7 +15,15 @@ export interface VisionLine {
 export interface VisionResult {
   barcodes: string[];
   lines: VisionLine[];
-  labels: { name: string; confidence: number }[];
+  /**
+   * What the photo shows. `source`: 'vision' (Apple Vision, iOS), 'imagenet'
+   * (bundled EfficientNet model, Android), 'base' (ML Kit base labeler).
+   */
+  labels: {
+    name: string;
+    confidence: number;
+    source?: 'vision' | 'imagenet' | 'base';
+  }[];
   /** Per-feature problems, e.g. 'ocr:downloading' while the model installs. */
   errors: string[];
 }

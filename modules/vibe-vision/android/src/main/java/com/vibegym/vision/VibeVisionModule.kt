@@ -6,11 +6,14 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.common.MlKitException
+import com.google.mlkit.common.model.LocalModel
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.label.ImageLabeler
 import com.google.mlkit.vision.label.ImageLabeling
+import com.google.mlkit.vision.label.custom.CustomImageLabelerOptions
 import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -20,12 +23,35 @@ import org.json.JSONObject
 /**
  * Runs barcode scanning, Latin text recognition and image labeling on one
  * photo, all on the device, and resolves a JSON string:
- * { barcodes: string[], lines: {text, h}[], labels: {name, confidence}[], errors: string[] }
+ * { barcodes: string[], lines: {text, h}[], labels: {name, confidence, source}[], errors: string[] }
+ *
+ * Two labelers: the ML Kit base model ("Food", "Fruit"… source "base") and
+ * EfficientNet-Lite2 trained on ImageNet, bundled in the app (orange, banana,
+ * broccoli, pizza… source "imagenet").
  */
 class VibeVisionModule(reactContext: ReactApplicationContext) :
   NativeVibeVisionSpec(reactContext) {
 
   override fun getName(): String = NAME
+
+  // Loading the model takes a moment: keep it for the next photos.
+  private var imagenetLabeler: ImageLabeler? = null
+
+  private fun imagenet(): ImageLabeler =
+    imagenetLabeler ?: ImageLabeling.getClient(
+      CustomImageLabelerOptions.Builder(
+        LocalModel.Builder().setAssetFilePath("models/efficientnet_lite2_int8.tflite").build(),
+      )
+        .setConfidenceThreshold(0.03f)
+        .setMaxResultCount(10)
+        .build(),
+    ).also { imagenetLabeler = it }
+
+  override fun invalidate() {
+    super.invalidate()
+    imagenetLabeler?.close()
+    imagenetLabeler = null
+  }
 
   override fun analyze(uri: String, promise: Promise) {
     val image = try {
@@ -46,13 +72,14 @@ class VibeVisionModule(reactContext: ReactApplicationContext) :
     )
     val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     val labeler = ImageLabeling.getClient(
-      ImageLabelerOptions.Builder().setConfidenceThreshold(0.45f).build(),
+      ImageLabelerOptions.Builder().setConfidenceThreshold(0.3f).build(),
     )
     val codes = scanner.process(image)
     val text = recognizer.process(image)
     val labels = labeler.process(image)
+    val objects = imagenet().process(image)
 
-    Tasks.whenAllComplete(codes, text, labels).addOnCompleteListener {
+    Tasks.whenAllComplete(codes, text, labels, objects).addOnCompleteListener {
       val errors = JSONArray()
       fun fail(feature: String, task: Task<*>) {
         val e = task.exception
@@ -75,9 +102,19 @@ class VibeVisionModule(reactContext: ReactApplicationContext) :
       } else fail("ocr", text)
 
       val found = JSONArray()
-      if (labels.isSuccessful) {
-        for (l in labels.result) found.put(JSONObject().put("name", l.text).put("confidence", l.confidence.toDouble()))
-      } else fail("labels", labels)
+      fun add(source: String, task: Task<List<com.google.mlkit.vision.label.ImageLabel>>) {
+        if (!task.isSuccessful) return fail(source, task)
+        for (l in task.result) {
+          found.put(
+            JSONObject()
+              .put("name", l.text)
+              .put("confidence", l.confidence.toDouble())
+              .put("source", source),
+          )
+        }
+      }
+      add("base", labels)
+      add("imagenet", objects)
 
       scanner.close()
       recognizer.close()

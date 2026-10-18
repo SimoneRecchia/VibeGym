@@ -34,6 +34,7 @@ import { toast } from '../../ui/Toast';
 import { haptic } from '../../services/haptics';
 import { Food } from '../../core/types';
 import {
+  CATEGORY_LABEL,
   GENERIC,
   MEAL_LABEL,
   normalize,
@@ -379,8 +380,18 @@ function FindingsSheet({
     };
   }, [query]);
 
-  const nothing = findings && !query && !findings.foods.length;
+  const nothing =
+    findings && !query && !findings.foods.length && !findings.categories.length;
   const products = Array.isArray(online) ? online : [];
+  // Generic recognition ("frutta"): the whole category, to pick from.
+  const byCategory = useMemo(() => {
+    if (!findings) return [];
+    const shown = new Set(findings.foods.map(f => f.id));
+    return findings.categories.map(cat => ({
+      cat,
+      foods: GENERIC.filter(f => f.category === cat && !shown.has(f.id)),
+    }));
+  }, [findings]);
 
   return (
     <Sheet
@@ -414,6 +425,24 @@ function FindingsSheet({
           </View>
         </>
       ) : null}
+
+      {byCategory.map(({ cat, foods }) =>
+        foods.length ? (
+          <React.Fragment key={cat}>
+            <T v="footnoteStrong" color="secondary" style={styles.head}>
+              {(findings?.foods.length
+                ? `ALTRO: ${CATEGORY_LABEL[cat] ?? cat}`
+                : CATEGORY_LABEL[cat] ?? cat
+              ).toUpperCase()}
+            </T>
+            <View style={styles.chips}>
+              {foods.map(f => (
+                <Chip key={f.id} label={f.name} onPress={() => onPick(f)} />
+              ))}
+            </View>
+          </React.Fragment>
+        ) : null,
+      )}
 
       {query ? (
         <>

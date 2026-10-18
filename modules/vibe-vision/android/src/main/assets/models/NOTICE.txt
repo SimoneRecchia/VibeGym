@@ -1,0 +1,7 @@
+efficientnet_lite2_int8.tflite
+
+EfficientNet-Lite2 image classifier (ImageNet, int8), unmodified.
+Author: Google / MediaPipe.
+Source: https://storage.googleapis.com/mediapipe-models/image_classifier/efficientnet_lite2/int8/1/efficientnet_lite2.tflite
+SHA-256: 7fc3a7dbc1cd2833b162a54577afb47ab531d9c4b799ef11d90a4c56fe4ed5ad
+License: Apache License, Version 2.0 — http://www.apache.org/licenses/LICENSE-2.0

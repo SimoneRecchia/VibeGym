@@ -182,7 +182,8 @@ export function SettingsHome({ navigation }: SettingsProps<'SettingsHome'>) {
         su questo dispositivo.{'\n'}Animazioni: Workout Guide di Bryl Lim, da
         Everkinetic (CC BY-SA 4.0, ricolorate); foto: free-exercise-db (pubblico
         dominio). Alimenti: USDA FoodData Central via TempoLife (CC BY 4.0) e
-        Open Food Facts (ODbL).
+        Open Food Facts (ODbL). Riconoscimento del cibo: EfficientNet-Lite2 di
+        Google / MediaPipe (Apache 2.0).
       </T>
     </Screen>
   );

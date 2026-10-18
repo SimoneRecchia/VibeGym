@@ -54,8 +54,9 @@ RCT_EXPORT_MODULE()
 
     NSMutableArray *labels = [NSMutableArray new];
     for (VNClassificationObservation *o in classify.results) {
-      if (o.confidence >= 0.3) {
-        [labels addObject:@{ @"name" : o.identifier, @"confidence" : @(o.confidence) }];
+      // Specific classes ("mandarine") score lower than generic ones ("fruit").
+      if (o.confidence >= 0.1) {
+        [labels addObject:@{ @"name" : o.identifier, @"confidence" : @(o.confidence), @"source" : @"vision" }];
       }
     }
 

@@ -233,8 +233,54 @@ describe('photo findings', () => {
   const { genericFood } = require('../src/nutrition/foods');
 
   it('maps every recognisable label to a bundled food', () => {
-    for (const slug of Object.values(LABEL_FOODS) as string[])
-      expect(genericFood(`g:${slug}`)).toBeDefined();
+    for (const slugs of Object.values(LABEL_FOODS) as string[][])
+      for (const slug of slugs) expect(genericFood(`g:${slug}`)).toBeDefined();
+  });
+
+  it('recognises a mandarin on both platforms', () => {
+    const ids = (labels: object[]) =>
+      interpretPhoto({ barcodes: [], lines: [], labels, errors: [] }).foods.map(
+        (x: { id: string }) => x.id,
+      );
+    // Android: ML Kit only says "Fruit", the ImageNet model says "orange".
+    const android = interpretPhoto({
+      barcodes: [],
+      lines: [],
+      labels: [
+        { name: 'Fruit', confidence: 0.82, source: 'base' },
+        { name: 'Food', confidence: 0.7, source: 'base' },
+        { name: 'orange', confidence: 0.18, source: 'imagenet' },
+        { name: 'lemon', confidence: 0.06, source: 'imagenet' },
+        { name: 'French loaf', confidence: 0.02, source: 'imagenet' },
+      ],
+      errors: [],
+    });
+    expect(android.foods.map((x: { id: string }) => x.id).slice(0, 2)).toEqual([
+      'g:mandarino',
+      'g:arancia',
+    ]);
+    expect(android.foods.map((x: { id: string }) => x.id)).toContain(
+      'g:limone',
+    );
+    expect(android.categories).toEqual(['frutta']);
+    // iOS: Apple Vision identifiers.
+    expect(
+      ids([
+        { name: 'food', confidence: 0.9, source: 'vision' },
+        { name: 'fruit', confidence: 0.85, source: 'vision' },
+        { name: 'citrus_fruit', confidence: 0.6, source: 'vision' },
+        { name: 'mandarine', confidence: 0.35, source: 'vision' },
+      ]),
+    ).toEqual(['g:arancia', 'g:mandarino', 'g:limone']);
+    // Only "Fruit": the whole category is offered.
+    const generic = interpretPhoto({
+      barcodes: [],
+      lines: [],
+      labels: [{ name: 'Fruit', confidence: 0.8, source: 'base' }],
+      errors: [],
+    });
+    expect(generic.foods).toEqual([]);
+    expect(generic.categories).toEqual(['frutta']);
   });
 
   it('prefers a barcode, then the biggest label text, then the foods seen', () => {
@@ -247,9 +293,9 @@ describe('photo findings', () => {
         { text: 'Energia 195 kcal', h: 0.02 },
       ],
       labels: [
-        { name: 'Food', confidence: 0.95 },
-        { name: 'banana', confidence: 0.6 },
-        { name: 'Apple', confidence: 0.8 },
+        { name: 'Food', confidence: 0.95, source: 'base' },
+        { name: 'banana', confidence: 0.6, source: 'imagenet' },
+        { name: 'apple', confidence: 0.8, source: 'vision' },
       ],
       errors: ['ocr:downloading'],
     });

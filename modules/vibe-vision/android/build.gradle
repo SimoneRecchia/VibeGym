@@ -37,6 +37,8 @@ dependencies {
   implementation "com.google.android.gms:play-services-mlkit-image-labeling:16.0.8"
   // Same artifact as react-native-camera-kit, so it is not duplicated.
   implementation "com.google.mlkit:barcode-scanning:17.3.0"
+  // Bundled model (assets/models): food and produce from ImageNet classes.
+  implementation "com.google.mlkit:image-labeling-custom:17.0.3"
 }
 
 react {
