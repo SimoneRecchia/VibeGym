@@ -321,10 +321,7 @@ function ScaleReader({ onDone }: { onDone: () => void }) {
             label="Proteine"
             value={`${fmtNum(composition.proteinPct!, 1)}%`}
           />
-          <Comp
-            label="Viscerale"
-            value={fmtNum(composition.visceralFat!, 0)}
-          />
+          <Comp label="Viscerale" value={fmtNum(composition.visceralFat!, 0)} />
           <Comp
             label="Età metabolica"
             value={`${fmtNum(composition.metabolicAge!, 0)} anni`}

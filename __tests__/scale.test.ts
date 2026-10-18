@@ -7,6 +7,7 @@ import {
 import { BODY_TYPES, computeComposition } from '../src/body/composition';
 import { enrichBodyEntry } from '../src/stats/body';
 import { useStore } from '../src/data/store';
+import { BodyEntry } from '../src/core/types';
 import { movingAverage, weeklyRate, bmi } from '../src/stats/body';
 
 const le = (n: number) => [n & 0xff, (n >> 8) & 0xff];
@@ -119,10 +120,10 @@ describe('body stats', () => {
       heightCm: 180,
       birthDate: '1995-03-01',
     };
-    const raw = {
+    const raw: Omit<BodyEntry, 'id'> = {
       date: '2026-10-01T07:30:00.000Z',
       weightKg: 78,
-      source: 'scale' as const,
+      source: 'scale',
       impedance: 480,
     };
     const e = enrichBodyEntry(raw, profile);
@@ -143,9 +144,11 @@ describe('body stats', () => {
     ] as const)
       expect(e[k]).toEqual(expect.any(Number));
     // Saved values are kept; without the impedance only the BMI is derived.
-    expect(enrichBodyEntry({ ...raw, fatPct: 12.3 }, profile).fatPct).toBe(12.3);
+    expect(enrichBodyEntry({ ...raw, fatPct: 12.3 }, profile).fatPct).toBe(
+      12.3,
+    );
     const manual = enrichBodyEntry(
-      { ...raw, impedance: undefined, source: 'manual' as const },
+      { ...raw, impedance: undefined, source: 'manual' },
       profile,
     );
     expect(manual.bmi).toBeDefined();
