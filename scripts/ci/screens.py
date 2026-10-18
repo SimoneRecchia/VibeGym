@@ -148,7 +148,7 @@ def main(apk):
     tap('Serie 1 completata', scroll=True)
     time.sleep(1.5)
     shot('workout-serie')
-    if tap('Modifica kg serie 2', scroll=True):
+    if tap('Modifica serie 2', scroll=True):
         shot('workout-modifica')
         adb('shell', 'input', 'keyevent', '4')
         time.sleep(1)

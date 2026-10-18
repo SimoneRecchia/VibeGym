@@ -1,6 +1,7 @@
 /**
- * Sets of one exercise: previous performance, editable values and a big
- * check target. Values open the editor sheet; the check logs the set.
+ * Sets of one exercise as a compact list: what you did (or will do) and last
+ * time's numbers, with a big check to log or undo. Tapping a row opens the
+ * editor to correct it; the set in progress is edited in SetFocus.
  */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -14,6 +15,8 @@ import { fmtLoadValue } from '../../core/units';
 import { fmtClock, fmtNum } from '../../core/format';
 import { withAlpha } from '../../theme/colors';
 
+const CLEAR = 'transparent';
+
 export type EditField = 'kg' | 'reps' | 'sec' | 'km';
 
 interface Props {
@@ -24,20 +27,23 @@ interface Props {
   activeSet: number | null;
   onEdit: (si: number, field: EditField) => void;
   onToggle: (si: number) => void;
-  onLongPress?: (si: number) => void;
 }
 
-const prevText = (
+/** "60 kg × 8", "45 s", "20:00 · 3,5 km". */
+export const setText = (
   ex: SessionExercise,
-  s: LoggedSet | undefined,
+  s: LoggedSet,
   unit: DisplayUnit,
 ): string => {
-  if (!s || !s.done) return '–';
   if (ex.kind === 'reps')
-    return `${s.kg ? fmtLoadValue(s.kg, unit) : '0'} × ${s.reps ?? 0}`;
+    return `${s.kg ? `${fmtLoadValue(s.kg, unit)} ${unit} × ` : ''}${
+      s.reps ?? '–'
+    }${s.kg ? '' : ' rip.'}`;
   if (ex.kind === 'time')
-    return `${s.sec ?? 0}s${s.kg ? ` +${fmtLoadValue(s.kg, unit)}` : ''}`;
-  return `${fmtClock(s.sec ?? 0)}${s.km ? ` · ${fmtNum(s.km, 2)}km` : ''}`;
+    return `${s.sec ?? 0} s${
+      s.kg ? ` · ${fmtLoadValue(s.kg, unit)} ${unit}` : ''
+    }`;
+  return `${fmtClock(s.sec ?? 0)}${s.km ? ` · ${fmtNum(s.km, 2)} km` : ''}`;
 };
 
 export function SetTable({
@@ -47,120 +53,75 @@ export function SetTable({
   activeSet,
   onEdit,
   onToggle,
-  onLongPress,
 }: Props) {
   const { c } = useTheme();
-  const weighted =
-    ex.kind !== 'cardio' &&
-    (ex.kind === 'reps' ||
-      ex.sets.some(s => (s.kg ?? 0) > 0) ||
-      ex.target.some(t => (t.kg ?? 0) > 0));
-  const cols: { key: EditField; label: string }[] =
-    ex.kind === 'reps'
-      ? [
-          { key: 'kg', label: unit },
-          { key: 'reps', label: 'rip.' },
-        ]
-      : ex.kind === 'time'
-      ? [
-          ...(weighted ? [{ key: 'kg' as const, label: unit }] : []),
-          { key: 'sec' as const, label: 'sec' },
-        ]
-      : [
-          { key: 'sec', label: 'durata' },
-          { key: 'km', label: 'km' },
-        ];
-
-  const cell = (s: LoggedSet, key: EditField): string => {
-    if (key === 'kg') return fmtLoadValue(s.kg, unit);
-    if (key === 'reps') return s.reps != null ? String(s.reps) : '–';
-    if (key === 'sec')
-      return ex.kind === 'cardio' ? fmtClock(s.sec ?? 0) : String(s.sec ?? 0);
-    return s.km != null ? fmtNum(s.km, 2) : '–';
-  };
+  const field: EditField =
+    ex.kind === 'reps' ? 'kg' : ex.kind === 'time' ? 'sec' : 'sec';
 
   return (
     <View>
-      <View style={styles.head}>
-        <T v="caption" color="secondary" style={styles.colSet}>
-          SERIE
-        </T>
-        <T v="caption" color="secondary" style={styles.colPrev}>
-          PRECEDENTE
-        </T>
-        {cols.map(col => (
-          <T
-            key={col.key}
-            v="caption"
-            color="secondary"
-            align="center"
-            style={styles.colVal}
-          >
-            {col.label.toUpperCase()}
-          </T>
-        ))}
-        <View style={styles.colCheck} />
-      </View>
       {ex.sets.map((s, si) => {
         const active = activeSet === si;
+        const prev = previous?.[si];
         return (
           <Tap
             key={si}
-            onLongPress={onLongPress ? () => onLongPress(si) : undefined}
+            onPress={() => onEdit(si, field)}
             feedback={null}
-            scaleTo={1}
+            scaleTo={0.98}
+            accessibilityRole="button"
+            accessibilityLabel={`Modifica serie ${si + 1}`}
+            // Background and border exist from the start: on Android a
+            // background added later loses the rounded corners.
             style={[
               styles.row,
               {
                 backgroundColor: s.done
                   ? withAlpha(c.green, 0.12)
                   : active
-                  ? c.fill4
-                  : 'transparent',
+                  ? c.accentSoft
+                  : c.fill4,
               },
             ]}
           >
-            <View style={styles.colSet}>
-              <View
-                style={[
-                  styles.num,
-                  { backgroundColor: active ? c.accent : c.fill3 },
-                ]}
-              >
-                <T v="footnoteStrong" color={active ? 'onAccent' : 'label'}>
-                  {si + 1}
-                </T>
-              </View>
-            </View>
-            <T
-              v="footnote"
-              color="secondary"
-              numberOfLines={1}
-              style={styles.colPrev}
+            <View
+              style={[
+                styles.num,
+                {
+                  backgroundColor: s.done
+                    ? withAlpha(c.green, 0.18)
+                    : active
+                    ? c.accent
+                    : c.fill3,
+                },
+              ]}
             >
-              {prevText(ex, previous?.[si], unit)}
-            </T>
-            {cols.map(col => (
-              <Tap
-                key={col.key}
-                onPress={() => onEdit(si, col.key)}
-                style={styles.colVal}
-                scaleTo={0.94}
-                accessibilityRole="button"
-                accessibilityLabel={`Modifica ${col.label} serie ${si + 1}`}
+              <T
+                v="footnoteStrong"
+                color={s.done ? 'green' : active ? 'onAccent' : 'secondary'}
               >
-                <View style={[styles.valBox, { backgroundColor: c.fill3 }]}>
-                  <T v="headline" numberOfLines={1} adjustsFontSizeToFit>
-                    {cell(s, col.key)}
-                  </T>
-                </View>
-              </Tap>
-            ))}
+                {si + 1}
+              </T>
+            </View>
+            <View style={styles.texts}>
+              <T
+                v="headline"
+                color={s.done || active ? 'label' : 'secondary'}
+                numberOfLines={1}
+              >
+                {setText(ex, s, unit)}
+              </T>
+              {prev?.done ? (
+                <T v="caption" color="tertiary" numberOfLines={1}>
+                  Ultima volta {setText(ex, prev, unit)}
+                </T>
+              ) : null}
+            </View>
             <Tap
               onPress={() => onToggle(si)}
-              style={styles.colCheck}
               scaleTo={0.88}
               feedback={null}
+              hitSlop={8}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: s.done }}
               accessibilityLabel={`Serie ${si + 1} completata`}
@@ -168,14 +129,18 @@ export function SetTable({
               <View
                 style={[
                   styles.check,
-                  s.done
-                    ? { backgroundColor: c.green }
-                    : [styles.ring, { borderColor: c.tertiary }],
+                  {
+                    backgroundColor: s.done ? c.green : CLEAR,
+                    borderColor: s.done ? c.green : c.tertiary,
+                  },
                 ]}
               >
-                {s.done ? (
-                  <Icon name="check" size={18} color="#FFFFFF" weight={3} />
-                ) : null}
+                <Icon
+                  name="check"
+                  size={20}
+                  color={s.done ? '#FFFFFF' : c.tertiary}
+                  weight={3}
+                />
               </View>
             </Tap>
           </Tap>
@@ -186,44 +151,30 @@ export function SetTable({
 }
 
 const styles = StyleSheet.create({
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    marginBottom: 4,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    borderRadius: 14,
-    marginBottom: 2,
+    gap: 12,
+    paddingLeft: 10,
+    paddingRight: 8,
+    paddingVertical: 8,
+    borderRadius: 18,
+    marginBottom: 6,
   },
-  colSet: { width: 44 },
-  colPrev: { flex: 1, minWidth: 0, paddingRight: 4 },
-  colVal: { width: 72, paddingHorizontal: 4 },
-  colCheck: { width: 48, alignItems: 'flex-end' },
   num: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  valBox: {
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
+  texts: { flex: 1, minWidth: 0 },
   check: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ring: { borderWidth: 2 },
 });

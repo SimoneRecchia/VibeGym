@@ -1,7 +1,7 @@
 /**
  * One page of the workout pager = one block (single exercise or superset).
  */
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActiveWorkout, LoggedSet, Session } from '../../core/types';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -11,6 +11,8 @@ import { Chip } from '../../ui/Chip';
 import { IconButton } from '../../ui/Button';
 import { Icon } from '../../ui/Icon';
 import { EditField, SetTable } from './SetTable';
+import { SetFocus } from './SetFocus';
+import { Tap } from '../../ui/Pressable';
 import {
   SetRef,
   lastPerformance,
@@ -32,6 +34,8 @@ interface Props {
   bottomPad: number;
   topPad: number;
   onEdit: (ref: SetRef, field: EditField) => void;
+  /** Value of the set in progress changed (display units). */
+  onSetValue: (ref: SetRef, field: EditField, value: number) => void;
   onToggle: (ref: SetRef) => void;
   onMenu: (bi: number, ei: number) => void;
   onApplyHint: (bi: number, ei: number, kg: number) => void;
@@ -48,6 +52,7 @@ function WorkoutPageImpl({
   bottomPad,
   topPad,
   onEdit,
+  onSetValue,
   onToggle,
   onMenu,
   onApplyHint,
@@ -57,6 +62,10 @@ function WorkoutPageImpl({
   const block = workout.blocks[bi];
   const superset = block.exercises.length > 1;
   const active = nextInBlock(workout, bi);
+  // The animation helps before the first set; then the controls matter.
+  const started = block.exercises.some(e => e.sets.some(s => s.done));
+  const [showMedia, setShowMedia] = useState<boolean | null>(null);
+  const mediaOpen = showMedia ?? !started;
 
   return (
     <ScrollView
@@ -67,11 +76,18 @@ function WorkoutPageImpl({
       ]}
       showsVerticalScrollIndicator={false}
     >
-      {!superset ? (
-        <ExerciseMedia
-          catalogId={block.exercises[0].catalogId}
-          style={styles.media}
-        />
+      {!superset && mediaOpen ? (
+        <Tap
+          onPress={() => setShowMedia(false)}
+          scaleTo={0.99}
+          feedback={null}
+          accessibilityLabel="Riduci l'animazione"
+        >
+          <ExerciseMedia
+            catalogId={block.exercises[0].catalogId}
+            style={styles.media}
+          />
+        </Tap>
       ) : null}
       {superset ? (
         <View style={styles.ssHead}>
@@ -101,12 +117,20 @@ function WorkoutPageImpl({
             ]}
           >
             <View style={styles.titleRow}>
-              {superset ? (
-                <ExerciseThumb
-                  catalogId={ex.catalogId}
-                  kind={ex.kind}
-                  size={44}
-                />
+              {superset || !mediaOpen ? (
+                <Tap
+                  onPress={() =>
+                    superset ? onInfo(bi, ei) : setShowMedia(true)
+                  }
+                  scaleTo={0.94}
+                  accessibilityLabel="Mostra l'animazione"
+                >
+                  <ExerciseThumb
+                    catalogId={ex.catalogId}
+                    kind={ex.kind}
+                    size={52}
+                  />
+                </Tap>
               ) : null}
               <View style={styles.flex}>
                 {superset ? (
@@ -170,6 +194,17 @@ function WorkoutPageImpl({
                   L'ultima volta hai completato tutto
                 </T>
               </View>
+            ) : null}
+
+            {activeSet != null ? (
+              <SetFocus
+                ex={ex}
+                si={activeSet}
+                unit={unit}
+                stepKg={stepKg}
+                previous={prev?.[activeSet]}
+                onChange={(f, v) => onSetValue({ bi, ei, si: activeSet }, f, v)}
+              />
             ) : null}
 
             <SetTable

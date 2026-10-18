@@ -1,8 +1,10 @@
 /**
  * Live workout. Built for one-handed use between sets:
- *  - one page per exercise (swipe), media on top, sets below;
- *  - a single big button logs the next set with prefilled values;
- *  - the rest timer starts by itself and floats above the button.
+ *  - one page per exercise (swipe); the animation until the first set, then
+ *    the set in progress with its values to adjust right there;
+ *  - a single big button logs that set;
+ *  - the rest timer starts by itself and floats above the button;
+ *  - the overview shows the whole workout and jumps to any exercise.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -19,6 +21,7 @@ import { WorkoutPage } from './WorkoutPage';
 import { RestDock } from './RestDock';
 import { SetEditSheet } from './SetEditSheet';
 import { FinishSheet } from './FinishSheet';
+import { WorkoutOverview } from './WorkoutOverview';
 import { EditField } from './SetTable';
 import {
   SetRef,
@@ -33,7 +36,7 @@ import { stopTimer, useTimer } from '../../workout/timer';
 import { keepAwake } from '../../services/keepAwake';
 import { requestNotificationPermission } from '../../services/notifications';
 import { fmtClock } from '../../core/format';
-import { fmtLoadValue } from '../../core/units';
+import { fromDisplay, roundTo } from '../../core/units';
 import { exerciseKey } from '../../core/ids';
 import { useDraft } from '../../data/draft';
 import { ScreenProps } from '../../navigation/types';
@@ -57,6 +60,7 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
     null,
   );
   const [finishing, setFinishing] = useState(false);
+  const [overview, setOverview] = useState(false);
 
   // Ask once, in context: the rest-end notification needs permission.
   useEffect(() => {
@@ -105,6 +109,23 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
   const onEdit = useCallback(
     (ref: SetRef, field: EditField) => setEdit({ ref, field }),
     [],
+  );
+
+  // A new load usually applies to the remaining sets too; reps don't.
+  const onSetValue = useCallback(
+    (ref: SetRef, field: EditField, value: number) => {
+      const unit = useStore.getState().settings.unit;
+      const patch =
+        field === 'kg'
+          ? { kg: roundTo(fromDisplay(value, unit), 0.01) }
+          : field === 'reps'
+          ? { reps: Math.round(value) }
+          : field === 'sec'
+          ? { sec: Math.round(value) }
+          : { km: value || undefined };
+      updateSet(ref.bi, ref.ei, ref.si, patch, field === 'kg');
+    },
+    [updateSet],
   );
 
   const onApplyHint = useCallback(
@@ -232,19 +253,14 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
   let primaryTitle = 'Termina allenamento';
   let primaryIcon: 'check' | 'play' | 'arrow-right' | 'flame' = 'flame';
   if (pending && pageEx && pendingSet) {
-    const u = settings.unit;
-    if (pageEx.kind === 'reps') {
-      primaryTitle = `Fatto · ${
-        pendingSet.kg ? `${fmtLoadValue(pendingSet.kg, u)} ${u} × ` : ''
-      }${pendingSet.reps ?? ''}`;
-      primaryIcon = 'check';
-    } else if (pageEx.kind === 'time') {
+    if (pageEx.kind === 'time') {
       primaryTitle = timingThis
         ? 'In corso…'
-        : `Avvia ${pendingSet.sec ?? 30} s`;
+        : `Avvia la serie ${pending.si + 1} · ${pendingSet.sec ?? 30} s`;
       primaryIcon = 'play';
     } else {
-      primaryTitle = 'Completa';
+      primaryTitle =
+        pageEx.kind === 'cardio' ? 'Fatto' : `Serie ${pending.si + 1} fatta`;
       primaryIcon = 'check';
     }
     if (workout.blocks[page].exercises.length > 1)
@@ -252,7 +268,8 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
         pending.ei + 1
       } · ${primaryTitle}`;
   } else if (nextAny) {
-    primaryTitle = 'Prossimo esercizio';
+    const next = workout.blocks[nextAny.bi].exercises[nextAny.ei];
+    primaryTitle = `Prossimo: ${next.name}`;
     primaryIcon = 'arrow-right';
   }
 
@@ -298,6 +315,7 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
             topPad={topBarH}
             bottomPad={dockH + 16}
             onEdit={onEdit}
+            onSetValue={onSetValue}
             onToggle={onToggle}
             onMenu={onMenu}
             onApplyHint={onApplyHint}
@@ -336,6 +354,11 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
               {progress.total} serie
             </T>
           </View>
+          <IconButton
+            icon="list"
+            onPress={() => setOverview(true)}
+            accessibilityLabel="Panoramica allenamento"
+          />
           <Button
             title="Fine"
             size="m"
@@ -416,6 +439,19 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
           if (edit)
             updateSet(edit.ref.bi, edit.ref.ei, edit.ref.si, patch, propagate);
           setEdit(null);
+        }}
+      />
+
+      <WorkoutOverview
+        visible={overview}
+        workout={workout}
+        page={page}
+        now={now}
+        unit={settings.unit}
+        onClose={() => setOverview(false)}
+        onGo={i => {
+          setOverview(false);
+          goTo(i);
         }}
       />
 
