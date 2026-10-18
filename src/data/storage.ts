@@ -18,6 +18,7 @@ import {
 } from '../core/types';
 import { legacyPlanToV3 } from './legacy';
 import { uid } from '../core/ids';
+import { enrichBodyEntry } from '../stats/body';
 
 export interface PersistedState {
   onboarded: boolean;
@@ -138,6 +139,8 @@ export const loadState = async (): Promise<PersistedState> => {
     }
   });
   state.settings = mergeSettings(state.settings);
+  // Older weigh-ins: metrics added later are derived from the saved impedance.
+  state.body = state.body.map(e => enrichBodyEntry(e, state.profile));
   return state;
 };
 

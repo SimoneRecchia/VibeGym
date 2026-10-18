@@ -10,7 +10,7 @@ import { LineChart, Legend } from '../../ui/charts/LineChart';
 import { Tap } from '../../ui/Pressable';
 import { Icon } from '../../ui/Icon';
 import {
-  COMPOSITION,
+  BODY_METRICS,
   CompositionKey,
   MEASURE_LABEL,
   compositionPoints,
@@ -20,8 +20,9 @@ import {
 import { RANGE_KEYS, RangeKey, rangeStart } from '../../core/dates';
 import { fmtDate, fmtNum, fmtTime } from '../../core/format';
 import { toDisplay } from '../../core/units';
-import { MeasureKey } from '../../core/types';
+import { BodyEntry, MeasureKey } from '../../core/types';
 import { SettingsProps } from '../../navigation/types';
+import { WeighDetailSheet } from './WeighDetail';
 
 interface Row {
   id: string;
@@ -39,12 +40,13 @@ export function BodyMetricScreen({ route }: SettingsProps<'BodyMetric'>) {
   const deleteBody = useStore(s => s.deleteBodyEntry);
   const deleteMeasure = useStore(s => s.deleteMeasure);
   const [range, setRange] = useState<RangeKey>('6M');
+  const [detail, setDetail] = useState<BodyEntry | null>(null);
 
   const isWeight = metric === 'weight';
   const measureKey = metric.startsWith('measure:')
     ? (metric.slice(8) as MeasureKey)
     : null;
-  const comp = COMPOSITION.find(m => m.key === metric);
+  const comp = BODY_METRICS.find(m => m.key === metric);
 
   const { title, unitLabel, decimals, points, rows } = useMemo(() => {
     if (isWeight) {
@@ -176,12 +178,19 @@ export function BodyMetricScreen({ route }: SettingsProps<'BodyMetric'>) {
       </Card>
 
       <T v="footnote" color="secondary" style={styles.hint}>
-        Tieni premuto un valore per eliminarlo.
+        {measureKey
+          ? 'Tieni premuto un valore per eliminarlo.'
+          : 'Tocca una pesata per vedere tutti i dati salvati.'}
       </T>
       <Card padded={false}>
         {[...rows].reverse().map((r, i) => (
           <Tap
             key={r.id}
+            onPress={
+              measureKey
+                ? undefined
+                : () => setDetail(body.find(b => b.id === r.id) ?? null)
+            }
             onLongPress={() => remove(r)}
             feedback={null}
             scaleTo={0.99}
@@ -206,10 +215,19 @@ export function BodyMetricScreen({ route }: SettingsProps<'BodyMetric'>) {
               {r.sub === 'Bilancia' ? (
                 <Icon name="bluetooth" size={14} color={c.tertiary} />
               ) : null}
+              {measureKey ? null : (
+                <Icon
+                  name="chevron-right"
+                  size={16}
+                  color={c.tertiary}
+                  weight={2.4}
+                />
+              )}
             </View>
           </Tap>
         ))}
       </Card>
+      <WeighDetailSheet entry={detail} onClose={() => setDetail(null)} />
     </Screen>
   );
 }

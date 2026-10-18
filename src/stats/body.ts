@@ -1,5 +1,6 @@
-import { BodyEntry, MeasureEntry, MeasureKey } from '../core/types';
-import { DAY_MS } from '../core/dates';
+import { BodyEntry, MeasureEntry, MeasureKey, Profile } from '../core/types';
+import { DAY_MS, ageFrom } from '../core/dates';
+import { Composition, computeComposition } from '../body/composition';
 import { Point } from './progress';
 
 /** Trailing moving average over `days` (time-based, robust to gaps). */
@@ -74,6 +75,34 @@ export const bmi = (
 ): number | null =>
   heightCm && heightCm > 0 ? weightKg / (heightCm / 100) ** 2 : null;
 
+/**
+ * Completes a weigh-in with everything derivable from it: BMI from the
+ * height and, when the scale sent the impedance, the full composition (with
+ * the age on the day of the weigh-in). Values already saved are kept.
+ */
+export const enrichBodyEntry = <E extends Omit<BodyEntry, 'id'>>(
+  e: E,
+  profile: Profile,
+): E => {
+  const out: E = { ...e };
+  const { heightCm, sex } = profile;
+  if (out.bmi == null && heightCm)
+    out.bmi = Math.round(bmi(e.weightKg, heightCm)! * 10) / 10;
+  const age = ageFrom(profile.birthDate, new Date(e.date));
+  if (e.impedance && sex && heightCm && age != null) {
+    const comp = computeComposition({
+      weightKg: e.weightKg,
+      heightCm,
+      age,
+      sex,
+      impedance: e.impedance,
+    });
+    for (const k of Object.keys(comp) as (keyof Composition)[])
+      if (out[k] == null) out[k] = comp[k];
+  }
+  return out;
+};
+
 export const bmiCategory = (v: number): string => {
   if (v < 18.5) return 'Sottopeso';
   if (v < 25) return 'Normopeso';
@@ -120,11 +149,16 @@ export const latestMeasures = (entries: MeasureEntry[]) =>
 
 export type CompositionKey =
   | 'fatPct'
+  | 'fatMassKg'
+  | 'leanMassKg'
   | 'muscleKg'
   | 'waterPct'
+  | 'proteinPct'
   | 'boneKg'
   | 'visceralFat'
-  | 'bmrKcal';
+  | 'bmrKcal'
+  | 'metabolicAge'
+  | 'bmi';
 
 export const COMPOSITION: {
   key: CompositionKey;
@@ -133,11 +167,21 @@ export const COMPOSITION: {
   decimals: number;
 }[] = [
   { key: 'fatPct', label: 'Massa grassa', unit: '%', decimals: 1 },
+  { key: 'fatMassKg', label: 'Grasso', unit: 'kg', decimals: 1 },
   { key: 'muscleKg', label: 'Massa muscolare', unit: 'kg', decimals: 1 },
+  { key: 'leanMassKg', label: 'Massa magra', unit: 'kg', decimals: 1 },
   { key: 'waterPct', label: 'Acqua', unit: '%', decimals: 1 },
+  { key: 'proteinPct', label: 'Proteine', unit: '%', decimals: 1 },
   { key: 'boneKg', label: 'Massa ossea', unit: 'kg', decimals: 1 },
   { key: 'visceralFat', label: 'Grasso viscerale', unit: '', decimals: 0 },
   { key: 'bmrKcal', label: 'Metabolismo basale', unit: 'kcal', decimals: 0 },
+  { key: 'metabolicAge', label: 'Età metabolica', unit: 'anni', decimals: 0 },
+];
+
+/** Every metric a weigh-in can hold, BMI included (charts, details). */
+export const BODY_METRICS: typeof COMPOSITION = [
+  ...COMPOSITION,
+  { key: 'bmi', label: 'IMC', unit: '', decimals: 1 },
 ];
 
 export const compositionPoints = (

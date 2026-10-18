@@ -148,12 +148,23 @@ export interface BodyEntry {
   impedance?: number;
   /** Measurement time reported by the scale (de-duplication). */
   scaleStamp?: string;
+  scaleModel?: ScaleModel;
+  /** Body mass index, from the height at the time of the weigh-in. */
+  bmi?: number;
+  /* Composition estimated from the impedance (Mi Fit / Zepp Life formulas). */
   fatPct?: number;
+  fatMassKg?: number;
+  leanMassKg?: number;
   muscleKg?: number;
   waterPct?: number;
+  proteinPct?: number;
   boneKg?: number;
   visceralFat?: number;
   bmrKcal?: number;
+  metabolicAge?: number;
+  /** Index in BODY_TYPES. */
+  bodyType?: number;
+  idealWeightKg?: number;
 }
 
 export type MeasureKey =

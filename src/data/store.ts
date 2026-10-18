@@ -27,6 +27,7 @@ import {
 import { buildWorkout, cloneWorkout, toSession } from '../workout/engine';
 import { duplicatePlan as dupPlan } from '../plan/planUtils';
 import { uid } from '../core/ids';
+import { enrichBodyEntry } from '../stats/body';
 
 export interface AppStore extends PersistedState {
   hydrated: boolean;
@@ -112,7 +113,12 @@ export const useStore = create<AppStore>()((set, get) => ({
   },
 
   completeOnboarding: () => set({ onboarded: true }),
-  setProfile: patch => set(s => ({ profile: { ...s.profile, ...patch } })),
+  setProfile: patch =>
+    set(s => {
+      const profile = { ...s.profile, ...patch };
+      // Weigh-ins waiting for sex, height or age get their composition now.
+      return { profile, body: s.body.map(e => enrichBodyEntry(e, profile)) };
+    }),
   updateSettings: fn => set(s => ({ settings: mergeSettings(fn(s.settings)) })),
 
   addPlan: (plan, opts) =>
@@ -195,7 +201,10 @@ export const useStore = create<AppStore>()((set, get) => ({
     set(s => ({ sessions: s.sessions.filter(x => x.id !== id) })),
 
   addBodyEntry: e => {
-    const entry: BodyEntry = { ...e, id: uid('b') };
+    const entry: BodyEntry = {
+      ...enrichBodyEntry(e, get().profile),
+      id: uid('b'),
+    };
     set(s => ({ body: sortByDate([...s.body, entry]) }));
     return entry;
   },

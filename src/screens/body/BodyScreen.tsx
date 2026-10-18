@@ -34,6 +34,7 @@ import { numeric } from '../../theme/typography';
 import { SettingsProps } from '../../navigation/types';
 import { IconButton } from '../../ui/Button';
 import { fmtInterval } from '../../body/schedule';
+import { BODY_TYPES } from '../../body/composition';
 
 export function BodyScreen({ navigation: nav }: SettingsProps<'Body'>) {
   const { c } = useTheme();
@@ -61,7 +62,9 @@ export function BodyScreen({ navigation: nav }: SettingsProps<'Body'>) {
   const dispPts = (p: { t: number; v: number }[]) =>
     p.filter(x => x.t >= since).map(x => ({ t: x.t, v: toDisplay(x.v, unit) }));
   const goal = profile.goalWeightKg;
-  const bmiValue = latest ? bmi(latest.weightKg, profile.heightCm) : null;
+  const bmiValue = latest
+    ? latest.bmi ?? bmi(latest.weightKg, profile.heightCm)
+    : null;
 
   const sheets = (
     <>
@@ -248,6 +251,28 @@ export function BodyScreen({ navigation: nav }: SettingsProps<'Body'>) {
               {fmtRelativeDay(lastComp.date)}
             </T>
           </View>
+          {lastComp.bodyType != null ? (
+            <View style={[styles.typeTile, { backgroundColor: c.card }]}>
+              <View style={styles.flex}>
+                <T v="footnote" color="secondary">
+                  Tipo di corpo
+                </T>
+                <T v="title3" color="accent">
+                  {BODY_TYPES[lastComp.bodyType]}
+                </T>
+              </View>
+              {lastComp.idealWeightKg != null ? (
+                <View style={styles.typeSide}>
+                  <T v="footnote" color="secondary">
+                    Peso ideale
+                  </T>
+                  <T v="headline">
+                    {fmtNum(toDisplay(lastComp.idealWeightKg, unit), 1)} {unit}
+                  </T>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
           <View style={styles.grid}>
             {COMPOSITION.map(m => {
               const v = lastComp[m.key];
@@ -468,6 +493,14 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -5 },
   gridItem: { width: '50%', padding: 5 },
   tile: { borderRadius: 22, padding: 14, gap: 2 },
+  typeTile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 22,
+    padding: 14,
+    marginBottom: 5,
+  },
+  typeSide: { alignItems: 'flex-end', gap: 2 },
   note: { marginTop: 6, marginBottom: 12, paddingHorizontal: 4 },
   mRow: {
     flexDirection: 'row',

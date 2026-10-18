@@ -20,7 +20,8 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { selectLatestWeight, useStore } from '../../data/store';
 import { openBluetoothSettings, useScale } from '../../scale/useScale';
 import { SCALE_MODEL_LABEL, ScaleReading } from '../../scale/miScale';
-import { computeComposition } from '../../body/composition';
+import { BODY_TYPES } from '../../body/composition';
+import { enrichBodyEntry } from '../../stats/body';
 import { ageFrom } from '../../core/dates';
 import { fmtNum } from '../../core/format';
 import { fromDisplay, toDisplay } from '../../core/units';
@@ -153,29 +154,24 @@ function ScaleReader({ onDone }: { onDone: () => void }) {
 
   const age = ageFrom(profile.birthDate);
   const canCompose = !!(profile.sex && profile.heightCm && age != null);
-  const composition =
-    reading?.impedance && canCompose
-      ? computeComposition({
-          weightKg: reading.weightKg,
-          heightCm: profile.heightCm!,
-          age: age!,
-          sex: profile.sex!,
-          impedance: reading.impedance,
-        })
-      : null;
+  const entry: Omit<BodyEntry, 'id'> | null = reading
+    ? {
+        date: new Date().toISOString(),
+        weightKg: reading.weightKg,
+        source: 'scale',
+        impedance: reading.impedance,
+        scaleStamp: reading.timestamp,
+        scaleModel: reading.model,
+      }
+    : null;
+  // Same values the store saves with the entry.
+  const preview = entry ? enrichBodyEntry(entry, profile) : null;
+  const composition = preview?.fatPct != null ? preview : null;
   const duplicate =
     !!reading?.timestamp && body.some(b => b.scaleStamp === reading.timestamp);
 
   const save = () => {
-    if (!reading || saved) return;
-    const entry: Omit<BodyEntry, 'id'> = {
-      date: new Date().toISOString(),
-      weightKg: reading.weightKg,
-      source: 'scale',
-      impedance: reading.impedance,
-      scaleStamp: reading.timestamp,
-      ...(composition ?? {}),
-    };
+    if (!reading || !entry || saved) return;
     add(entry);
     if (device && !settings.deviceId) {
       updateSettings(s => ({
@@ -315,12 +311,31 @@ function ScaleReader({ onDone }: { onDone: () => void }) {
       ) : null}
       {composition ? (
         <View style={[styles.comp, { backgroundColor: c.fill4 }]}>
-          <Comp label="Grasso" value={`${fmtNum(composition.fatPct, 1)}%`} />
+          <Comp label="Grasso" value={`${fmtNum(composition.fatPct!, 1)}%`} />
           <Comp
             label="Muscoli"
-            value={`${fmtNum(composition.muscleKg, 1)} kg`}
+            value={`${fmtNum(composition.muscleKg!, 1)} kg`}
           />
-          <Comp label="Acqua" value={`${fmtNum(composition.waterPct, 1)}%`} />
+          <Comp label="Acqua" value={`${fmtNum(composition.waterPct!, 1)}%`} />
+          <Comp
+            label="Proteine"
+            value={`${fmtNum(composition.proteinPct!, 1)}%`}
+          />
+          <Comp
+            label="Viscerale"
+            value={fmtNum(composition.visceralFat!, 0)}
+          />
+          <Comp
+            label="Età metabolica"
+            value={`${fmtNum(composition.metabolicAge!, 0)} anni`}
+          />
+          {composition.bodyType != null ? (
+            <T v="footnote" color="secondary" style={styles.compType}>
+              Tipo di corpo:{' '}
+              <T v="footnoteStrong">{BODY_TYPES[composition.bodyType]}</T> ·
+              tutti i dati restano nella pesata
+            </T>
+          ) : null}
         </View>
       ) : null}
       {done ? (
@@ -395,8 +410,15 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   hidden: { display: 'none' },
   halo: { position: 'absolute', width: 200, height: 200, borderRadius: 100 },
-  comp: { flexDirection: 'row', borderRadius: 18, padding: 12 },
-  compItem: { flex: 1, alignItems: 'center' },
+  comp: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    borderRadius: 18,
+    padding: 12,
+    rowGap: 12,
+  },
+  compItem: { width: '33.33%', alignItems: 'center' },
+  compType: { width: '100%', textAlign: 'center' },
   savedRow: {
     flexDirection: 'row',
     alignItems: 'center',

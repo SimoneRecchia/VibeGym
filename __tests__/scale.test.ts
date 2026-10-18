@@ -4,7 +4,9 @@ import {
   parseBodyComposition,
   parseWeightScale,
 } from '../src/scale/miScale';
-import { computeComposition } from '../src/body/composition';
+import { BODY_TYPES, computeComposition } from '../src/body/composition';
+import { enrichBodyEntry } from '../src/stats/body';
+import { useStore } from '../src/data/store';
 import { movingAverage, weeklyRate, bmi } from '../src/stats/body';
 
 const le = (n: number) => [n & 0xff, (n >> 8) & 0xff];
@@ -102,6 +104,70 @@ describe('body stats', () => {
     expect(c.muscleKg).toBeGreaterThan(50);
     expect(c.bmrKcal).toBeGreaterThan(1500);
     expect(c.visceralFat).toBeGreaterThanOrEqual(1);
+    expect(c.fatMassKg + c.leanMassKg).toBeCloseTo(78, 0);
+    expect(c.proteinPct).toBeGreaterThanOrEqual(5);
+    expect(c.proteinPct).toBeLessThanOrEqual(32);
+    expect(c.metabolicAge).toBeGreaterThanOrEqual(15);
+    expect(c.metabolicAge).toBeLessThanOrEqual(80);
+    expect(BODY_TYPES[c.bodyType]).toBeDefined();
+    expect(c.idealWeightKg).toBeCloseTo(70, 1);
+  });
+
+  it('saves every metric with the weigh-in, also for older ones', () => {
+    const profile = {
+      sex: 'male' as const,
+      heightCm: 180,
+      birthDate: '1995-03-01',
+    };
+    const raw = {
+      date: '2026-10-01T07:30:00.000Z',
+      weightKg: 78,
+      source: 'scale' as const,
+      impedance: 480,
+    };
+    const e = enrichBodyEntry(raw, profile);
+    expect(e.bmi).toBeCloseTo(24.1, 1);
+    for (const k of [
+      'fatPct',
+      'fatMassKg',
+      'leanMassKg',
+      'muscleKg',
+      'waterPct',
+      'proteinPct',
+      'boneKg',
+      'visceralFat',
+      'bmrKcal',
+      'metabolicAge',
+      'bodyType',
+      'idealWeightKg',
+    ] as const)
+      expect(e[k]).toEqual(expect.any(Number));
+    // Saved values are kept; without the impedance only the BMI is derived.
+    expect(enrichBodyEntry({ ...raw, fatPct: 12.3 }, profile).fatPct).toBe(12.3);
+    const manual = enrichBodyEntry(
+      { ...raw, impedance: undefined, source: 'manual' as const },
+      profile,
+    );
+    expect(manual.bmi).toBeDefined();
+    expect(manual.fatPct).toBeUndefined();
+    // Missing profile data: nothing to compute yet.
+    expect(enrichBodyEntry(raw, {}).fatPct).toBeUndefined();
+  });
+
+  it('completes weigh-ins when the profile is filled in', () => {
+    useStore.setState({ profile: {}, body: [] });
+    useStore.getState().addBodyEntry({
+      date: new Date().toISOString(),
+      weightKg: 70,
+      source: 'scale',
+      impedance: 500,
+    });
+    expect(useStore.getState().body[0].fatPct).toBeUndefined();
+    useStore
+      .getState()
+      .setProfile({ sex: 'female', heightCm: 165, birthDate: '1990-01-01' });
+    expect(useStore.getState().body[0].fatPct).toEqual(expect.any(Number));
+    expect(useStore.getState().body[0].bmi).toBeCloseTo(25.7, 1);
   });
 
   it('smooths weight and computes the weekly rate', () => {

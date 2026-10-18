@@ -1,19 +1,12 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { MealKey } from '../core/types';
+import type { CompositionKey } from '../stats/body';
 import {
   NativeStackNavigationProp,
   NativeStackScreenProps,
 } from '@react-navigation/native-stack';
 
-export type BodyMetric =
-  | 'weight'
-  | 'fatPct'
-  | 'muscleKg'
-  | 'waterPct'
-  | 'boneKg'
-  | 'visceralFat'
-  | 'bmrKcal'
-  | `measure:${string}`;
+export type BodyMetric = 'weight' | CompositionKey | `measure:${string}`;
 
 export type SettingsStackParams = {
   SettingsHome: undefined;

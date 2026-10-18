@@ -80,12 +80,10 @@ beforeAll(async () => {
         date: new Date(now - (20 - i) * 2 * 86400000).toISOString(),
         weightKg: 80 - i * 0.15,
         source: i % 2 ? 'scale' : 'manual',
-        fatPct: 18 - i * 0.05,
-        muscleKg: 60,
-        waterPct: 56,
-        boneKg: 3.1,
-        visceralFat: 8,
-        bmrKcal: 1750,
+        // Scale weigh-ins: the composition is derived from the impedance.
+        ...(i % 2
+          ? { impedance: 480 + i, scaleModel: 'mi-body-composition' as const }
+          : { fatPct: 18 - i * 0.05, muscleKg: 60, waterPct: 56 }),
       });
     }
     s.addMeasure(
@@ -221,6 +219,21 @@ test('a second, heavier workout sets records and fills the trend screens', async
 test('body metric screens', async () => {
   await go('Settings', { screen: 'BodyMetric', params: { metric: 'weight' } });
   expect(allText(r)).toContain('Peso');
+  // The latest weigh-in (from the scale) opens with every saved value.
+  const rows = r.root.findAll(
+    n => typeof n.props.onLongPress === 'function' && n.props.onPress,
+  );
+  await act(async () => rows[0].props.onPress());
+  await flush();
+  const detail = allText(r);
+  expect(detail).toContain('Tipo di corpo');
+  expect(detail).toContain('Età metabolica');
+  expect(detail).toContain('Mi Body Composition Scale 2');
+  await go('Settings', {
+    screen: 'BodyMetric',
+    params: { metric: 'metabolicAge' },
+  });
+  expect(allText(r)).toContain('Età metabolica');
   await go('Settings', { screen: 'BodyMetric', params: { metric: 'fatPct' } });
   expect(allText(r)).toContain('Massa grassa');
   await go('Settings', {
