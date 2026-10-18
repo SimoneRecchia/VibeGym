@@ -1,66 +1,142 @@
 import React from 'react';
-import { NavigationContainer, DarkTheme, DefaultTheme, Theme } from '@react-navigation/native';
+import {
+  createNavigationContainerRef,
+  DarkTheme,
+  DefaultTheme,
+  NavigationContainer,
+  Theme,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeProvider';
-import { HomeScreen } from '../screens/HomeScreen';
-import { WorkoutScreen } from '../screens/WorkoutScreen';
+import { useStore } from '../data/store';
+import { RootStackParams, SettingsStackParams } from './types';
+import { MainTabs } from './MainTabs';
+import { OnboardingScreen } from '../screens/OnboardingScreen';
+import { DayScreen } from '../screens/DayScreen';
+import { WorkoutScreen } from '../screens/workout/WorkoutScreen';
+import { ExerciseInfoScreen } from '../screens/ExerciseInfoScreen';
+import { ExerciseTrendScreen } from '../screens/ExerciseTrendScreen';
+import { SessionScreen } from '../screens/SessionScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
-import { MenuScreen } from '../screens/MenuScreen';
-import { ImportScreen } from '../screens/ImportScreen';
-import { PlanWizardScreen } from '../screens/PlanWizardScreen';
-import { SchedeScreen } from '../screens/SchedeScreen';
-import { SettingsScreen } from '../screens/SettingsScreen';
-import { ProfileScreen } from '../screens/ProfileScreen';
-import { SchemaScreen } from '../screens/SchemaScreen';
-import { SyncScreen } from '../screens/SyncScreen';
-import { ChartsScreen } from '../screens/ChartsScreen';
-import { ValidatePlanScreen } from '../screens/ValidatePlanScreen';
-import { RootStackParamList } from './types';
+import { PlanSetupScreen } from '../screens/plan/PlanSetupScreen';
+import { AiFlowScreen } from '../screens/plan/AiFlowScreen';
+import { ImportReviewScreen } from '../screens/plan/ImportReviewScreen';
+import { PlanEditorScreen } from '../screens/plan/PlanEditorScreen';
+import { ExerciseEditorScreen } from '../screens/plan/ExerciseEditorScreen';
+import { ExercisePickerScreen } from '../screens/plan/ExercisePickerScreen';
+import { PlansScreen } from '../screens/plan/PlansScreen';
+import { BodyMetricScreen } from '../screens/body/BodyMetricScreen';
+import { SettingsHome } from '../screens/settings/SettingsHome';
+import { ProfileEdit } from '../screens/settings/ProfileEdit';
+import { WorkoutSettings } from '../screens/settings/WorkoutSettings';
+import { NotificationSettings } from '../screens/settings/NotificationSettings';
+import { ScaleSettings } from '../screens/settings/ScaleSettings';
+import { AppearanceSettings } from '../screens/settings/AppearanceSettings';
+import { DataSettings } from '../screens/settings/DataSettings';
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+/** Global ref, used outside React components (tests, notification taps). */
+export const navigationRef = createNavigationContainerRef<RootStackParams>();
+
+const Root = createNativeStackNavigator<RootStackParams>();
+const SettingsStack = createNativeStackNavigator<SettingsStackParams>();
+
+function SettingsNavigator() {
+  const { c } = useTheme();
+  return (
+    <SettingsStack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: c.bg },
+      }}
+    >
+      <SettingsStack.Screen name="SettingsHome" component={SettingsHome} />
+      <SettingsStack.Screen name="ProfileEdit" component={ProfileEdit} />
+      <SettingsStack.Screen
+        name="WorkoutSettings"
+        component={WorkoutSettings}
+      />
+      <SettingsStack.Screen
+        name="NotificationSettings"
+        component={NotificationSettings}
+      />
+      <SettingsStack.Screen name="ScaleSettings" component={ScaleSettings} />
+      <SettingsStack.Screen
+        name="AppearanceSettings"
+        component={AppearanceSettings}
+      />
+      <SettingsStack.Screen name="DataSettings" component={DataSettings} />
+    </SettingsStack.Navigator>
+  );
+}
 
 export function AppNavigator() {
-  const { palette, mode } = useTheme();
-  const base: Theme = mode === 'dark' ? DarkTheme : DefaultTheme;
-  const navTheme: Theme = {
+  const { c, dark } = useTheme();
+  const onboarded = useStore(s => s.onboarded);
+  const base = dark ? DarkTheme : DefaultTheme;
+  const theme: Theme = {
     ...base,
     colors: {
       ...base.colors,
-      background: palette.bg,
-      card: palette.bgElevated,
-      text: palette.text,
-      border: palette.glassBorder,
-      primary: palette.accent,
+      background: c.bg,
+      card: c.card,
+      text: c.label,
+      border: c.separator,
+      primary: c.accent,
     },
   };
 
   return (
-    <NavigationContainer theme={navTheme}>
-      <Stack.Navigator
+    <NavigationContainer ref={navigationRef} theme={theme}>
+      <Root.Navigator
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: palette.bg },
-          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: c.bg },
+          animation: 'default',
         }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen
-          name="Workout"
-          component={WorkoutScreen}
-          options={{ animation: 'fade_from_bottom' }}
-        />
-        <Stack.Screen name="History" component={HistoryScreen} />
-        <Stack.Screen name="Menu" component={MenuScreen} options={{ animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="Schema" component={SchemaScreen} />
-        <Stack.Screen name="Import" component={ImportScreen} />
-        <Stack.Screen name="PlanWizard" component={PlanWizardScreen} />
-        <Stack.Screen name="Schede" component={SchedeScreen} />
-        <Stack.Screen name="Settings" component={SettingsScreen} />
-        <Stack.Screen name="Profile" component={ProfileScreen} />
-        <Stack.Screen name="Sync" component={SyncScreen} />
-        <Stack.Screen name="Charts" component={ChartsScreen} />
-        <Stack.Screen name="ValidatePlan" component={ValidatePlanScreen} />
-      </Stack.Navigator>
+        {!onboarded ? (
+          <Root.Screen name="Onboarding" component={OnboardingScreen} />
+        ) : (
+          <>
+            <Root.Screen name="Main" component={MainTabs} />
+            <Root.Screen name="Day" component={DayScreen} />
+            <Root.Screen
+              name="Workout"
+              component={WorkoutScreen}
+              options={{
+                presentation: 'fullScreenModal',
+                animation: 'slide_from_bottom',
+                gestureEnabled: false,
+              }}
+            />
+            <Root.Screen name="ExerciseTrend" component={ExerciseTrendScreen} />
+            <Root.Screen name="Session" component={SessionScreen} />
+            <Root.Screen name="History" component={HistoryScreen} />
+            <Root.Screen name="BodyMetric" component={BodyMetricScreen} />
+            <Root.Screen name="Plans" component={PlansScreen} />
+            <Root.Screen name="ImportReview" component={ImportReviewScreen} />
+            <Root.Screen
+              name="ExerciseEditor"
+              component={ExerciseEditorScreen}
+            />
+            <Root.Group screenOptions={{ presentation: 'modal' }}>
+              <Root.Screen name="Settings" component={SettingsNavigator} />
+              <Root.Screen name="ExerciseInfo" component={ExerciseInfoScreen} />
+              <Root.Screen name="PlanSetup" component={PlanSetupScreen} />
+              <Root.Screen
+                name="ExercisePicker"
+                component={ExercisePickerScreen}
+              />
+            </Root.Group>
+            <Root.Screen name="AiFlow" component={AiFlowScreen} />
+            <Root.Screen
+              name="PlanEditor"
+              component={PlanEditorScreen}
+              options={{ gestureEnabled: false }}
+            />
+          </>
+        )}
+      </Root.Navigator>
     </NavigationContainer>
   );
 }

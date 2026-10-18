@@ -1,17 +1,51 @@
-import { Plan } from '../lib/types';
+import { NavigatorScreenParams } from '@react-navigation/native';
+import {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from '@react-navigation/native-stack';
 
-export type RootStackParamList = {
-  Home: undefined;
-  Workout: undefined;
-  History: undefined;
-  Menu: undefined;
-  Schema: undefined;
-  Import: undefined;
-  PlanWizard: undefined;
-  Schede: undefined;
-  Settings: undefined;
-  Profile: undefined;
-  Sync: undefined;
-  Charts: undefined;
-  ValidatePlan: { plan: Plan };
+export type BodyMetric =
+  | 'weight'
+  | 'fatPct'
+  | 'muscleKg'
+  | 'waterPct'
+  | 'boneKg'
+  | 'visceralFat'
+  | 'bmrKcal'
+  | `measure:${string}`;
+
+export type SettingsStackParams = {
+  SettingsHome: undefined;
+  ProfileEdit: undefined;
+  NotificationSettings: undefined;
+  ScaleSettings: undefined;
+  AppearanceSettings: undefined;
+  WorkoutSettings: undefined;
+  DataSettings: undefined;
 };
+
+export type RootStackParams = {
+  Onboarding: undefined;
+  Main: undefined;
+  Day: { dayId: string };
+  Workout: undefined;
+  ExerciseInfo: { catalogId?: string; name: string; key?: string };
+  ExerciseTrend: { key: string; name: string };
+  Session: { id: string };
+  History: undefined;
+  PlanSetup: undefined;
+  AiFlow: { mode: 'create' | 'convert' | 'modify' };
+  ImportReview: undefined;
+  PlanEditor: undefined;
+  ExerciseEditor: { dayId: string; blockId: string; exerciseId: string };
+  ExercisePicker: { title?: string; cardio?: boolean };
+  Plans: undefined;
+  BodyMetric: { metric: BodyMetric };
+  Settings: NavigatorScreenParams<SettingsStackParams> | undefined;
+};
+
+export type Nav = NativeStackNavigationProp<RootStackParams>;
+export type ScreenProps<K extends keyof RootStackParams> =
+  NativeStackScreenProps<RootStackParams, K>;
+export type SettingsProps<K extends keyof SettingsStackParams> =
+  NativeStackScreenProps<SettingsStackParams, K>;

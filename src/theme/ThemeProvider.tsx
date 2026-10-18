@@ -1,46 +1,28 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Appearance } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Mode, Palette, palettes } from './tokens';
+import React, { createContext, useContext, useMemo } from 'react';
+import { useColorScheme } from 'react-native';
+import { useStore } from '../data/store';
+import { buildPalette, Palette } from './colors';
 
-type ThemeCtx = {
-  mode: Mode;
-  palette: Palette;
-  toggle: () => void;
-  setMode: (m: Mode) => void;
-};
+interface Theme {
+  c: Palette;
+  dark: boolean;
+}
 
-const Ctx = createContext<ThemeCtx | null>(null);
-const THEME_KEY = 'vibegym_theme';
+const Ctx = createContext<Theme>({
+  c: buildPalette(false, 'blue'),
+  dark: false,
+});
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setModeState] = useState<Mode>(() =>
-    (Appearance.getColorScheme() ?? 'dark') === 'light' ? 'light' : 'dark'
+  const system = useColorScheme();
+  const pref = useStore(s => s.settings.theme);
+  const accent = useStore(s => s.settings.accent);
+  const dark = pref === 'system' ? system === 'dark' : pref === 'dark';
+  const value = useMemo(
+    () => ({ c: buildPalette(dark, accent), dark }),
+    [dark, accent],
   );
-
-  useEffect(() => {
-    AsyncStorage.getItem(THEME_KEY).then(saved => {
-      if (saved === 'light' || saved === 'dark') setModeState(saved);
-    });
-  }, []);
-
-  const setMode = useCallback((m: Mode) => {
-    setModeState(m);
-    AsyncStorage.setItem(THEME_KEY, m).catch(() => {});
-  }, []);
-
-  const toggle = useCallback(() => setMode(mode === 'dark' ? 'light' : 'dark'), [mode, setMode]);
-
-  const value = useMemo<ThemeCtx>(
-    () => ({ mode, palette: palettes[mode], toggle, setMode }),
-    [mode, toggle, setMode]
-  );
-
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
-export function useTheme(): ThemeCtx {
-  const v = useContext(Ctx);
-  if (!v) throw new Error('useTheme must be used inside ThemeProvider');
-  return v;
-}
+export const useTheme = () => useContext(Ctx);

@@ -1,45 +1,82 @@
 import 'react-native-gesture-handler';
-import React from 'react';
-import { StatusBar, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
-import { StoreProvider, useStore } from './src/lib/store';
+import { useStore } from './src/data/store';
 import { AppNavigator } from './src/navigation/AppNavigator';
-import { Toast } from './src/components/Toast';
-import { RestTimer } from './src/components/RestTimer';
-import { WeightPrompt } from './src/components/WeightPrompt';
+import { ToastHost } from './src/ui/Toast';
+import { MenuHost } from './src/ui/Menu';
+import { installWorkoutRuntime } from './src/workout/actions';
+import { setRestNotifications } from './src/workout/timer';
+import { setHapticsEnabled } from './src/services/haptics';
+import { setSoundEnabled } from './src/services/sound';
+import { syncReminders } from './src/services/notifications';
 
-function App() {
+/** Keeps native services in sync with the settings. */
+function Runtime() {
+  const hydrated = useStore(s => s.hydrated);
+  const settings = useStore(s => s.settings);
+
+  useEffect(() => installWorkoutRuntime(), []);
+
+  useEffect(() => {
+    setHapticsEnabled(settings.haptics);
+    setSoundEnabled(settings.sound);
+    setRestNotifications(settings.notifications.restEnd);
+  }, [settings.haptics, settings.sound, settings.notifications.restEnd]);
+
+  // Reminders are re-armed at each launch (timestamps move forward).
+  useEffect(() => {
+    if (hydrated) syncReminders(useStore.getState().settings.notifications);
+  }, [hydrated]);
+
+  return null;
+}
+
+function Root() {
+  const { c, dark } = useTheme();
+  const hydrated = useStore(s => s.hydrated);
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <View style={[styles.root, { backgroundColor: c.bg }]}>
+      <StatusBar
+        barStyle={dark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
+      {hydrated ? (
+        <>
+          <AppNavigator />
+          <MenuHost />
+          <ToastHost />
+          <Runtime />
+        </>
+      ) : (
+        <View style={styles.splash}>
+          <ActivityIndicator color={c.accent} />
+        </View>
+      )}
+    </View>
+  );
+}
+
+export default function App() {
+  useEffect(() => {
+    useStore.getState().hydrate();
+  }, []);
+  return (
+    <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <StoreProvider>
-            <Root />
-          </StoreProvider>
+          <Root />
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
-function Root() {
-  const { palette, mode } = useTheme();
-  const { toast } = useStore();
-  return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <StatusBar
-        barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
-        backgroundColor="transparent"
-        translucent
-      />
-      <AppNavigator />
-      <RestTimer />
-      <WeightPrompt />
-      <Toast message={toast} />
-    </View>
-  );
-}
-
-export default App;
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  splash: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+});
