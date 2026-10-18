@@ -21,6 +21,7 @@ import { ExerciseThumb } from '../ui/ExerciseMedia';
 import { Button } from '../ui/Button';
 import {
   exerciseSummaries,
+  muscleGroupSets,
   periodTotals,
   recentRecords,
   weekStreak,
@@ -41,6 +42,12 @@ import { rangeStart } from '../core/dates';
 import { allExercises, keyOf } from '../plan/planUtils';
 import { sessionSetsDone } from '../stats/metrics';
 import { Nav } from '../navigation/types';
+import { WeightCard } from './body/WeightCard';
+import { useDayNutrition } from '../nutrition/useDayNutrition';
+import { DAY_MS, dayKey } from '../core/dates';
+import { logNutrients } from '../nutrition/foods';
+import { MACRO_COLOR } from './nutrition/macroColors';
+import { withAlpha } from '../theme/colors';
 
 type ActivityMetric = 'workouts' | 'volume' | 'minutes';
 
@@ -88,10 +95,21 @@ export function ProgressTab() {
     [sessions, scope, planKeys],
   );
   const recent = sessions.slice(-3).reverse();
+  const weighOn = useStore(s => s.settings.weigh.enabled);
+  const muscles = useMemo(() => muscleGroupSets(sessions), [sessions]);
+  const food = useFoodWeek();
+
+  const openBody = () =>
+    nav.navigate('Settings', { screen: 'Body', initial: false });
+  const weight = weighOn ? (
+    <WeightCard onOpen={openBody} chart style={styles.block} />
+  ) : null;
 
   if (!sessions.length) {
     return (
       <Screen title="Progressi" right={<ProfileButton />}>
+        {weight}
+        {food ? <FoodWeek data={food} /> : null}
         <Card>
           <Empty
             icon="chart"
@@ -117,6 +135,8 @@ export function ProgressTab() {
 
   return (
     <Screen title="Progressi" right={<ProfileButton />}>
+      {weight}
+
       {/* This month */}
       <View style={styles.tiles}>
         <Tile
@@ -167,6 +187,62 @@ export function ProgressTab() {
           />
         </View>
       </Card>
+
+      {food ? <FoodWeek data={food} /> : null}
+
+      {/* Muscle groups */}
+      {muscles.length ? (
+        <Card style={styles.block}>
+          <View style={styles.headRow}>
+            <T v="headline">Serie per muscolo</T>
+            <T v="footnote" color="secondary">
+              a settimana, ultime 4
+            </T>
+          </View>
+          {muscles.map(m => {
+            const max = Math.max(20, muscles[0].perWeek);
+            const inRange = m.perWeek >= 10 && m.perWeek <= 20;
+            return (
+              <View key={m.key} style={styles.muscleRow}>
+                <T v="subhead" style={styles.muscleLabel} numberOfLines={1}>
+                  {m.label}
+                </T>
+                <View
+                  style={[styles.muscleTrack, { backgroundColor: c.fill4 }]}
+                >
+                  <View
+                    style={[
+                      styles.muscleBand,
+                      {
+                        left: `${(10 / max) * 100}%`,
+                        width: `${(10 / max) * 100}%`,
+                        backgroundColor: withAlpha(c.green, 0.14),
+                      },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.muscleFill,
+                      {
+                        width: `${Math.min(100, (m.perWeek / max) * 100)}%`,
+                        backgroundColor: inRange ? c.accent : c.tertiary,
+                      },
+                    ]}
+                  />
+                </View>
+                <T v="footnoteStrong" style={styles.muscleValue}>
+                  {fmtNum(m.perWeek, 1)}
+                </T>
+              </View>
+            );
+          })}
+          <T v="caption" color="tertiary" style={styles.muscleNote}>
+            La fascia verde (10–20 serie a settimana) è quella che la ricerca
+            associa alla crescita muscolare. Le serie che coinvolgono un muscolo
+            come secondario contano metà.
+          </T>
+        </Card>
+      ) : null}
 
       {/* Records */}
       {records.length ? (
@@ -347,6 +423,98 @@ export function ProgressTab() {
   );
 }
 
+/** Last 7 days of the food diary (days with at least one entry). */
+function useFoodWeek() {
+  const logs = useStore(s => s.foodLog);
+  const today = useDayNutrition(dayKey());
+  return useMemo(() => {
+    const from = dayKey(Date.now() - 6 * DAY_MS);
+    const recent = logs.filter(l => l.day >= from);
+    if (!recent.length) return null;
+    const byDay = new Map<string, { kcal: number; protein: number }>();
+    for (const l of recent) {
+      const n = logNutrients(l);
+      const d = byDay.get(l.day) ?? { kcal: 0, protein: 0 };
+      d.kcal += n.kcal;
+      d.protein += n.protein;
+      byDay.set(l.day, d);
+    }
+    const days = [...byDay.values()];
+    const avg = (k: 'kcal' | 'protein') =>
+      days.reduce((a, d) => a + d[k], 0) / days.length;
+    return {
+      days: days.length,
+      kcal: avg('kcal'),
+      protein: avg('protein'),
+      kcalGoal: today.kcalGoal,
+      proteinGoal: today.macros.protein,
+    };
+  }, [logs, today.kcalGoal, today.macros.protein]);
+}
+
+function FoodWeek({
+  data,
+}: {
+  data: NonNullable<ReturnType<typeof useFoodWeek>>;
+}) {
+  const { c } = useTheme();
+  const rows = [
+    {
+      label: 'Calorie',
+      v: data.kcal,
+      goal: data.kcalGoal,
+      unit: 'kcal',
+      color: c.accent,
+    },
+    {
+      label: 'Proteine',
+      v: data.protein,
+      goal: data.proteinGoal,
+      unit: 'g',
+      color: MACRO_COLOR.protein,
+    },
+  ];
+  return (
+    <Card style={styles.block}>
+      <View style={styles.headRow}>
+        <T v="headline">Alimentazione</T>
+        <T v="footnote" color="secondary">
+          media di {plural(data.days, 'giorno', 'giorni')} registrati
+        </T>
+      </View>
+      {rows.map(r => (
+        <View key={r.label} style={styles.foodRow}>
+          <View style={styles.rowBetweenTight}>
+            <T v="subhead">{r.label}</T>
+            <T v="subheadStrong">
+              {fmtNum(r.v, 0)}{' '}
+              <T v="footnote" color="secondary">
+                / {fmtNum(r.goal, 0)} {r.unit}
+              </T>
+            </T>
+          </View>
+          <View
+            style={[
+              styles.muscleTrack,
+              { backgroundColor: withAlpha(r.color, 0.16) },
+            ]}
+          >
+            <View
+              style={[
+                styles.muscleFill,
+                {
+                  width: `${Math.min(100, r.goal ? (r.v / r.goal) * 100 : 0)}%`,
+                  backgroundColor: r.color,
+                },
+              ]}
+            />
+          </View>
+        </View>
+      ))}
+    </Card>
+  );
+}
+
 function Tile({
   label,
   sub,
@@ -417,6 +585,29 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
+  },
+  muscleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 5,
+  },
+  muscleLabel: { width: 84 },
+  muscleTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  muscleBand: { position: 'absolute', top: 0, bottom: 0 },
+  muscleFill: { height: 8, borderRadius: 4 },
+  muscleValue: { width: 34, textAlign: 'right' },
+  muscleNote: { marginTop: 10 },
+  foodRow: { gap: 6, marginTop: 6 },
+  rowBetweenTight: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
   },
   change: {
     width: 52,

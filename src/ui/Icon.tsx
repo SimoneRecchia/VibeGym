@@ -67,7 +67,10 @@ export type IconName =
   | 'reorder'
   | 'note'
   | 'bulb'
-  | 'link';
+  | 'link'
+  | 'fork'
+  | 'barcode'
+  | 'text-viewfinder';
 
 /** Gear outline generated from geometry: 8 rounded teeth. */
 const GEAR = (() => {
@@ -112,6 +115,15 @@ type Shape = {
 
 const SHAPES: Record<IconName, Shape> = {
   'chevron-left': { d: 'M15 18l-6-6 6-6' },
+  fork: {
+    d: 'M6 3v5.5a3 3 0 0 0 6 0V3M9 3v18M17.5 21V3c-2 1.5-3 4-3 7v3.5h3',
+  },
+  barcode: {
+    d: 'M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M8 8.5v7M10.7 8.5v7M13.3 8.5v7M16 8.5v7',
+  },
+  'text-viewfinder': {
+    d: 'M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M8 9.5h8M8 12h8M8 14.5h5',
+  },
   'chevron-right': { d: 'M9 6l6 6-6 6' },
   'chevron-down': { d: 'M6 9l6 6 6-6' },
   'chevron-up': { d: 'M6 15l6-6 6 6' },

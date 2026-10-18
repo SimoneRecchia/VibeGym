@@ -111,11 +111,41 @@ test('plan tab with greeting and next workout', () => {
   expect(t).toContain('Full body A');
 });
 
-test('progress and body tabs render with data', () => {
+test('progress and nutrition tabs render with data', () => {
   const t = allText(r);
   expect(t).toContain('I tuoi progressi appariranno qui');
+  // Weight trend on top of Progressi (weigh-ins are scheduled by default).
+  expect(t).toContain('Prossima pesata');
+  expect(t).toContain('Consumo stimato');
+  expect(t).toContain('Colazione');
+});
+
+test('body screen lives in the profile', async () => {
+  await go('Settings', { screen: 'Body' });
+  const t = allText(r);
   expect(t).toContain('Composizione');
   expect(t).toContain('Misure');
+});
+
+test('food diary: search, add, edit totals, custom food, scanner', async () => {
+  const { dayKey } = require('../src/core/dates');
+  const day = dayKey();
+  await go('FoodAdd', { day, meal: 'lunch' });
+  expect(allText(r)).toContain('Recenti');
+  const { GENERIC, searchFoods } = require('../src/nutrition/foods');
+  const pasta = searchFoods('pasta', GENERIC)[0];
+  expect(pasta.name).toContain('Pasta');
+  await act(async () => {
+    useStore.getState().logFood({ day, meal: 'lunch', food: pasta, qty: 80 });
+  });
+  await flush();
+  expect(useStore.getState().foodLib.recents[0]).toBe(pasta.id);
+  await go('CustomFood', { barcode: '8000000000001', day, meal: 'lunch' });
+  expect(allText(r)).toContain('Nuovo alimento');
+  await go('Scanner', { day, meal: 'lunch' });
+  expect(allText(r)).toContain('codice a barre');
+  await go('Main');
+  expect(allText(r)).toContain(pasta.name);
 });
 
 test('day screen', async () => {
@@ -189,11 +219,14 @@ test('a second, heavier workout sets records and fills the trend screens', async
 });
 
 test('body metric screens', async () => {
-  await go('BodyMetric', { metric: 'weight' });
+  await go('Settings', { screen: 'BodyMetric', params: { metric: 'weight' } });
   expect(allText(r)).toContain('Peso');
-  await go('BodyMetric', { metric: 'fatPct' });
+  await go('Settings', { screen: 'BodyMetric', params: { metric: 'fatPct' } });
   expect(allText(r)).toContain('Massa grassa');
-  await go('BodyMetric', { metric: 'measure:waist' });
+  await go('Settings', {
+    screen: 'BodyMetric',
+    params: { metric: 'measure:waist' },
+  });
   expect(allText(r)).toContain('Vita');
 });
 
@@ -244,6 +277,9 @@ test('settings and submenus', async () => {
     'ScaleSettings',
     'AppearanceSettings',
     'DataSettings',
+    'WeighSettings',
+    'NutritionSettings',
+    'HealthSettings',
   ] as const) {
     await go('Settings', { screen });
   }

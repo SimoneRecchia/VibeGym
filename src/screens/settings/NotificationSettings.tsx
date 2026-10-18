@@ -4,9 +4,10 @@ import { useStore } from '../../data/store';
 import { Screen } from '../../ui/Screen';
 import { Row, Section } from '../../ui/List';
 import { Stepper } from '../../ui/Stepper';
-import { Segmented } from '../../ui/Segmented';
 import { Chip } from '../../ui/Chip';
 import { Settings } from '../../core/types';
+import { SettingsProps } from '../../navigation/types';
+import { fmtInterval } from '../../body/schedule';
 import {
   exactAlarmsAllowed,
   openExactAlarmSettings,
@@ -29,7 +30,7 @@ const toHM = (min: number) =>
 /** Monday-first order for the weekday chips (JS getDay numbering). */
 const WEEK = [1, 2, 3, 4, 5, 6, 0];
 
-function TimeStepper({
+export function TimeStepper({
   value,
   onChange,
 }: {
@@ -50,8 +51,11 @@ function TimeStepper({
   );
 }
 
-export function NotificationSettings() {
+export function NotificationSettings({
+  navigation,
+}: SettingsProps<'NotificationSettings'>) {
   const n = useStore(s => s.settings.notifications);
+  const weigh = useStore(s => s.settings.weigh);
   const update = useStore(s => s.updateSettings);
 
   const [exactOk, setExactOk] = useState(true);
@@ -75,7 +79,8 @@ export function NotificationSettings() {
       return;
     }
     update(s => ({ ...s, notifications: next }));
-    syncReminders(next);
+    const st = useStore.getState();
+    syncReminders(st.settings, st.body[st.body.length - 1]?.date);
   };
 
   return (
@@ -144,56 +149,19 @@ export function NotificationSettings() {
         ) : null}
       </Section>
 
-      <Section
-        title="Pesata"
-        footer="Pesarsi spesso, al mattino, rende la media mobile più affidabile."
-      >
+      <Section title="Pesata">
         <Row
-          title="Ricordami di pesarmi"
-          toggle={{
-            value: n.weighIn.enabled,
-            onChange: v =>
-              apply({ ...n, weighIn: { ...n.weighIn, enabled: v } }, v),
-          }}
+          title="Frequenza e promemoria"
+          value={
+            weigh.enabled
+              ? n.weighIn.enabled
+                ? `${fmtInterval(weigh)} · ${n.weighIn.time}`
+                : fmtInterval(weigh)
+              : 'Disattivata'
+          }
+          chevron
+          onPress={() => navigation.navigate('WeighSettings')}
         />
-        {n.weighIn.enabled ? (
-          <View style={styles.pad}>
-            <Segmented
-              options={[
-                { key: 'daily', label: 'Ogni giorno' },
-                { key: 'weekly', label: 'Ogni settimana' },
-              ]}
-              value={n.weighIn.frequency}
-              onChange={frequency =>
-                apply({ ...n, weighIn: { ...n.weighIn, frequency } }, false)
-              }
-            />
-          </View>
-        ) : null}
-        {n.weighIn.enabled && n.weighIn.frequency === 'weekly' ? (
-          <View style={[styles.pad, styles.chips]}>
-            {WEEK.map(d => (
-              <Chip
-                key={d}
-                label={WEEKDAYS_SHORT[d]}
-                selected={n.weighIn.weekday === d}
-                onPress={() =>
-                  apply({ ...n, weighIn: { ...n.weighIn, weekday: d } }, false)
-                }
-              />
-            ))}
-          </View>
-        ) : null}
-        {n.weighIn.enabled ? (
-          <View style={styles.pad}>
-            <TimeStepper
-              value={n.weighIn.time}
-              onChange={time =>
-                apply({ ...n, weighIn: { ...n.weighIn, time } }, false)
-              }
-            />
-          </View>
-        ) : null}
       </Section>
 
       <Section title="Misure" footer="Il primo giorno di ogni mese.">

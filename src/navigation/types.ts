@@ -1,4 +1,5 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
+import { MealKey } from '../core/types';
 import {
   NativeStackNavigationProp,
   NativeStackScreenProps,
@@ -22,6 +23,11 @@ export type SettingsStackParams = {
   AppearanceSettings: undefined;
   WorkoutSettings: undefined;
   DataSettings: undefined;
+  Body: undefined;
+  BodyMetric: { metric: BodyMetric };
+  WeighSettings: undefined;
+  NutritionSettings: undefined;
+  HealthSettings: undefined;
 };
 
 export type RootStackParams = {
@@ -40,7 +46,17 @@ export type RootStackParams = {
   ExerciseEditor: { dayId: string; blockId: string; exerciseId: string };
   ExercisePicker: { title?: string; cardio?: boolean };
   Plans: undefined;
-  BodyMetric: { metric: BodyMetric };
+  FoodAdd: { day: string; meal: MealKey; pickId?: string };
+  CustomFood:
+    | {
+        id?: string;
+        barcode?: string;
+        day?: string;
+        meal?: MealKey;
+        name?: string;
+      }
+    | undefined;
+  Scanner: { day: string; meal: MealKey };
   Settings: NavigatorScreenParams<SettingsStackParams> | undefined;
 };
 

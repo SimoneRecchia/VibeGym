@@ -152,6 +152,18 @@ export const fmtRelativeDay = (d: Date | string | number): string => {
   return fmtDate(date);
 };
 
+/** "oggi", "domani", "tra 3 giorni", or "lunedì 20 ottobre". */
+export const fmtUpcomingDay = (d: Date | string | number): string => {
+  const date = toDate(d);
+  const days = Math.round(
+    (startOfDay(date) - startOfDay(new Date())) / 86400000,
+  );
+  if (days <= 0) return 'oggi';
+  if (days === 1) return 'domani';
+  if (days < 7) return `tra ${days} giorni`;
+  return fmtWeekdayDate(date);
+};
+
 export const greeting = (now = new Date()): string => {
   const h = now.getHours();
   if (h < 5) return 'Buonanotte';

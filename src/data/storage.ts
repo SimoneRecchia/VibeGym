@@ -8,6 +8,8 @@ import {
   ActiveWorkout,
   BodyEntry,
   DEFAULT_SETTINGS,
+  FoodLibrary,
+  FoodLog,
   MeasureEntry,
   Plan,
   Profile,
@@ -24,6 +26,8 @@ export interface PersistedState {
   sessions: Session[];
   body: BodyEntry[];
   measures: MeasureEntry[];
+  foodLog: FoodLog[];
+  foodLib: FoodLibrary;
   profile: Profile;
   settings: Settings;
   workout: ActiveWorkout | null;
@@ -38,6 +42,8 @@ export const SLICE_KEYS: SliceKey[] = [
   'sessions',
   'body',
   'measures',
+  'foodLog',
+  'foodLib',
   'profile',
   'settings',
   'workout',
@@ -54,15 +60,40 @@ export const emptyState = (): PersistedState => ({
   sessions: [],
   body: [],
   measures: [],
+  foodLog: [],
+  foodLib: { custom: [], favorites: [], recents: [], cache: [] },
   profile: {},
   settings: DEFAULT_SETTINGS,
   workout: null,
 });
 
+/** v2.0 stored the weigh-in rhythm inside the notification. */
+const legacyWeigh = (s: Partial<Settings> | undefined) =>
+  s?.notifications?.weighIn?.frequency === 'daily'
+    ? { every: 1, unit: 'day' as const }
+    : s?.notifications?.weighIn?.frequency === 'weekly'
+    ? { every: 1, unit: 'week' as const }
+    : {};
+
 /** Merge stored settings over defaults (new settings get their default). */
 export const mergeSettings = (s: Partial<Settings> | undefined): Settings => ({
   ...DEFAULT_SETTINGS,
   ...(s ?? {}),
+  weigh: {
+    ...DEFAULT_SETTINGS.weigh,
+    ...(s?.weigh ? {} : legacyWeigh(s)),
+    ...(s?.weigh ?? {}),
+  },
+  nutrition: {
+    ...DEFAULT_SETTINGS.nutrition,
+    ...(s?.nutrition ?? {}),
+    pct: { ...DEFAULT_SETTINGS.nutrition.pct, ...(s?.nutrition?.pct ?? {}) },
+    grams: {
+      ...DEFAULT_SETTINGS.nutrition.grams,
+      ...(s?.nutrition?.grams ?? {}),
+    },
+  },
+  health: { ...DEFAULT_SETTINGS.health, ...(s?.health ?? {}) },
   notifications: {
     ...DEFAULT_SETTINGS.notifications,
     ...(s?.notifications ?? {}),

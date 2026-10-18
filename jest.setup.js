@@ -110,3 +110,12 @@ jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
+
+jest.mock('react-native-camera-kit', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const Camera = React.forwardRef((props, _ref) =>
+    React.createElement(View, { testID: 'camera', style: props.style }),
+  );
+  return { Camera, CameraType: { Back: 'back', Front: 'front' } };
+});

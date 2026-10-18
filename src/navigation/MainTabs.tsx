@@ -12,7 +12,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useStore } from '../data/store';
 import { ProgressTab } from '../screens/ProgressTab';
 import { PlanTab } from '../screens/PlanTab';
-import { BodyTab } from '../screens/BodyTab';
+import { NutritionTab } from '../screens/NutritionTab';
 import { ExtraBottomInset, JsTabInset, useTabBarInset } from '../ui/Screen';
 import {
   FLOATING_BAR_H,
@@ -23,13 +23,14 @@ import { Glass } from '../ui/Glass';
 import { Tap } from '../ui/Pressable';
 import { Icon, IconName } from '../ui/Icon';
 import { T } from '../ui/Text';
+import { WeighPrompt } from '../screens/body/WeighPrompt';
 
-type TabKey = 'progress' | 'plan' | 'body';
+type TabKey = 'progress' | 'plan' | 'food';
 
 const ROUTES: {
   key: TabKey;
   title: string;
-  sf: 'chart.line.uptrend.xyaxis' | 'dumbbell.fill' | 'figure.arms.open';
+  sf: 'chart.line.uptrend.xyaxis' | 'dumbbell.fill' | 'fork.knife';
   icon: IconName;
 }[] = [
   {
@@ -39,7 +40,7 @@ const ROUTES: {
     icon: 'chart',
   },
   { key: 'plan', title: 'Scheda', sf: 'dumbbell.fill', icon: 'dumbbell' },
-  { key: 'body', title: 'Corpo', sf: 'figure.arms.open', icon: 'figure' },
+  { key: 'food', title: 'Nutrizione', sf: 'fork.knife', icon: 'fork' },
 ];
 
 const NATIVE_ACCESSORY =
@@ -51,7 +52,7 @@ const renderTab = (key: TabKey) =>
   ) : key === 'plan' ? (
     <PlanTab />
   ) : (
-    <BodyTab />
+    <NutritionTab />
   );
 
 /** Scene wrapper: adds the floating workout bar where the native accessory isn't available. */
@@ -171,7 +172,12 @@ function JsTabs() {
 }
 
 export function MainTabs() {
-  return Platform.OS === 'ios' ? <NativeTabs /> : <JsTabs />;
+  return (
+    <>
+      {Platform.OS === 'ios' ? <NativeTabs /> : <JsTabs />}
+      <WeighPrompt />
+    </>
+  );
 }
 
 const styles = StyleSheet.create({

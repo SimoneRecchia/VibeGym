@@ -3,6 +3,9 @@ import { AppState } from 'react-native';
 import {
   ActiveWorkout,
   BodyEntry,
+  Food,
+  FoodLibrary,
+  FoodLog,
   LoggedSet,
   MeasureEntry,
   Plan,
@@ -63,6 +66,17 @@ export interface AppStore extends PersistedState {
   addMeasure: (values: MeasureEntry['values'], date?: string) => void;
   deleteMeasure: (id: string) => void;
 
+  /* Nutrition */
+  logFood: (e: Omit<FoodLog, 'id' | 'at'>) => FoodLog;
+  updateFoodLog: (id: string, patch: Partial<FoodLog>) => void;
+  deleteFoodLog: (id: string) => void;
+  /** Re-adds a deleted entry (undo). */
+  restoreFoodLog: (e: FoodLog) => void;
+  saveCustomFood: (f: Food) => void;
+  deleteCustomFood: (id: string) => void;
+  toggleFavorite: (id: string) => void;
+  cacheFood: (f: Food) => void;
+
   /* Data */
   replaceAll: (s: Partial<PersistedState>) => void;
   resetAll: () => Promise<void>;
@@ -70,6 +84,23 @@ export interface AppStore extends PersistedState {
 
 const sortByDate = <T extends { date: string }>(a: T[]): T[] =>
   a.slice().sort((x, y) => x.date.localeCompare(y.date));
+
+const MAX_RECENTS = 60;
+const MAX_CACHE = 400;
+
+/** Products from Open Food Facts stay available offline. */
+const cacheInto = (lib: FoodLibrary, f: Food): FoodLibrary =>
+  f.source === 'off'
+    ? {
+        ...lib,
+        cache: [f, ...lib.cache.filter(x => x.id !== f.id)].slice(0, MAX_CACHE),
+      }
+    : lib;
+
+const rememberFood = (lib: FoodLibrary, f: Food): FoodLibrary => ({
+  ...cacheInto(lib, f),
+  recents: [f.id, ...lib.recents.filter(x => x !== f.id)].slice(0, MAX_RECENTS),
+});
 
 export const useStore = create<AppStore>()((set, get) => ({
   ...emptyState(),
@@ -178,6 +209,53 @@ export const useStore = create<AppStore>()((set, get) => ({
     })),
   deleteMeasure: id =>
     set(s => ({ measures: s.measures.filter(x => x.id !== id) })),
+
+  logFood: e => {
+    const entry: FoodLog = { ...e, id: uid('f'), at: new Date().toISOString() };
+    set(s => ({
+      foodLog: [...s.foodLog, entry],
+      foodLib: rememberFood(s.foodLib, e.food),
+    }));
+    return entry;
+  },
+  updateFoodLog: (id, patch) =>
+    set(s => ({
+      foodLog: s.foodLog.map(x => (x.id === id ? { ...x, ...patch } : x)),
+    })),
+  deleteFoodLog: id =>
+    set(s => ({ foodLog: s.foodLog.filter(x => x.id !== id) })),
+  restoreFoodLog: e =>
+    set(s => ({
+      foodLog: s.foodLog.some(x => x.id === e.id)
+        ? s.foodLog
+        : [...s.foodLog, e],
+    })),
+  saveCustomFood: f =>
+    set(s => ({
+      foodLib: {
+        ...s.foodLib,
+        custom: [...s.foodLib.custom.filter(x => x.id !== f.id), f],
+      },
+    })),
+  deleteCustomFood: id =>
+    set(s => ({
+      foodLib: {
+        ...s.foodLib,
+        custom: s.foodLib.custom.filter(x => x.id !== id),
+        favorites: s.foodLib.favorites.filter(x => x !== id),
+        recents: s.foodLib.recents.filter(x => x !== id),
+      },
+    })),
+  toggleFavorite: id =>
+    set(s => ({
+      foodLib: {
+        ...s.foodLib,
+        favorites: s.foodLib.favorites.includes(id)
+          ? s.foodLib.favorites.filter(x => x !== id)
+          : [id, ...s.foodLib.favorites],
+      },
+    })),
+  cacheFood: f => set(s => ({ foodLib: cacheInto(s.foodLib, f) })),
 
   replaceAll: incoming =>
     set(() => ({

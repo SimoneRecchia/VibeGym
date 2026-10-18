@@ -56,3 +56,18 @@ export const parseHM = (s: string): { h: number; m: number } => {
   const [h, m] = s.split(':').map(x => parseInt(x, 10));
   return { h: Number.isFinite(h) ? h : 8, m: Number.isFinite(m) ? m : 0 };
 };
+
+/** Local calendar day as 'yyyy-mm-dd' (food diary key). */
+export const dayKey = (t: number | Date = Date.now()): string => {
+  const d = new Date(t);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+    2,
+    '0',
+  )}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** 'yyyy-mm-dd' → local midnight timestamp. */
+export const dayStart = (key: string): number => {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d).getTime();
+};

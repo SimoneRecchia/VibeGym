@@ -26,6 +26,13 @@ import { ExerciseEditorScreen } from '../screens/plan/ExerciseEditorScreen';
 import { ExercisePickerScreen } from '../screens/plan/ExercisePickerScreen';
 import { PlansScreen } from '../screens/plan/PlansScreen';
 import { BodyMetricScreen } from '../screens/body/BodyMetricScreen';
+import { BodyScreen } from '../screens/body/BodyScreen';
+import { WeighSettings } from '../screens/settings/WeighSettings';
+import { NutritionSettings } from '../screens/settings/NutritionSettings';
+import { HealthSettings } from '../screens/settings/HealthSettings';
+import { FoodAddScreen } from '../screens/nutrition/FoodAddScreen';
+import { CustomFoodScreen } from '../screens/nutrition/CustomFoodScreen';
+import { ScannerScreen } from '../screens/nutrition/ScannerScreen';
 import { SettingsHome } from '../screens/settings/SettingsHome';
 import { ProfileEdit } from '../screens/settings/ProfileEdit';
 import { WorkoutSettings } from '../screens/settings/WorkoutSettings';
@@ -65,6 +72,14 @@ function SettingsNavigator() {
         component={AppearanceSettings}
       />
       <SettingsStack.Screen name="DataSettings" component={DataSettings} />
+      <SettingsStack.Screen name="Body" component={BodyScreen} />
+      <SettingsStack.Screen name="BodyMetric" component={BodyMetricScreen} />
+      <SettingsStack.Screen name="WeighSettings" component={WeighSettings} />
+      <SettingsStack.Screen
+        name="NutritionSettings"
+        component={NutritionSettings}
+      />
+      <SettingsStack.Screen name="HealthSettings" component={HealthSettings} />
     </SettingsStack.Navigator>
   );
 }
@@ -112,7 +127,6 @@ export function AppNavigator() {
             <Root.Screen name="ExerciseTrend" component={ExerciseTrendScreen} />
             <Root.Screen name="Session" component={SessionScreen} />
             <Root.Screen name="History" component={HistoryScreen} />
-            <Root.Screen name="BodyMetric" component={BodyMetricScreen} />
             <Root.Screen name="Plans" component={PlansScreen} />
             <Root.Screen name="ImportReview" component={ImportReviewScreen} />
             <Root.Screen
@@ -127,7 +141,17 @@ export function AppNavigator() {
                 name="ExercisePicker"
                 component={ExercisePickerScreen}
               />
+              <Root.Screen name="FoodAdd" component={FoodAddScreen} />
+              <Root.Screen name="CustomFood" component={CustomFoodScreen} />
             </Root.Group>
+            <Root.Screen
+              name="Scanner"
+              component={ScannerScreen}
+              options={{
+                presentation: 'fullScreenModal',
+                animation: 'slide_from_bottom',
+              }}
+            />
             <Root.Screen name="AiFlow" component={AiFlowScreen} />
             <Root.Screen
               name="PlanEditor"

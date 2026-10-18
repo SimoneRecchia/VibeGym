@@ -173,6 +173,84 @@ export interface MeasureEntry {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Nutrition                                                          */
+/* ------------------------------------------------------------------ */
+
+/** Grams per 100 g (or 100 ml), energy in kcal per 100. */
+export interface Nutrients {
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber?: number;
+  sugar?: number;
+  satFat?: number;
+  salt?: number;
+}
+
+export interface Portion {
+  label: string;
+  /** Grams (or ml) in one portion. */
+  g: number;
+}
+
+export type FoodSource = 'generic' | 'off' | 'custom';
+
+export interface Food extends Nutrients {
+  /** 'g:<slug>' bundled, 'off:<barcode>' Open Food Facts, 'c:<uid>' custom. */
+  id: string;
+  name: string;
+  brand?: string;
+  unit: 'g' | 'ml';
+  portions?: Portion[];
+  /** Net quantity of the whole package, when known. */
+  packageG?: number;
+  barcode?: string;
+  source: FoodSource;
+  category?: string;
+}
+
+export type MealKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+
+export interface FoodLog {
+  id: string;
+  /** Local day 'yyyy-mm-dd'. */
+  day: string;
+  meal: MealKey;
+  /** ISO datetime of logging. */
+  at: string;
+  /** Snapshot: later edits of the food don't rewrite history. */
+  food: Food;
+  /** Grams (or ml). */
+  qty: number;
+  /** How the quantity was entered, e.g. 2 × "vasetto". */
+  portion?: { label: string; count: number };
+}
+
+export interface FoodLibrary {
+  custom: Food[];
+  favorites: string[];
+  /** Most recent first. */
+  recents: string[];
+  /** Products fetched from Open Food Facts (offline reuse). */
+  cache: Food[];
+}
+
+export interface NutritionGoals {
+  /** 'auto': from energy expenditure and goal; 'manual': fixed kcal. */
+  mode: 'auto' | 'manual';
+  kcal: number;
+  goal: 'lose' | 'maintain' | 'gain';
+  /** kg per week for lose / gain. */
+  rate: number;
+  /** Auto: follow the day's measured burn (steps, workouts). */
+  adaptive: boolean;
+  macroMode: 'pct' | 'g';
+  pct: { protein: number; carbs: number; fat: number };
+  grams: { protein: number; carbs: number; fat: number };
+}
+
+/* ------------------------------------------------------------------ */
 /*  Profile & settings                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -215,6 +293,18 @@ export interface ReminderSettings {
   time: string;
 }
 
+export type IntervalUnit = 'day' | 'week' | 'month';
+
+/** How often the user wants to weigh in ("every 2 days", "every 3 weeks"…). */
+export interface WeighSchedule {
+  /** Weight is tracked on a schedule: trend on top of Progressi, reminders. */
+  enabled: boolean;
+  every: number;
+  unit: IntervalUnit;
+  /** Ask to weigh in when the app opens and the weigh-in is due. */
+  prompt: boolean;
+}
+
 export interface Settings {
   theme: ThemePref;
   accent: AccentName;
@@ -227,12 +317,17 @@ export interface Settings {
   sound: boolean;
   haptics: boolean;
   showMedia: boolean;
+  weigh: WeighSchedule;
+  nutrition: NutritionGoals;
+  health: HealthSettings;
   notifications: {
     restEnd: boolean;
     workout: ReminderSettings & { weekdays: number[] };
+    /** Push reminder when the weigh-in is due (schedule in `weigh`). */
     weighIn: ReminderSettings & {
-      frequency: 'daily' | 'weekly';
-      weekday: number;
+      /** @deprecated v2.0 setting, migrated into `weigh`. */
+      frequency?: 'daily' | 'weekly';
+      weekday?: number;
     };
     measures: ReminderSettings;
   };
@@ -246,6 +341,15 @@ export interface Settings {
 
 export type ScaleModel = 'mi-scale' | 'mi-body-composition';
 
+export interface HealthSettings {
+  /** Read steps / energy from Health Connect / Apple Health. */
+  enabled: boolean;
+  /** Write finished workouts. */
+  writeWorkouts: boolean;
+  /** Write weigh-ins (weight, body fat). */
+  writeWeight: boolean;
+}
+
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   accent: 'blue',
@@ -256,10 +360,22 @@ export const DEFAULT_SETTINGS: Settings = {
   sound: true,
   haptics: true,
   showMedia: true,
+  weigh: { enabled: true, every: 1, unit: 'week', prompt: true },
+  nutrition: {
+    mode: 'auto',
+    kcal: 2000,
+    goal: 'maintain',
+    rate: 0.5,
+    adaptive: true,
+    macroMode: 'pct',
+    pct: { protein: 30, carbs: 40, fat: 30 },
+    grams: { protein: 140, carbs: 220, fat: 65 },
+  },
+  health: { enabled: false, writeWorkouts: true, writeWeight: true },
   notifications: {
     restEnd: true,
     workout: { enabled: false, time: '18:00', weekdays: [1, 3, 5] },
-    weighIn: { enabled: false, time: '08:00', frequency: 'daily', weekday: 1 },
+    weighIn: { enabled: false, time: '08:00' },
     measures: { enabled: false, time: '09:00' },
   },
   scale: { autoSave: true },

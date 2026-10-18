@@ -27,10 +27,12 @@ function Runtime() {
     setRestNotifications(settings.notifications.restEnd);
   }, [settings.haptics, settings.sound, settings.notifications.restEnd]);
 
-  // Reminders are re-armed at each launch (timestamps move forward).
+  // Reminders are re-armed at each launch (timestamps move forward) and after
+  // each weigh-in, since the weigh-in reminder counts from the last one.
+  const lastWeigh = useStore(s => s.body[s.body.length - 1]?.date);
   useEffect(() => {
-    if (hydrated) syncReminders(useStore.getState().settings.notifications);
-  }, [hydrated]);
+    if (hydrated) syncReminders(useStore.getState().settings, lastWeigh);
+  }, [hydrated, lastWeigh]);
 
   return null;
 }

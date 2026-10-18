@@ -17,6 +17,7 @@ import notifee, {
 } from 'react-native-notify-kit';
 import { Settings } from '../core/types';
 import { parseHM } from '../core/dates';
+import { weighReminderAt } from '../body/schedule';
 
 const CH_TIMER = 'timer';
 const CH_REMINDERS = 'reminders';
@@ -155,21 +156,6 @@ const nextWeekday = (weekday: number, hm: string, now = new Date()): number => {
   return d.getTime();
 };
 
-const nextDaily = (hm: string, now = new Date()): number => {
-  const { h, m } = parseHM(hm);
-  const d = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    h,
-    m,
-    0,
-    0,
-  );
-  if (d.getTime() <= now.getTime()) d.setDate(d.getDate() + 1);
-  return d.getTime();
-};
-
 const reminder = (
   id: string,
   title: string,
@@ -191,13 +177,22 @@ const reminder = (
     trigger(when, repeat),
   );
 
-/** Re-create all reminder notifications from the current settings. */
-export const syncReminders = async (s: Settings['notifications']) => {
+/**
+ * Re-create all reminder notifications from the current settings. Called at
+ * launch, when reminders change and after each weigh-in (the weigh-in reminder
+ * is relative to the last one).
+ */
+export const syncReminders = async (
+  settings: Settings,
+  lastWeighIso?: string,
+) => {
+  const s = settings.notifications;
+  const weigh = settings.weigh.enabled && s.weighIn.enabled;
   try {
     const ids = await notifee.getTriggerNotificationIds();
     const ours = ids.filter(id => id.startsWith('rem-'));
     if (ours.length) await notifee.cancelTriggerNotifications(ours);
-    const any = s.workout.enabled || s.weighIn.enabled || s.measures.enabled;
+    const any = s.workout.enabled || weigh || s.measures.enabled;
     if (!any) return;
     await ensureChannels();
     if (s.workout.enabled) {
@@ -211,19 +206,14 @@ export const syncReminders = async (s: Settings['notifications']) => {
         );
       }
     }
-    if (s.weighIn.enabled) {
-      const when =
-        s.weighIn.frequency === 'daily'
-          ? nextDaily(s.weighIn.time)
-          : nextWeekday(s.weighIn.weekday, s.weighIn.time);
+    if (weigh) {
+      // From the due day, every day until the next weigh-in re-syncs it.
       await reminder(
         'rem-weigh',
-        'Pesata',
+        'È ora di pesarti',
         'Sali sulla bilancia: bastano pochi secondi.',
-        when,
-        s.weighIn.frequency === 'daily'
-          ? RepeatFrequency.DAILY
-          : RepeatFrequency.WEEKLY,
+        weighReminderAt(lastWeighIso, settings.weigh, s.weighIn.time),
+        RepeatFrequency.DAILY,
       );
     }
     if (s.measures.enabled) {

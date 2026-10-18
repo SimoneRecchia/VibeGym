@@ -1,24 +1,22 @@
 /**
- * Right tab: body weight (smoothed trend + goal), composition from the
- * Xiaomi scale, and monthly measurements.
+ * Body, inside the profile: weight (smoothed trend + goal), composition from
+ * the Xiaomi scale, and monthly measurements.
  */
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { useStore } from '../data/store';
-import { useTheme } from '../theme/ThemeProvider';
-import { Screen } from '../ui/Screen';
-import { ProfileButton } from '../ui/Avatar';
-import { Card } from '../ui/Card';
-import { T } from '../ui/Text';
-import { Button } from '../ui/Button';
-import { Segmented } from '../ui/Segmented';
-import { Empty } from '../ui/Empty';
-import { Icon } from '../ui/Icon';
-import { Tap } from '../ui/Pressable';
-import { LineChart, Legend } from '../ui/charts/LineChart';
-import { WeighSheet } from './body/WeighSheet';
-import { MeasuresSheet } from './body/MeasuresSheet';
+import { useStore } from '../../data/store';
+import { useTheme } from '../../theme/ThemeProvider';
+import { Screen } from '../../ui/Screen';
+import { Card } from '../../ui/Card';
+import { T } from '../../ui/Text';
+import { Button } from '../../ui/Button';
+import { Segmented } from '../../ui/Segmented';
+import { Empty } from '../../ui/Empty';
+import { Icon } from '../../ui/Icon';
+import { Tap } from '../../ui/Pressable';
+import { LineChart, Legend } from '../../ui/charts/LineChart';
+import { WeighSheet } from './WeighSheet';
+import { MeasuresSheet } from './MeasuresSheet';
 import {
   COMPOSITION,
   bmi,
@@ -28,16 +26,18 @@ import {
   weeklyRate,
   weightChange,
   weightPoints,
-} from '../stats/body';
-import { RANGE_KEYS, RangeKey, rangeStart } from '../core/dates';
-import { fmtNum, fmtRelativeDay, fmtSigned } from '../core/format';
-import { toDisplay } from '../core/units';
-import { numeric } from '../theme/typography';
-import { Nav } from '../navigation/types';
+} from '../../stats/body';
+import { RANGE_KEYS, RangeKey, rangeStart } from '../../core/dates';
+import { fmtNum, fmtRelativeDay, fmtSigned } from '../../core/format';
+import { toDisplay } from '../../core/units';
+import { numeric } from '../../theme/typography';
+import { SettingsProps } from '../../navigation/types';
+import { IconButton } from '../../ui/Button';
+import { fmtInterval } from '../../body/schedule';
 
-export function BodyTab() {
-  const nav = useNavigation<Nav>();
+export function BodyScreen({ navigation: nav }: SettingsProps<'Body'>) {
   const { c } = useTheme();
+  const weigh = useStore(s => s.settings.weigh);
   const body = useStore(s => s.body);
   const measures = useStore(s => s.measures);
   const profile = useStore(s => s.profile);
@@ -72,7 +72,18 @@ export function BodyTab() {
 
   if (!latest) {
     return (
-      <Screen title="Corpo" right={<ProfileButton />}>
+      <Screen
+        title="Corpo"
+        back
+        eyebrow={weigh.enabled ? fmtInterval(weigh) : undefined}
+        right={
+          <IconButton
+            icon="gear"
+            onPress={() => nav.navigate('WeighSettings')}
+            accessibilityLabel="Frequenza della pesata"
+          />
+        }
+      >
         <Card>
           <Empty
             icon="scale"
@@ -89,9 +100,7 @@ export function BodyTab() {
                 title="Collega la bilancia Xiaomi"
                 icon="bluetooth"
                 variant="glass"
-                onPress={() =>
-                  nav.navigate('Settings', { screen: 'ScaleSettings' })
-                }
+                onPress={() => nav.navigate('ScaleSettings')}
               />
             ) : null}
           </Empty>
@@ -102,7 +111,18 @@ export function BodyTab() {
   }
 
   return (
-    <Screen title="Corpo" right={<ProfileButton />}>
+    <Screen
+      title="Corpo"
+      back
+      eyebrow={weigh.enabled ? fmtInterval(weigh) : undefined}
+      right={
+        <IconButton
+          icon="gear"
+          onPress={() => nav.navigate('WeighSettings')}
+          accessibilityLabel="Frequenza della pesata"
+        />
+      }
+    >
       {/* Hero */}
       <Card style={styles.block}>
         <View style={styles.heroTop}>
@@ -326,7 +346,7 @@ export function BodyTab() {
       {!hasScale ? (
         <Card
           style={styles.block}
-          onPress={() => nav.navigate('Settings', { screen: 'ScaleSettings' })}
+          onPress={() => nav.navigate('ScaleSettings')}
         >
           <View style={styles.rowGap}>
             <View style={[styles.btIcon, { backgroundColor: c.accentSoft }]}>

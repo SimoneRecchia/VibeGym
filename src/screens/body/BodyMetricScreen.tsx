@@ -21,7 +21,7 @@ import { RANGE_KEYS, RangeKey, rangeStart } from '../../core/dates';
 import { fmtDate, fmtNum, fmtTime } from '../../core/format';
 import { toDisplay } from '../../core/units';
 import { MeasureKey } from '../../core/types';
-import { ScreenProps } from '../../navigation/types';
+import { SettingsProps } from '../../navigation/types';
 
 interface Row {
   id: string;
@@ -30,7 +30,7 @@ interface Row {
   sub?: string;
 }
 
-export function BodyMetricScreen({ route }: ScreenProps<'BodyMetric'>) {
+export function BodyMetricScreen({ route }: SettingsProps<'BodyMetric'>) {
   const { c } = useTheme();
   const { metric } = route.params;
   const body = useStore(s => s.body);

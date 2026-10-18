@@ -18,7 +18,8 @@ describe('Tap', () => {
     });
     // Host tree: Pressable's View > animated content View > Text.
     const target = tree.toJSON() as ReactTestRenderer.ReactTestRendererJSON;
-    const content = target.children![0] as ReactTestRenderer.ReactTestRendererJSON;
+    const content =
+      target.children![0] as ReactTestRenderer.ReactTestRendererJSON;
     expect(StyleSheet.flatten(target.props.style)).toEqual({
       flex: 1,
       width: '50%',

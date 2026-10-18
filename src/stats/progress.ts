@@ -1,6 +1,7 @@
 import { ExerciseKind, PersonalRecord, Session } from '../core/types';
 import { addDays, startOfWeek } from '../core/dates';
 import { MetricKey, metricsOf, metricsFor, sessionVolume } from './metrics';
+import { MUSCLE_FILTERS, getCatalogExercise } from '../catalog';
 
 export interface Point {
   t: number;
@@ -211,4 +212,52 @@ export const periodTotals = (sessions: Session[], from: number, to: number) => {
     minutes += s.durationSec / 60;
   }
   return { workouts, volume, minutes };
+};
+
+export interface MuscleLoad {
+  key: string;
+  label: string;
+  /** Sets per week: primary muscles count 1, secondary ones ½. */
+  perWeek: number;
+}
+
+/** Weekly hard sets per muscle group over `weeks` weeks ending now. */
+export const muscleGroupSets = (
+  sessions: Session[],
+  weeks = 4,
+  now = Date.now(),
+): MuscleLoad[] => {
+  const from = now - weeks * 7 * 86400000;
+  const groupOf = new Map<string, string>();
+  for (const g of MUSCLE_FILTERS)
+    for (const m of g.muscles) groupOf.set(m, g.key);
+  const totals = new Map<string, number>();
+  for (const s of sessions) {
+    if (Date.parse(s.startedAt) < from) continue;
+    for (const ex of s.exercises) {
+      const cat = getCatalogExercise(ex.catalogId);
+      if (!cat) continue;
+      const sets = ex.sets.filter(x => x.done).length;
+      if (!sets) continue;
+      const add = (muscles: string[], w: number) => {
+        const groups = new Set(
+          muscles.map(m => groupOf.get(m)).filter(Boolean) as string[],
+        );
+        groups.forEach(g => totals.set(g, (totals.get(g) ?? 0) + sets * w));
+      };
+      add(cat.primary, 1);
+      add(
+        cat.secondary.filter(m => !cat.primary.includes(m)),
+        0.5,
+      );
+    }
+  }
+  return MUSCLE_FILTERS.filter(g => g.muscles.length)
+    .map(g => ({
+      key: g.key,
+      label: g.label,
+      perWeek: Math.round(((totals.get(g.key) ?? 0) / weeks) * 10) / 10,
+    }))
+    .filter(g => g.perWeek > 0)
+    .sort((a, b) => b.perWeek - a.perWeek);
 };

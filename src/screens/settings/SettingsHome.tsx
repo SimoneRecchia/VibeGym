@@ -13,6 +13,9 @@ import { SettingsProps } from '../../navigation/types';
 import { ageFrom } from '../../core/dates';
 import { capitalize, greeting } from '../../core/format';
 import buildInfo from '../../buildInfo.json';
+import { WeightCard } from '../body/WeightCard';
+import { fmtInterval } from '../../body/schedule';
+import { healthPlatformName } from '../../services/health';
 
 const THEME_LABEL = { system: 'Automatico', light: 'Chiaro', dark: 'Scuro' };
 
@@ -25,6 +28,7 @@ export function SettingsHome({ navigation }: SettingsProps<'SettingsHome'>) {
   const root = navigation.getParent();
   const age = ageFrom(profile.birthDate);
   const n = settings.notifications;
+  const g = settings.nutrition;
   const notifCount = [
     n.restEnd,
     n.workout.enabled,
@@ -72,6 +76,11 @@ export function SettingsHome({ navigation }: SettingsProps<'SettingsHome'>) {
         </View>
       </Card>
 
+      <WeightCard
+        onOpen={() => navigation.navigate('Body')}
+        style={styles.weight}
+      />
+
       <Section>
         <Row
           icon="layers"
@@ -94,6 +103,42 @@ export function SettingsHome({ navigation }: SettingsProps<'SettingsHome'>) {
           value={settings.unit}
           chevron
           onPress={() => navigation.navigate('WorkoutSettings')}
+        />
+        <Row
+          icon="fork"
+          iconBg={ACCENTS.green.light}
+          title="Nutrizione"
+          value={
+            g.macroMode === 'g'
+              ? 'Macro in grammi'
+              : g.mode === 'manual'
+              ? `${g.kcal} kcal`
+              : g.goal === 'lose'
+              ? 'Dimagrire'
+              : g.goal === 'gain'
+              ? 'Massa'
+              : 'Mantenere'
+          }
+          chevron
+          onPress={() => navigation.navigate('NutritionSettings')}
+        />
+        <Row
+          icon="heart"
+          iconBg={ACCENTS.pink.light}
+          title={healthPlatformName}
+          value={settings.health.enabled ? 'Collegato' : 'Non collegato'}
+          chevron
+          onPress={() => navigation.navigate('HealthSettings')}
+        />
+        <Row
+          icon="scale"
+          iconBg={ACCENTS.mint.light}
+          title="Pesata"
+          value={
+            settings.weigh.enabled ? fmtInterval(settings.weigh) : 'Disattivata'
+          }
+          chevron
+          onPress={() => navigation.navigate('WeighSettings')}
         />
         <Row
           icon="bell"
@@ -134,15 +179,17 @@ export function SettingsHome({ navigation }: SettingsProps<'SettingsHome'>) {
       <T v="footnote" color="tertiary" align="center" style={styles.footer}>
         VibeGym {buildInfo.version}
         {buildInfo.commit ? ` (${buildInfo.commit})` : ''} · I tuoi dati restano
-        su questo dispositivo.{'\n'}Animazioni degli esercizi: free-exercise-db
-        (pubblico dominio).
+        su questo dispositivo.{'\n'}Esercizi: free-exercise-db (pubblico
+        dominio). Alimenti: USDA FoodData Central via TempoLife (CC BY 4.0) e
+        Open Food Facts (ODbL).
       </T>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  profile: { marginBottom: 28 },
+  profile: { marginBottom: 12 },
+  weight: { marginBottom: 28 },
   profileRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   flex: { flex: 1, minWidth: 0 },
   footer: { marginTop: 4 },

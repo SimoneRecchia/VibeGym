@@ -6,22 +6,33 @@ import { useTheme } from '../theme/ThemeProvider';
 import { Glass } from './Glass';
 import { T } from './Text';
 import { Icon, IconName } from './Icon';
+import { Tap } from './Pressable';
+
+interface ToastAction {
+  label: string;
+  onPress: () => void;
+}
 
 interface ToastState {
   message: string | null;
   icon?: IconName;
+  action?: ToastAction;
   key: number;
 }
 const useToastStore = create<ToastState>()(() => ({ message: null, key: 0 }));
 
-export const toast = (message: string, icon: IconName = 'check-circle') =>
-  useToastStore.setState(s => ({ message, icon, key: s.key + 1 }));
+/** Banner message; with `action` it stays longer and shows a button (undo). */
+export const toast = (
+  message: string,
+  icon: IconName = 'check-circle',
+  action?: ToastAction,
+) => useToastStore.setState(s => ({ message, icon, action, key: s.key + 1 }));
 
 /** Glass capsule that drops from the top, like iOS system banners. */
 export function ToastHost() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  const { message, icon, key } = useToastStore();
+  const { message, icon, action, key } = useToastStore();
   const a = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -34,16 +45,19 @@ export function ToastHost() {
         speed: 16,
         bounciness: 6,
       }),
-      Animated.delay(2200),
+      Animated.delay(action ? 4200 : 2200),
       Animated.timing(a, { toValue: 0, duration: 220, useNativeDriver: true }),
     ]).start(
       ({ finished }) => finished && useToastStore.setState({ message: null }),
     );
-  }, [key, message, a]);
+  }, [key, message, action, a]);
 
   if (!message) return null;
   return (
-    <View pointerEvents="none" style={[styles.wrap, { top: insets.top + 6 }]}>
+    <View
+      pointerEvents={action ? 'box-none' : 'none'}
+      style={[styles.wrap, { top: insets.top + 6 }]}
+    >
       <Animated.View
         style={{
           opacity: a,
@@ -70,6 +84,20 @@ export function ToastHost() {
           <T v="subheadStrong" numberOfLines={2} style={styles.text}>
             {message}
           </T>
+          {action ? (
+            <Tap
+              onPress={() => {
+                action.onPress();
+                useToastStore.setState({ message: null });
+              }}
+              hitSlop={10}
+              accessibilityRole="button"
+            >
+              <T v="subheadStrong" color="accent">
+                {action.label}
+              </T>
+            </Tap>
+          ) : null}
         </Glass>
       </Animated.View>
     </View>
