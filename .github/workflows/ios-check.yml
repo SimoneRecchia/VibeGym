@@ -1,0 +1,63 @@
+# Verifies the native iOS build (simulator, unsigned) when native code or
+# dependencies change. Public repository: macOS runners are free.
+name: iOS · Verifica build
+
+on:
+  push:
+    branches-ignore: [main]
+    paths:
+      - ios/**
+      - modules/**
+      - package.json
+      - package-lock.json
+      - Gemfile
+      - Gemfile.lock
+      - .github/workflows/ios-check.yml
+  workflow_dispatch:
+
+concurrency:
+  group: ios-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+      - name: Xcode
+        run: xcodebuild -version
+      - name: Pod install
+        working-directory: ios
+        run: bundle exec pod install
+      - name: Build (simulatore, senza firma)
+        run: |
+          xcodebuild \
+            -workspace ios/VibeGym.xcworkspace \
+            -scheme VibeGym \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build > build.log 2>&1 || {
+              grep -E "error:" build.log | sort -u | head -80
+              tail -60 build.log
+              exit 1
+            }
+          grep -E "BUILD SUCCEEDED" build.log
+      - name: Podfile.lock aggiornato
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Podfile.lock
+          path: ios/Podfile.lock
+          retention-days: 7

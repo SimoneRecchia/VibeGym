@@ -52,7 +52,8 @@ VIBEGYM_UPLOAD_KEY_PASSWORD=…
 3. Il **primo** AAB va caricato a mano (Google non permette di creare l'app via API): pubblica una release su GitHub, scarica l'`.aab` allegato e caricalo nel Play Console (traccia *Test interno*).
 4. Accesso automatico: Google Cloud Console → *IAM → Service account* → crea un account e una chiave JSON. Nel Play Console → *Utenti e autorizzazioni* → invita l'email del service account con i permessi di rilascio.
 5. Secret `PLAY_SERVICE_ACCOUNT_JSON` = contenuto del file JSON.
-6. Facoltativo, in *Variables*: `PLAY_TRACK` (`internal` predefinito, poi `alpha`, `beta`, `production`) e `PLAY_STATUS` (`completed` predefinito; usa `draft` finché l'app non è approvata la prima volta).
+6. **Informativa privacy e dati sanitari**: l'app usa Health Connect e la fotocamera. Nel Play Console → *Contenuti dell'app* compila *Sicurezza dei dati* e la **dichiarazione per le app sanitarie** (Health Connect: lettura passi, calorie attive e totali; scrittura allenamenti, peso e massa grassa, con la motivazione per ciascuno). Come URL dell'informativa puoi usare [`docs/PRIVACY.md`](PRIVACY.md) pubblicata (per esempio con GitHub Pages, o la pagina del file se il repository è pubblico). L'approvazione richiede fino a 7 giorni.
+7. Facoltativo, in *Variables*: `PLAY_TRACK` (`internal` predefinito, poi `alpha`, `beta`, `production`) e `PLAY_STATUS` (`completed` predefinito; usa `draft` finché l'app non è approvata la prima volta).
 
 ## Pubblicare una versione
 

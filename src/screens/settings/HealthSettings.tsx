@@ -18,6 +18,9 @@ const SOURCES =
     ? 'iPhone, Apple Watch e le app collegate a Salute'
     : 'Samsung Health, Google Fit / Fitbit, Garmin, Xiaomi, Zepp, Polar, Oura e le altre app collegate';
 
+export const PRIVACY_URL =
+  'https://github.com/SimoneRecchia/VibeGym/blob/main/docs/PRIVACY.md';
+
 export function HealthSettings() {
   const h = useStore(s => s.settings.health);
   const update = useStore(s => s.updateSettings);
@@ -131,6 +134,12 @@ export function HealthSettings() {
           icon="gear"
           chevron
           onPress={() => openHealthSettings()}
+        />
+        <Row
+          title="Informativa sulla privacy"
+          icon="doc"
+          chevron
+          onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
         />
       </Section>
     </Screen>

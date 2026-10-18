@@ -4,11 +4,23 @@ App per la palestra in React Native (iOS e Android), ridisegnata seguendo il des
 
 ## Le tre sezioni
 
-| Progressi (sinistra) | **Scheda (centro, home)** | Corpo (destra) |
+| Progressi (sinistra) | **Scheda (centro, home)** | Nutrizione (destra) |
 | --- | --- | --- |
-| Riepilogo del mese, attività delle ultime 12 settimane, record recenti, trend per esercizio (1RM stimato, carico, volume, ripetizioni, durata), storico completo | Saluto, settimana, **prossimo allenamento in un tocco**, giorni della scheda, editor, schede multiple | Peso con media mobile a 7 giorni e obiettivo, BMI, composizione corporea dalla bilancia Xiaomi, misure mensili |
+| Trend del peso in cima, riepilogo del mese, attività delle ultime 12 settimane, alimentazione degli ultimi 7 giorni, **serie per muscolo a settimana**, record recenti, trend per esercizio (1RM stimato, carico, volume, ripetizioni, durata), storico completo | Saluto, settimana, **prossimo allenamento in un tocco**, giorni della scheda, editor, schede multiple | Diario dei pasti, calorie rimaste, macro, **consumo stimato del giorno**, scanner di codici a barre, etichette e piatti |
 
-In alto a destra, su ogni sezione, l'avatar apre **profilo e impostazioni**.
+In alto a destra, su ogni sezione, l'avatar apre **profilo e impostazioni**: lì trovi anche **peso e corpo** (media mobile, obiettivo, BMI, composizione dalla bilancia Xiaomi, misure).
+
+### Nutrizione
+
+- **Obiettivo calorie** automatico (dal consumo del giorno o da quello abituale, per dimagrire, mantenere o prendere massa a 0,25–1 kg a settimana) oppure fisso; **macro** in percentuale (preset bilanciata, sportiva, iperproteica, low carb) o in grammi, con le proteine per kg.
+- **Consumo stimato**: metabolismo basale (Mifflin-St Jeor o quello della bilancia) + passi + allenamenti. Con **Health Connect** (Android: Samsung Health, Google/Fitbit, Garmin, Xiaomi, Zepp, Polar, Oura…) o **Salute** (iOS) usa i dati veri del telefono o dello smartwatch, senza contare due volte.
+- **266 alimenti comuni** con nomi italiani e porzioni casalinghe (fetta, cucchiaio, vasetto…), anche offline, più i **prodotti confezionati** di Open Food Facts.
+- **Scanner**: codice a barre dal vivo; in modalità foto legge il codice anche se la confezione è sullo sfondo del piatto, il nome del prodotto sull'etichetta e riconosce frutta, verdura e piatti comuni. Tutto sul telefono (ML Kit / Vision). La quantità si inserisce in grammi, porzioni o frazioni della confezione (¼, ½, ¾).
+- Alimenti propri dall'etichetta (legati al codice a barre: la volta dopo li trova subito), recenti, preferiti, copia di un pasto su oggi.
+
+### Pesata
+
+Ogni N giorni, settimane o mesi (Profilo → Pesata). Quando è scaduta, all'apertura dell'app compare un promemoria che puoi chiudere o disattivare con «Non mostrarlo più»; c'è anche una notifica dal giorno della scadenza finché non ti pesi.
 
 ### Allenamento live
 
@@ -31,7 +43,7 @@ Il parser è tollerante (blocchi markdown, testo attorno, commenti, virgole fina
 
 ### Animazioni degli esercizi
 
-Catalogo di 876 esercizi da [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (pubblico dominio), incluso nell'app (45 KB) con nomi italiani per i 125 più comuni. Ogni esercizio ha due fotogrammi (inizio/fine movimento) scaricati da GitHub e alternati in loop. Se l'esercizio non è nel catalogo o manca la connessione l'animazione semplicemente non compare e il layout si adatta.
+Catalogo di 876 esercizi da [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (pubblico dominio), incluso nell'app (45 KB) con nomi italiani per i 125 più comuni. I 157 esercizi più usati hanno le illustrazioni a tratto di [Workout Guide](https://github.com/bryllim/workout-guide) (Bryl Lim, da Everkinetic, CC BY-SA 4.0): 3 fotogrammi animati come una GIF e colorati con il tema; gli altri alternano le due foto di free-exercise-db. Se l'esercizio non ha media o manca la connessione l'animazione non compare e il layout si adatta.
 
 ### Bilancia Xiaomi
 
@@ -40,7 +52,7 @@ Le bilance Xiaomi trasmettono ogni pesata nel pacchetto di advertising Bluetooth
 - Mi Smart Scale 2 (XMTZC04HM): peso.
 - Mi Body Composition Scale 2 (XMTZC05HM): peso + impedenza → massa grassa, muscolare, acqua, ossa, grasso viscerale e metabolismo basale (stime, servono sesso, età e altezza nel profilo).
 
-Impostazioni → Bilancia → *Cerca bilancia* per memorizzarla, poi Corpo → *Pesati*.
+Profilo → Bilancia → *Cerca bilancia* per memorizzarla, poi *Pesati* (dal profilo o dal promemoria).
 
 ## Formato della scheda
 
@@ -82,7 +94,9 @@ npm run ios
 npm run android
 ```
 
-Dopo l'aggiornamento serve rifare `pod install` (sono cambiate le dipendenze native: rimosso il keychain di GitHub; aggiunti Bluetooth, Liquid Glass, tab bar nativa, notifiche e haptics).
+Dopo l'aggiornamento serve rifare `pod install` (dipendenze native nuove: fotocamera, Salute, modulo `vibe-vision`).
+
+**Salute su iOS**: in Xcode → target VibeGym → *Signing & Capabilities* → *+ Capability* → **HealthKit** (serve un account Apple Developer). Senza la capability l'app funziona, ma il collegamento a Salute resta non disponibile.
 
 Controlli: `npx tsc --noEmit`, `npm run lint`, `npm test`.
 
@@ -106,10 +120,14 @@ src/
   stats/       metriche (1RM, volume, record), trend, statistiche corpo
   scale/       parser BLE Mi Scale + hook di scansione
   body/        composizione corporea da impedenza
-  services/    haptics, suoni, notifiche, file, schermo acceso
+  nutrition/   alimenti (generic.json), Open Food Facts, consumo e obiettivi, foto
+  services/    haptics, suoni, notifiche, file, schermo acceso, Health Connect / Salute
   theme/       colori di sistema iOS, tipografia SF, metriche
   ui/          design system (Glass, bottoni, liste, sheet, stepper, grafici…)
   navigation/  stack, tab nativa iOS / tab glass Android, accessorio allenamento
   screens/     schermate
+modules/vibe-vision/       modulo nativo: codici a barre, testo e cibi in una foto (ML Kit / Vision)
 scripts/build-catalog.js   rigenera src/catalog/catalog.json dal dataset
+scripts/build-foods.js     rigenera src/nutrition/generic.json (USDA via tempo-food-db)
+scripts/build-media-map.js abbina gli esercizi alle animazioni di Workout Guide
 ```
