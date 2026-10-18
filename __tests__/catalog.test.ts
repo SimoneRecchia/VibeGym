@@ -3,6 +3,7 @@ import {
   getCatalogExercise,
   matchCatalog,
   mediaFrames,
+  mediaSource,
   resolveCatalogId,
   searchCatalog,
 } from '../src/catalog';
@@ -43,10 +44,22 @@ describe('exercise catalog', () => {
   it('resolves loosely written ids and builds media urls', () => {
     expect(resolveCatalogId('Barbell Squat')).toBe('Barbell_Squat');
     expect(resolveCatalogId('barbell_squat')).toBe('Barbell_Squat');
-    expect(mediaFrames('Barbell_Squat')).toEqual([
-      'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Squat/0.jpg',
-      'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Squat/1.jpg',
-    ]);
+    // Common exercises use the 3-frame line drawings of Workout Guide…
+    expect(mediaSource('Barbell_Squat')).toEqual({
+      kind: 'line',
+      urls: [1, 2, 3].map(
+        i =>
+          `https://cdn.jsdelivr.net/npm/@bryllim/workout-guide@1.0.0/assets/squat/frame-${i}.png`,
+      ),
+    });
+    // …the others keep the free-exercise-db photos.
+    expect(mediaSource('Barbell_Ab_Rollout')).toEqual({
+      kind: 'photo',
+      urls: [
+        'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Ab_Rollout/0.jpg',
+        'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Ab_Rollout/1.jpg',
+      ],
+    });
     expect(mediaFrames('Kettlebell_Halo')).toEqual([]);
     expect(mediaFrames(undefined)).toEqual([]);
   });

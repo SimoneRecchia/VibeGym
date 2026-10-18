@@ -6,6 +6,7 @@
  */
 import raw from './catalog.json';
 import { IT_ALIASES } from './aliases';
+import WG_MAP from './wgMap.json';
 
 type RawItem = [
   string,
@@ -155,26 +156,52 @@ export const displayName = (e: CatalogExercise): string => e.nameIt ?? e.name;
 /*  Media                                                              */
 /* ------------------------------------------------------------------ */
 
-const MEDIA_BASES = [
+const PHOTO_BASES = [
   'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises',
   'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises',
 ];
+const LINE_BASES = [
+  'https://cdn.jsdelivr.net/npm/@bryllim/workout-guide@1.0.0/assets',
+  'https://unpkg.com/@bryllim/workout-guide@1.0.0/assets',
+];
 
-/** Frame URLs (usually 2: start and end position). Empty when unknown. */
-export const mediaFrames = (
+export type MediaKind = 'line' | 'photo';
+
+/**
+ * Animation frames of an exercise: the 3-frame line drawing of Workout Guide
+ * (CC BY-SA 4.0) when available, otherwise the 2 photos of free-exercise-db
+ * (start and end position). Empty when the exercise has no media.
+ */
+export const mediaSource = (
   catalogId: string | undefined,
-  base = 0,
-): string[] => {
+  mirror = 0,
+): { kind: MediaKind; urls: string[] } => {
   const ex = getCatalogExercise(catalogId);
-  if (!ex || ex.frames === 0) return [];
-  const root = MEDIA_BASES[base] ?? MEDIA_BASES[0];
-  return Array.from(
-    { length: Math.min(ex.frames, 2) },
-    (_, i) => `${root}/${ex.id}/${i}.jpg`,
-  );
+  if (!ex) return { kind: 'photo', urls: [] };
+  const slug = (WG_MAP as Record<string, string>)[ex.id];
+  if (slug) {
+    const root = LINE_BASES[mirror] ?? LINE_BASES[0];
+    return {
+      kind: 'line',
+      urls: [1, 2, 3].map(i => `${root}/${slug}/frame-${i}.png`),
+    };
+  }
+  if (ex.frames === 0) return { kind: 'photo', urls: [] };
+  const root = PHOTO_BASES[mirror] ?? PHOTO_BASES[0];
+  return {
+    kind: 'photo',
+    urls: Array.from(
+      { length: Math.min(ex.frames, 2) },
+      (_, i) => `${root}/${ex.id}/${i}.jpg`,
+    ),
+  };
 };
 
-export const MEDIA_MIRRORS = MEDIA_BASES.length;
+/** Frame URLs only (see mediaSource). */
+export const mediaFrames = (catalogId: string | undefined, mirror = 0) =>
+  mediaSource(catalogId, mirror).urls;
+
+export const MEDIA_MIRRORS = 2;
 
 /* ------------------------------------------------------------------ */
 /*  Search & matching                                                  */

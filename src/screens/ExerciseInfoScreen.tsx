@@ -13,6 +13,7 @@ import {
   equipmentLabel,
   getCatalogExercise,
   levelLabel,
+  mediaSource,
   muscleLabel,
 } from '../catalog';
 import { exerciseKey } from '../core/ids';
@@ -45,6 +46,11 @@ export function ExerciseInfoScreen({
   return (
     <Screen title={name} close largeTitle>
       <ExerciseMedia catalogId={catalogId} style={styles.media} />
+      {mediaSource(catalogId).kind === 'line' ? (
+        <T v="caption" color="tertiary" style={styles.credit}>
+          Illustrazione: Workout Guide di Bryl Lim (CC BY-SA 4.0)
+        </T>
+      ) : null}
       {cat ? (
         <Card style={styles.block}>
           {cat.nameIt && cat.nameIt !== name ? (
@@ -150,6 +156,7 @@ function Fact({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   media: { marginBottom: 12 },
+  credit: { marginTop: -6, marginBottom: 12, textAlign: 'center' },
   block: { marginBottom: 12 },
   alt: { marginBottom: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },

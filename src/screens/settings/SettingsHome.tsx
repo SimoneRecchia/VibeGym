@@ -179,7 +179,8 @@ export function SettingsHome({ navigation }: SettingsProps<'SettingsHome'>) {
       <T v="footnote" color="tertiary" align="center" style={styles.footer}>
         VibeGym {buildInfo.version}
         {buildInfo.commit ? ` (${buildInfo.commit})` : ''} · I tuoi dati restano
-        su questo dispositivo.{'\n'}Esercizi: free-exercise-db (pubblico
+        su questo dispositivo.{'\n'}Animazioni: Workout Guide di Bryl Lim, da
+        Everkinetic (CC BY-SA 4.0, ricolorate); foto: free-exercise-db (pubblico
         dominio). Alimenti: USDA FoodData Central via TempoLife (CC BY 4.0) e
         Open Food Facts (ODbL).
       </T>
