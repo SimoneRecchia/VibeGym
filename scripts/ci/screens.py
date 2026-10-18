@@ -135,11 +135,16 @@ def main(apk):
     seg = ['Dimagrire', 'Mantenere', 'Massa', 'Calcolate', 'Fisse', 'Percentuali', 'Grammi']
     bounds(seg)
     shot('segmented')
-
-    # Live workout with the demo plan.
-    for _ in range(2):
+    adb('shell', 'input', 'keyevent', '4')
+    time.sleep(1)
+    if tap('Integrazioni', scroll=True):
+        shot('integrazioni')
         adb('shell', 'input', 'keyevent', '4')
         time.sleep(1)
+
+    # Live workout with the demo plan.
+    adb('shell', 'input', 'keyevent', '4')
+    time.sleep(1)
     if not find('Scheda', timeout=5):
         adb('shell', 'am', 'start', '-W', '-n', f'{PKG}/.MainActivity')
     tap('Scheda')
