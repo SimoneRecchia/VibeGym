@@ -83,7 +83,7 @@ export function PlanSetupScreen({ navigation }: ScreenProps<'PlanSetup'>) {
         primary
         icon="sparkles"
         title="Creala con l'AI"
-        text="Rispondi a poche domande: l'app prepara il prompt per ChatGPT, Claude o Gemini."
+        text="Rispondi a poche domande: l'app prepara il prompt per ChatGPT, Gemini o un'altra AI."
         onPress={() => navigation.navigate('AiFlow', { mode: 'create' })}
       />
       <Option

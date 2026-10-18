@@ -1,5 +1,5 @@
 /**
- * The JSON format exchanged with external AIs (ChatGPT, Claude, Gemini…).
+ * The JSON format exchanged with external AIs (ChatGPT, Gemini…).
  *
  * Italian keys, only numbers for anything trackable. Parsing is tolerant:
  * missing values get sensible defaults and every assumption is reported as

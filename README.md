@@ -21,7 +21,7 @@ In alto a destra, su ogni sezione, l'avatar apre **profilo e impostazioni**.
 
 ### Schede con l'AI
 
-L'app non chiama nessuna AI: prepara un **prompt** completo (formato, regole, esempio e la lista degli esercizi con animazione) da incollare in ChatGPT, Claude o Gemini, poi importa la risposta (appunti, file `.json` o testo).
+L'app non chiama nessuna AI: prepara un **prompt** completo (formato, regole, esempio e la lista degli esercizi con animazione) da incollare in ChatGPT, Gemini o un'altra AI, poi importa la risposta (appunti, file `.json` o testo).
 
 1. **Crea**: questionario (obiettivi, livello, giorni, durata, attrezzatura, infortuni) → scheda su misura.
 2. **Converti**: allega foto/PDF/testo della tua scheda → stessa scheda nel formato dell'app, opzionalmente migliorata.

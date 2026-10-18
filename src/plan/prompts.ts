@@ -364,6 +364,5 @@ ${OUTPUT_TEXT}`;
 
 export const AI_APPS: { key: string; label: string; url: string }[] = [
   { key: 'chatgpt', label: 'ChatGPT', url: 'https://chatgpt.com/' },
-  { key: 'claude', label: 'Claude', url: 'https://claude.ai/new' },
   { key: 'gemini', label: 'Gemini', url: 'https://gemini.google.com/app' },
 ];
