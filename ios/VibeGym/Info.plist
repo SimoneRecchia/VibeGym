@@ -33,6 +33,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSHealthShareUsageDescription</key>
+	<string>VibeGym legge passi e calorie attive per stimare quanto consumi ogni giorno.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>VibeGym salva in Salute i tuoi allenamenti e le pesate.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>VibeGym usa la fotocamera per leggere il codice a barre e l'etichetta degli alimenti. Le immagini restano sul telefono.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>

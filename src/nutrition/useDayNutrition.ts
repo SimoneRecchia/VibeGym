@@ -42,6 +42,7 @@ export function useDayNutrition(day: string) {
       scaleBmr,
       sessions: daySessions,
       health,
+      elapsed: Math.min(1, (Date.now() - start) / DAY_MS),
     });
 
     // Usual burn: light everyday activity + the average training load of

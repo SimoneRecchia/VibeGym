@@ -35,12 +35,13 @@ export const workoutKcal = (durationSec: number, kg: number): number =>
 
 export interface HealthDay {
   steps?: number;
-  /** Active (non-basal) energy from the platform, kcal. */
+  /** Active (non-basal) energy, kcal: wearables that track all day. */
   activeKcal?: number;
-  /** Basal energy reported by the platform, kcal. */
-  basalKcal?: number;
-  /** Where the numbers come from, e.g. "Health Connect". */
-  source?: string;
+  /**
+   * Total energy, kcal. All-day for some sources (Fitbit, Google), only
+   * the exercise sessions for others (Samsung Health): told apart by size.
+   */
+  totalKcal?: number;
 }
 
 export interface DayEnergy {
@@ -64,19 +65,20 @@ export const dayEnergy = (opts: {
   scaleBmr?: number;
   sessions: Session[];
   health?: HealthDay;
+  /** Share of the day already elapsed (1 for past days). */
+  elapsed?: number;
 }): DayEnergy => {
   const { profile, sessions, health } = opts;
+  const elapsed = Math.min(1, Math.max(0.01, opts.elapsed ?? 1));
   const kg = opts.weightKg ?? profile.goalWeightKg ?? 70;
   const basal = Math.round(
-    health?.basalKcal && health.basalKcal > 800
-      ? health.basalKcal
-      : opts.scaleBmr ??
-          bmrMifflin(
-            kg,
-            profile.heightCm,
-            ageFrom(profile.birthDate) ?? undefined,
-            profile.sex,
-          ),
+    opts.scaleBmr ??
+      bmrMifflin(
+        kg,
+        profile.heightCm,
+        ageFrom(profile.birthDate) ?? undefined,
+        profile.sex,
+      ),
   );
   const steps = health?.steps;
   const stepsKcal =
@@ -84,16 +86,28 @@ export const dayEnergy = (opts: {
       ? Math.round(steps * kcalPerStep(kg, profile.heightCm, profile.sex))
       : 0;
   const wk = sessions.reduce((a, s) => a + workoutKcal(s.durationSec, kg), 0);
-  const assumed = steps == null && health?.activeKcal == null;
+
+  // A total close to the basal burn so far is an all-day figure (it already
+  // contains basal energy); a smaller one only covers exercise sessions.
+  const total = health?.totalKcal ?? 0;
+  const basalSoFar = basal * elapsed;
+  const allDayTotal = total > basalSoFar * 0.8 ? total - basalSoFar : 0;
+  const exerciseTotal = total && !allDayTotal ? total : 0;
+
+  const assumed =
+    steps == null && health?.activeKcal == null && !health?.totalKcal;
   // Without any step data assume a light everyday activity (PAL ≈ 1.2).
-  const estimate = (assumed ? Math.round(basal * 0.2) : stepsKcal) + wk;
-  const fromHealth = (health?.activeKcal ?? 0) > estimate;
-  const active = fromHealth ? Math.round(health!.activeKcal!) : estimate;
+  const estimate =
+    (assumed ? Math.round(basal * 0.2) : stepsKcal) +
+    Math.max(wk, exerciseTotal);
+  const measured = Math.max(health?.activeKcal ?? 0, allDayTotal);
+  const fromHealth = measured > estimate;
+  const active = Math.round(fromHealth ? measured : estimate);
   return {
     basal,
     steps,
     stepsKcal,
-    workoutKcal: wk,
+    workoutKcal: Math.max(wk, Math.round(exerciseTotal)),
     workouts: sessions.length,
     active,
     total: basal + active,

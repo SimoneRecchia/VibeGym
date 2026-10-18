@@ -13,6 +13,10 @@ import { setRestNotifications } from './src/workout/timer';
 import { setHapticsEnabled } from './src/services/haptics';
 import { setSoundEnabled } from './src/services/sound';
 import { syncReminders } from './src/services/notifications';
+import {
+  writeWeightToHealth,
+  writeWorkoutToHealth,
+} from './src/services/health';
 
 /** Keeps native services in sync with the settings. */
 function Runtime() {
@@ -33,6 +37,28 @@ function Runtime() {
   useEffect(() => {
     if (hydrated) syncReminders(useStore.getState().settings, lastWeigh);
   }, [hydrated, lastWeigh]);
+
+  // Finished workouts and new weigh-ins go to Health Connect / Salute.
+  useEffect(
+    () =>
+      useStore.subscribe((s, prev) => {
+        if (!s.hydrated || !prev.hydrated) return;
+        const h = s.settings.health;
+        if (!h.enabled) return;
+        if (h.writeWorkouts && s.sessions.length > prev.sessions.length) {
+          const last = s.sessions[s.sessions.length - 1];
+          if (!prev.sessions.some(x => x.id === last.id))
+            writeWorkoutToHealth(last);
+        }
+        if (h.writeWeight && s.body !== prev.body) {
+          const known = new Set(prev.body.map(b => b.id));
+          s.body
+            .filter(b => !known.has(b.id))
+            .forEach(b => writeWeightToHealth(b));
+        }
+      }),
+    [],
+  );
 
   return null;
 }

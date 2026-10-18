@@ -172,6 +172,32 @@ describe('energy and targets', () => {
     expect(none.active).toBe(Math.round(none.basal * 0.2));
   });
 
+  it('tells all-day totals (Fitbit) from exercise-only ones (Samsung)', () => {
+    const base = { profile, weightKg: 80, sessions: [] as Session[] };
+    const basal = dayEnergy(base).basal;
+    // Samsung Health: only a 350 kcal run is in TotalCaloriesBurned.
+    const samsung = dayEnergy({
+      ...base,
+      health: { steps: 6000, totalKcal: 350 },
+    });
+    expect(samsung.workoutKcal).toBe(350);
+    expect(samsung.total).toBe(basal + samsung.stepsKcal + 350);
+    // Fitbit / Google: the whole day, basal included.
+    const fitbit = dayEnergy({
+      ...base,
+      health: { steps: 6000, totalKcal: basal + 700 },
+    });
+    expect(fitbit.fromHealth).toBe(true);
+    expect(fitbit.total).toBe(basal + 700);
+    // Half of today gone: the same rule scales with the basal so far.
+    const morning = dayEnergy({
+      ...base,
+      elapsed: 0.5,
+      health: { totalKcal: basal * 0.5 + 300 },
+    });
+    expect(morning.active).toBe(300);
+  });
+
   it('turns the goal into calories and macros', () => {
     const g = {
       ...DEFAULT_SETTINGS.nutrition,
