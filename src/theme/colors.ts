@@ -57,7 +57,9 @@ const light = {
   orange: '#FF8D28',
   yellow: '#FFCC00',
   // Glass fallback (Android / iOS < 26): translucent, no blur
-  glass: 'rgba(250,250,252,0.86)',
+  // Without a system blur (Android, iOS < 26) the glass must be nearly
+  // opaque, or the content behind shows through as clutter.
+  glass: 'rgba(250,250,252,0.97)',
   glassBorder: 'rgba(0,0,0,0.06)',
   glassHighlight: 'rgba(255,255,255,0.9)',
   shadow: 'rgba(0,0,0,0.12)',
@@ -84,7 +86,7 @@ const dark: typeof light = {
   red: '#FF4245',
   orange: '#FF9230',
   yellow: '#FFD600',
-  glass: 'rgba(36,36,40,0.86)',
+  glass: 'rgba(36,36,40,0.97)',
   glassBorder: 'rgba(255,255,255,0.10)',
   glassHighlight: 'rgba(255,255,255,0.14)',
   shadow: 'rgba(0,0,0,0.5)',

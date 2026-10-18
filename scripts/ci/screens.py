@@ -133,9 +133,11 @@ def main(apk):
     shot('segmented')
 
     # Live workout with the demo plan.
-    for _ in range(3):
+    for _ in range(2):
         adb('shell', 'input', 'keyevent', '4')
         time.sleep(1)
+    if not find('Scheda', timeout=5):
+        adb('shell', 'am', 'start', '-W', '-n', f'{PKG}/.MainActivity')
     tap('Scheda')
     tap('Inizia')
     tap('Prova la scheda demo', scroll=True)
