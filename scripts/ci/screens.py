@@ -150,7 +150,14 @@ def main(apk):
         bounds(tabs)
         shot(f'tab-{t.lower()}', [bar])
 
+    # Nutrition: a horizontal swipe on the day moves to the next one.
+    adb('shell', 'input', 'swipe', '860', '1500', '220', '1500', '220')
+    time.sleep(1.5)
+    shot('nutrizione-swipe')
+
     tap('Profilo e impostazioni')
+    time.sleep(1)
+    shot('profilo')
     tap('Nutrizione')
     log('== Impostazioni nutrizione')
     seg = ['Dimagrire', 'Mantenere', 'Massa', 'Calcolate', 'Fisse', 'Percentuali', 'Grammi']
