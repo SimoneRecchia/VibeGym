@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   date: {
     width: 48,
     height: 48,
-    borderRadius: 14,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },

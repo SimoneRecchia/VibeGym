@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   tile: {
     width: 32,
     height: 32,
-    borderRadius: 10,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },

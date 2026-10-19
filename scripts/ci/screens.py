@@ -178,10 +178,10 @@ def main(apk):
     time.sleep(3)
     log('== Allenamento')
     shot('workout')
-    tap('Serie 1 completata', timeout=8, at=(880, 654))
+    tap('Serie 1 completata', timeout=8, at=(880, 603))
     time.sleep(1.5)
     shot('workout-serie')
-    if tap('Modifica peso serie 2', timeout=8, at=(620, 836)):
+    if tap('Modifica peso serie 2', timeout=8, at=(560, 771)):
         shot('workout-modifica')
         adb('shell', 'input', 'keyevent', '4')
         time.sleep(1)
