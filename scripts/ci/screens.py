@@ -192,6 +192,11 @@ def main(apk):
         time.sleep(1)
     if tap('Riduci allenamento', timeout=8, at=(114, 224)):
         shot('scheda-in-corso')
+    # The workout notification (player style) in the shade.
+    adb('shell', 'cmd', 'statusbar', 'expand-notifications')
+    time.sleep(2)
+    shot('notifica')
+    adb('shell', 'cmd', 'statusbar', 'collapse')
 
 
 if __name__ == '__main__':
