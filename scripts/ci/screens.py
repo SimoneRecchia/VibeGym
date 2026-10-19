@@ -88,8 +88,15 @@ def find(label, timeout=20, scroll=False):
     return None
 
 
-def tap(label, timeout=20, scroll=False):
+def tap(label, timeout=20, scroll=False, at=None):
     n = find(label, timeout, scroll)
+    if not n and at:
+        # Screens that never go idle (a clock ticking every second) can't be
+        # dumped: tap the known position instead (pixel_6, density 480).
+        log(f'   "{label}" non leggibile, tocco {at}')
+        adb('shell', 'input', 'tap', str(at[0]), str(at[1]))
+        time.sleep(2)
+        return True
     if not n:
         log(f'!! "{label}" non trovato')
         return False
@@ -169,21 +176,21 @@ def main(apk):
     time.sleep(3)
     log('== Allenamento')
     shot('workout')
-    tap('Serie 1 completata', scroll=True)
+    tap('Serie 1 completata', timeout=8, at=(880, 654))
     time.sleep(1.5)
     shot('workout-serie')
-    if tap('Modifica peso serie 2', scroll=True):
+    if tap('Modifica peso serie 2', timeout=8, at=(620, 836)):
         shot('workout-modifica')
         adb('shell', 'input', 'keyevent', '4')
         time.sleep(1)
     adb('shell', 'input', 'swipe', '540', '1700', '540', '600', '400')
     time.sleep(2)
     shot('workout-esercizio-2')
-    if tap('Riepilogo'):
+    if tap('Riepilogo', timeout=8, at=(286, 2244)):
         shot('workout-panoramica')
         adb('shell', 'input', 'keyevent', '4')
         time.sleep(1)
-    if tap('Riduci allenamento'):
+    if tap('Riduci allenamento', timeout=8, at=(114, 224)):
         shot('scheda-in-corso')
 
 
