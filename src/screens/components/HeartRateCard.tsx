@@ -20,7 +20,7 @@ export function HeartRateCard({
   hr: HeartRateSummary;
   style?: StyleProp<ViewStyle>;
 }) {
-  const { c, dark } = useTheme();
+  const { dark } = useTheme();
   const [w, setW] = useState(0);
   const color = ACCENTS.pink[dark ? 'dark' : 'light'];
   const s = hr.series ?? [];
@@ -80,11 +80,6 @@ export function HeartRateCard({
           ) : null}
         </View>
       ) : null}
-      <T v="caption" color={c.tertiary} style={styles.note}>
-        {hr.kcal != null
-          ? 'Energia stimata dal battito (Keytel 2005): sostituisce la stima per durata nel consumo del giorno.'
-          : 'Aggiungi età, sesso e peso al profilo per stimare l’energia dal battito.'}
-      </T>
     </Card>
   );
 }
@@ -124,5 +119,4 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   figures: { flexDirection: 'row', gap: 10, marginTop: 12 },
   chart: { height: H, marginTop: 12 },
-  note: { marginTop: 10 },
 });

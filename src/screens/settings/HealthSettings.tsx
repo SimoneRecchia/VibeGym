@@ -19,8 +19,8 @@ import { toast } from '../../ui/Toast';
 
 const SOURCES =
   Platform.OS === 'ios'
-    ? 'iPhone, Apple Watch e le app collegate a Salute'
-    : 'Samsung Health, Google Fit / Fitbit, Garmin, Xiaomi, Zepp, Polar, Oura e le altre app collegate';
+    ? 'iPhone, Apple Watch e app collegate'
+    : 'Samsung Health, Fitbit, Garmin, Xiaomi e app collegate';
 
 export const PRIVACY_URL =
   'https://github.com/SimoneRecchia/VibeGym/blob/main/docs/PRIVACY.md';
@@ -116,24 +116,18 @@ export function HealthSettings() {
 
   return (
     <Screen title={healthPlatformName} back>
-      <Section
-        footer={`I dati arrivano da ${SOURCES}. Bastano il telefono e il contapassi: lo smartwatch è facoltativo.`}
-      >
+      <Section footer={`Da ${SOURCES}.`}>
         <Row
           title="Collega a VibeGym"
-          subtitle="Passi, calorie, sonno, battito a riposo"
+          subtitle="Passi, calorie, sonno"
           toggle={{ value: h.enabled, onChange: enable }}
         />
       </Section>
 
       {h.enabled ? (
-        <Section
-          title="Leggi"
-          footer="Altezza, età e sesso completano solo i campi vuoti del profilo. Le pesate di Withings, Renpho, Eufy, Garmin, Fitbit, Zepp, Huawei e delle altre bilance collegate entrano nell’andamento del peso."
-        >
+        <Section title="Leggi">
           <Row
             title="Pesate delle altre bilance"
-            subtitle="Peso e massa grassa"
             toggle={{
               value: h.importWeight,
               onChange: v => {
@@ -155,10 +149,7 @@ export function HealthSettings() {
         </Section>
       ) : null}
 
-      <Section
-        title="Scrivi"
-        footer="Così gli allenamenti e il peso compaiono anche nelle altre app."
-      >
+      <Section title="Scrivi">
         <Row
           title="Allenamenti"
           toggle={{

@@ -46,9 +46,7 @@ export function HeartRateSettings() {
           <View style={styles.flex}>
             <T v="headline">Battito durante l’allenamento</T>
             <T v="subhead" color="secondary">
-              Polar H10 e H9, Garmin HRM, Wahoo TICKR, Coospo, Decathlon e gli
-              smartwatch in modalità «trasmetti battito» (Garmin, Polar,
-              Amazfit, Suunto). Si collega da sola quando inizi un allenamento.
+              Polar, Garmin, Wahoo, Coospo o lo smartwatch. Si collega da sola.
             </T>
           </View>
         </View>
@@ -63,7 +61,7 @@ export function HeartRateSettings() {
                 ? 'Collegato'
                 : live === 'connecting'
                 ? 'Mi collego…'
-                : 'Indossalo o attiva la trasmissione del battito'
+                : 'Non rilevato'
             }
             icon="bluetooth"
             iconBg={pink}
@@ -94,13 +92,12 @@ export function HeartRateSettings() {
 
       <Section
         title={hr.deviceId ? 'Cambia sensore' : 'Collega'}
-        footer="Indossa la fascia (inumidisci gli elettrodi) o avvia la trasmissione del battito sull’orologio: comparirà qui. Non serve l’abbinamento nelle impostazioni Bluetooth."
+        footer="Indossa la fascia o attiva «trasmetti battito» sull’orologio."
       >
         {found.map(f => (
           <Row
             key={f.id}
             title={f.name}
-            subtitle="Sensore di frequenza cardiaca"
             checked={f.id === hr.deviceId}
             onPress={() => {
               update(s => ({
