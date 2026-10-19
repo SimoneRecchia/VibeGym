@@ -21,7 +21,7 @@ import { Icon } from '../../ui/Icon';
 import { Chip } from '../../ui/Chip';
 import { IconButton } from '../../ui/Button';
 import { ExerciseThumb } from '../../ui/ExerciseMedia';
-import { radius } from '../../theme/metrics';
+import { BLOCK, CARD_PAD, radius } from '../../theme/metrics';
 import {
   SetRef,
   lastPerformance,
@@ -144,7 +144,7 @@ function ExerciseCardImpl({
             style={[
               styles.num,
               {
-                backgroundColor: done ? c.green : current ? color : c.fill3,
+                backgroundColor: done ? c.done[0] : current ? color : c.fill3,
               },
             ]}
           >
@@ -378,8 +378,8 @@ function SetRow({
         style={[
           styles.status,
           {
-            backgroundColor: set.done ? c.green : withAlpha(c.green, 0.001),
-            borderColor: set.done ? c.green : active ? color : c.quaternary,
+            backgroundColor: set.done ? c.done[0] : withAlpha(c.done[0], 0.001),
+            borderColor: set.done ? c.done[0] : active ? color : c.quaternary,
           },
         ]}
       >
@@ -429,8 +429,8 @@ function SetRow({
 const styles = StyleSheet.create({
   card: {
     borderRadius: radius.card,
-    padding: 18,
-    marginBottom: 16,
+    padding: CARD_PAD,
+    marginBottom: BLOCK,
   },
   flex: { flex: 1, minWidth: 0 },
   head: {

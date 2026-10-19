@@ -18,6 +18,8 @@ import {
 import { fmtDuration, fmtMinutes, plural } from '../core/format';
 import { ScreenProps } from '../navigation/types';
 import { useDraft } from '../data/draft';
+import { Figure, Figures } from '../ui/Figures';
+import { BLOCK } from '../theme/metrics';
 
 export function DayScreen({ route, navigation }: ScreenProps<'Day'>) {
   const { c } = useTheme();
@@ -76,14 +78,16 @@ export function DayScreen({ route, navigation }: ScreenProps<'Day'>) {
         />
       }
     >
-      <View style={styles.meta}>
-        <Stat label="Esercizi" value={String(allExercises(day).length)} />
-        <Stat label="Serie" value={String(countSets(day))} />
-        <Stat
-          label="Durata"
-          value={`~${fmtMinutes(estimateDayMinutes(day))}`}
-        />
-      </View>
+      <Card>
+        <Figures>
+          <Figure label="Esercizi" value={String(allExercises(day).length)} />
+          <Figure label="Serie" value={String(countSets(day))} />
+          <Figure
+            label="Durata"
+            value={`~${fmtMinutes(estimateDayMinutes(day))}`}
+          />
+        </Figures>
+      </Card>
       {dayMuscles(day, 4).length ? (
         <T v="subhead" color="secondary" style={styles.muscles}>
           {dayMuscles(day, 4).join(' · ')}
@@ -102,11 +106,9 @@ export function DayScreen({ route, navigation }: ScreenProps<'Day'>) {
         <Card key={b.id} style={styles.card}>
           {isSuperset(b) ? (
             <View style={styles.ssHead}>
-              <View style={[styles.ssPill, { backgroundColor: c.accentSoft }]}>
-                <T v="caption2" color="accent" weight="700">
-                  {b.exercises.length > 2 ? 'Circuito' : 'Superset'}
-                </T>
-              </View>
+              <T v="footnoteStrong" color="accent">
+                {b.exercises.length > 2 ? 'Circuito' : 'Superset'}
+              </T>
               <T v="footnote" color="secondary">
                 {plural(
                   Math.max(...b.exercises.map(e => e.sets.length)),
@@ -147,30 +149,10 @@ export function DayScreen({ route, navigation }: ScreenProps<'Day'>) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  const { c } = useTheme();
-  return (
-    <View style={[styles.stat, { backgroundColor: c.card }]}>
-      <T v="title3">{value}</T>
-      <T v="footnote" color="secondary">
-        {label}
-      </T>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  meta: { flexDirection: 'row', gap: 10 },
-  stat: {
-    flex: 1,
-    borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  muscles: { marginTop: 12, marginBottom: 4, paddingHorizontal: 4 },
-  card: { marginTop: 12, paddingVertical: 6 },
+  muscles: { marginTop: 14, marginBottom: 2, paddingHorizontal: 4 },
+  card: { marginTop: BLOCK, paddingVertical: 8 },
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
   ssHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 8 },
-  ssPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   notes: { marginLeft: 64, marginTop: -4, marginBottom: 8 },
 });

@@ -194,7 +194,7 @@ export function PlanEditorScreen({ navigation }: ScreenProps<'PlanEditor'>) {
               key={b.id}
               style={
                 b.exercises.length > 1
-                  ? [styles.superset, { borderColor: c.accent }]
+                  ? [styles.superset, { backgroundColor: c.accentSoft }]
                   : undefined
               }
             >
@@ -276,11 +276,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   dayName: { flex: 1, fontSize: 17, fontWeight: '600', paddingVertical: 6 },
+  // Supersets sit on a soft tint of the theme color, no side line.
   superset: {
-    borderLeftWidth: 3,
-    paddingLeft: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     marginVertical: 4,
-    borderRadius: 2,
+    borderRadius: 16,
   },
   ssLabel: { marginTop: 4 },
   add: { marginTop: 8, alignSelf: 'flex-start' },

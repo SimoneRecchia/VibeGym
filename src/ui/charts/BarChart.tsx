@@ -10,7 +10,14 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import Svg, { Line, Path, Text as SvgText } from 'react-native-svg';
+import Svg, {
+  Defs,
+  Line,
+  LinearGradient,
+  Path,
+  Stop,
+  Text as SvgText,
+} from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
 import { T } from '../Text';
 import { compact, niceDomain } from './scale';
@@ -64,6 +71,12 @@ export function BarChart({ data, height = 150, format }: Props) {
       {w ? (
         <>
           <Svg width={w} height={height}>
+            <Defs>
+              <LinearGradient id="barNow" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor={c.accentGrad[1]} />
+                <Stop offset="1" stopColor={c.accentGrad[0]} />
+              </LinearGradient>
+            </Defs>
             {dom.ticks.map(v => (
               <React.Fragment key={v}>
                 <Line
@@ -93,9 +106,17 @@ export function BarChart({ data, height = 150, format }: Props) {
               return (
                 <Path
                   key={d.key}
-                  d={column(x, top, bw, PAD.top + ih - top, 4)}
+                  d={column(
+                    x,
+                    top,
+                    bw,
+                    PAD.top + ih - top,
+                    Math.min(6, bw / 2),
+                  )}
                   fill={
-                    current || active ? c.accent : withAlpha(c.accent, 0.38)
+                    current || active
+                      ? 'url(#barNow)'
+                      : withAlpha(c.accent, 0.3)
                   }
                 />
               );

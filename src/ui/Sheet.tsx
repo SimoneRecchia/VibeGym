@@ -139,17 +139,19 @@ export function Sheet({
               flat
               style={[
                 styles.panel,
-                !NATIVE_GLASS && { backgroundColor: c.card },
+                !NATIVE_GLASS && { backgroundColor: c.cardElevated },
               ]}
             >
               <View {...pan.panHandlers}>
                 <View
-                  style={[styles.grabber, { backgroundColor: c.tertiary }]}
+                  style={[styles.grabber, { backgroundColor: c.quaternary }]}
                 />
                 {title || action ? (
                   <View style={styles.header}>
                     <IconButton
                       icon="xmark"
+                      plain
+                      color={c.secondary}
                       onPress={onClose}
                       size={36}
                       accessibilityLabel="Chiudi"
@@ -224,5 +226,5 @@ const styles = StyleSheet.create({
   headerText: { flex: 1 },
   headerSide: { minWidth: 36, alignItems: 'flex-end' },
   scroll: { flexGrow: 0 },
-  content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
+  content: { paddingHorizontal: 22, paddingTop: 10, paddingBottom: 16 },
 });

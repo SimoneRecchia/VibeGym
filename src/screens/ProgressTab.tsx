@@ -49,6 +49,9 @@ import { DAY_MS, dayKey } from '../core/dates';
 import { logNutrients } from '../nutrition/foods';
 import { MACRO_COLOR } from './nutrition/macroColors';
 import { withAlpha } from '../theme/colors';
+import { BLOCK } from '../theme/metrics';
+import { Bar } from '../ui/charts/Bar';
+import { Figure, Figures } from '../ui/Figures';
 
 type ActivityMetric = 'workouts' | 'volume' | 'minutes';
 
@@ -140,27 +143,32 @@ export function ProgressTab() {
       {weight}
       <RecoveryCard style={styles.block} />
 
-      {/* This month */}
-      <View style={styles.tiles}>
-        <Tile
-          label="Allenamenti"
-          sub="questo mese"
-          value={String(month.workouts)}
-          delta={month.workouts - prevMonth.workouts}
-        />
-        <Tile
-          label="Volume"
-          sub="questo mese"
-          value={`${fmtNum(month.volume / 1000, 1)} t`}
-          delta={(month.volume - prevMonth.volume) / 1000}
-          decimals={1}
-        />
-        <Tile
-          label="Costanza"
-          sub={streak === 1 ? 'settimana di fila' : 'settimane di fila'}
-          value={String(streak)}
-        />
-      </View>
+      {/* This month: three figures in one card, no boxes */}
+      <Card style={styles.block}>
+        <T v="footnoteStrong" color="secondary">
+          Questo mese
+        </T>
+        <View style={styles.month}>
+          <Figures>
+            <Figure
+              label="Allenamenti"
+              value={String(month.workouts)}
+              delta={month.workouts - prevMonth.workouts}
+            />
+            <Figure
+              label="Volume"
+              value={`${fmtNum(month.volume / 1000, 1)} t`}
+              delta={(month.volume - prevMonth.volume) / 1000}
+              decimals={1}
+            />
+            <Figure
+              label={streak === 1 ? 'Settimana di fila' : 'Settimane di fila'}
+              value={String(streak)}
+              color={c.gold[0]}
+            />
+          </Figures>
+        </View>
+      </Card>
 
       {/* Weekly activity */}
       <Card style={styles.block}>
@@ -228,7 +236,7 @@ export function ProgressTab() {
                       styles.muscleFill,
                       {
                         width: `${Math.min(100, (m.perWeek / max) * 100)}%`,
-                        backgroundColor: inRange ? c.accent : c.tertiary,
+                        backgroundColor: inRange ? c.done[0] : c.accent,
                       },
                     ]}
                   />
@@ -263,9 +271,12 @@ export function ProgressTab() {
             >
               <View style={styles.recordRow}>
                 <View
-                  style={[styles.trophy, { backgroundColor: c.accentSoft }]}
+                  style={[
+                    styles.trophy,
+                    { backgroundColor: withAlpha(c.gold[0], 0.16) },
+                  ]}
                 >
-                  <Icon name="trophy" size={18} color={c.accent} />
+                  <Icon name="trophy" size={18} color={c.gold[1]} />
                 </View>
                 <View style={styles.flex}>
                   <T v="subheadStrong" numberOfLines={1}>
@@ -404,7 +415,7 @@ export function ProgressTab() {
                 </T>
               </View>
               {s.records?.length ? (
-                <Icon name="trophy" size={16} color={c.accent} />
+                <Icon name="trophy" size={16} color={c.gold[1]} />
               ) : null}
               <Icon
                 name="chevron-right"
@@ -467,14 +478,14 @@ function FoodWeek({
       v: data.kcal,
       goal: data.kcalGoal,
       unit: 'kcal',
-      color: c.accent,
+      grad: c.energy,
     },
     {
       label: 'Proteine',
       v: data.protein,
       goal: data.proteinGoal,
       unit: 'g',
-      color: MACRO_COLOR.protein,
+      grad: [MACRO_COLOR.protein, c.energy[1]] as [string, string],
     },
   ];
   return (
@@ -496,63 +507,16 @@ function FoodWeek({
               </T>
             </T>
           </View>
-          <View
-            style={[
-              styles.muscleTrack,
-              { backgroundColor: withAlpha(r.color, 0.16) },
-            ]}
-          >
-            <View
-              style={[
-                styles.muscleFill,
-                {
-                  width: `${Math.min(100, r.goal ? (r.v / r.goal) * 100 : 0)}%`,
-                  backgroundColor: r.color,
-                },
-              ]}
-            />
-          </View>
+          <Bar progress={r.goal ? r.v / r.goal : 0} gradient={r.grad} />
         </View>
       ))}
     </Card>
   );
 }
 
-function Tile({
-  label,
-  sub,
-  value,
-  delta,
-  decimals = 0,
-}: {
-  label: string;
-  sub: string;
-  value: string;
-  delta?: number;
-  decimals?: number;
-}) {
-  const { c } = useTheme();
-  return (
-    <View style={[styles.tile, { backgroundColor: c.card }]}>
-      <T v="footnote" color="secondary" numberOfLines={1}>
-        {label}
-      </T>
-      <T v="title2" numberOfLines={1} adjustsFontSizeToFit>
-        {value}
-      </T>
-      <T v="caption" color="tertiary" numberOfLines={1}>
-        {delta != null && Math.abs(delta) > 0.0001
-          ? `${fmtSigned(delta, decimals)} vs mese scorso`
-          : sub}
-      </T>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  tiles: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  tile: { flex: 1, borderRadius: 22, padding: 12, gap: 2 },
-  block: { marginBottom: 12 },
+  month: { marginTop: 12 },
+  block: { marginBottom: BLOCK },
   headRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

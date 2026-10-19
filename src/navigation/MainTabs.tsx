@@ -25,6 +25,7 @@ import { WorkoutTabIcon } from './WorkoutTabIcon';
 import { useNavigation } from '@react-navigation/native';
 import { Nav } from './types';
 import { Glass } from '../ui/Glass';
+import { withAlpha } from '../theme/colors';
 import { Tap } from '../ui/Pressable';
 import { Icon, IconName } from '../ui/Icon';
 import { T } from '../ui/Text';
@@ -94,7 +95,7 @@ function NativeTabs() {
   );
 }
 
-const JS_BAR_H = 64;
+const JS_BAR_H = 66;
 const BAR_PAD = 6;
 const PILL_H = JS_BAR_H - BAR_PAD * 2;
 
@@ -163,7 +164,8 @@ function JsTabs() {
                   styles.pill,
                   {
                     width: itemW - 4,
-                    backgroundColor: c.fill3,
+                    // The selected tab sits in a soft lens of the theme color.
+                    backgroundColor: withAlpha(c.accent, 0.14),
                     transform: [{ translateX: x }],
                   },
                 ]}

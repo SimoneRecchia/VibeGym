@@ -22,6 +22,8 @@ import { recordText } from './components/recordText';
 import { ScreenProps } from '../navigation/types';
 import { Tap } from '../ui/Pressable';
 import { HeartRateCard } from './components/HeartRateCard';
+import { Figure, Figures } from '../ui/Figures';
+import { BLOCK } from '../theme/metrics';
 
 export function SessionScreen({ route, navigation }: ScreenProps<'Session'>) {
   const { c } = useTheme();
@@ -72,19 +74,21 @@ export function SessionScreen({ route, navigation }: ScreenProps<'Session'>) {
         />
       }
     >
-      <View style={styles.stats}>
-        <Stat label="Durata" value={fmtClock(session.durationSec)} />
-        <Stat label="Serie" value={String(sessionSetsDone(session))} />
-        <Stat
-          label="Volume"
-          value={volume ? `${fmtNum(volume / 1000, 1)} t` : '–'}
-        />
-      </View>
+      <Card>
+        <Figures>
+          <Figure label="Durata" value={fmtClock(session.durationSec)} />
+          <Figure label="Serie" value={String(sessionSetsDone(session))} />
+          <Figure
+            label="Volume"
+            value={volume ? `${fmtNum(volume / 1000, 1)} t` : '–'}
+          />
+        </Figures>
+      </Card>
 
       {session.records?.length ? (
         <Card style={styles.block}>
           <View style={styles.recHead}>
-            <Icon name="trophy" size={22} color={c.accent} />
+            <Icon name="trophy" size={22} color={c.gold[1]} />
             <T v="headline">
               {session.records.length === 1
                 ? 'Nuovo record'
@@ -177,22 +181,8 @@ export function SessionScreen({ route, navigation }: ScreenProps<'Session'>) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  const { c } = useTheme();
-  return (
-    <View style={[styles.stat, { backgroundColor: c.card }]}>
-      <T v="title3">{value}</T>
-      <T v="footnote" color="secondary">
-        {label}
-      </T>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  stats: { flexDirection: 'row', gap: 10, marginBottom: 2 },
-  stat: { flex: 1, borderRadius: 20, padding: 14 },
-  block: { marginTop: 12 },
+  block: { marginTop: BLOCK },
   recHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   recLine: { marginTop: 6 },
   exHead: {

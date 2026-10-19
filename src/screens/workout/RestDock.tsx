@@ -19,7 +19,6 @@ import { IconButton, Button } from '../../ui/Button';
 import { numeric } from '../../theme/typography';
 import { fmtClock } from '../../core/format';
 import { Icon } from '../../ui/Icon';
-import { ACCENTS } from '../../theme/colors';
 
 export function RestDock({
   bottom,
@@ -263,8 +262,7 @@ function TimerFullScreen({
   );
 }
 
-const REST_COLOR = (c: { dark: boolean }) =>
-  ACCENTS.cyan[c.dark ? 'dark' : 'light'];
+const REST_COLOR = (c: { calm: [string, string] }) => c.calm[0];
 
 const styles = StyleSheet.create({
   float: { position: 'absolute', left: 16, right: 16 },

@@ -188,7 +188,7 @@ export function ImportReviewScreen({
               key={b.id}
               style={
                 b.exercises.length > 1
-                  ? [styles.superset, { borderColor: c.accent }]
+                  ? [styles.superset, { backgroundColor: c.accentSoft }]
                   : undefined
               }
             >
@@ -231,10 +231,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   flex: { flex: 1 },
+  // Supersets sit on a soft tint of the theme color, no side line.
   superset: {
-    borderLeftWidth: 3,
-    paddingLeft: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     marginVertical: 4,
-    borderRadius: 2,
+    borderRadius: 16,
   },
 });

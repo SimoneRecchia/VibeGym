@@ -21,6 +21,7 @@ import { Button, IconButton } from '../../ui/Button';
 import { Ring } from '../../ui/charts/Ring';
 import { Backdrop } from '../../ui/Backdrop';
 import { BottomFade } from '../../ui/Screen';
+import { GUTTER } from '../../theme/metrics';
 import { showMenu } from '../../ui/Menu';
 import { useNow } from '../../ui/useNow';
 import { ExerciseCard, EditField } from './ExerciseCard';
@@ -418,7 +419,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   mt: { marginTop: 16 },
   flex: { flex: 1 },
-  content: { paddingHorizontal: 16 },
+  content: { paddingHorizontal: GUTTER },
   top: { position: 'absolute', top: 0, left: 0, right: 0, paddingBottom: 12 },
   topRow: {
     flexDirection: 'row',
@@ -428,6 +429,6 @@ const styles = StyleSheet.create({
     height: TOP_H,
   },
   topCenter: { flex: 1, minWidth: 0 },
-  dock: { position: 'absolute', left: 16, right: 16, bottom: 0 },
+  dock: { position: 'absolute', left: GUTTER, right: GUTTER, bottom: 0 },
   dockRow: { flexDirection: 'row', gap: 12 },
 });

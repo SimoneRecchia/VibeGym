@@ -27,7 +27,6 @@ interface Props {
   onGo: (bi: number) => void;
 }
 
-const CLEAR = 'transparent';
 
 export function WorkoutOverview({
   visible,
@@ -88,7 +87,6 @@ export function WorkoutOverview({
               styles.row,
               {
                 backgroundColor: here ? c.accentSoft : c.card,
-                borderColor: here ? c.accent : CLEAR,
               },
             ]}
           >
@@ -164,8 +162,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     padding: 10,
-    borderRadius: 18,
-    borderWidth: 1.5,
+    borderRadius: 20,
     marginBottom: 8,
   },
   texts: { flex: 1, minWidth: 0 },
