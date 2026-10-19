@@ -11,7 +11,12 @@ import { T } from '../../ui/Text';
 import { Tap } from '../../ui/Pressable';
 import { IconButton } from '../../ui/Button';
 import { Ring } from '../../ui/charts/Ring';
-import { WEEKDAYS_NARROW, fmtWeekdayDate } from '../../core/format';
+import {
+  WEEKDAYS_NARROW,
+  fmtDate,
+  fmtDateShort,
+  fmtWeekdayDate,
+} from '../../core/format';
 import { dayStart } from '../../core/dates';
 
 const D = 40;
@@ -34,16 +39,36 @@ export function DayStrip({
   onWeek: (dir: -1 | 1) => void;
 }) {
   const { c } = useTheme();
+  const first = new Date(dayStart(days[0]));
+  const last = new Date(dayStart(days[6]));
   return (
-    <View style={styles.row}>
-      <IconButton
-        icon="chevron-left"
-        plain
-        size={32}
-        color={c.secondary}
-        onPress={() => onWeek(-1)}
-        accessibilityLabel="Settimana precedente"
-      />
+    <View>
+      {/* Week and arrows on their own line: the days get the full width */}
+      <View style={styles.head}>
+        <T v="footnoteStrong" color="secondary" style={styles.flex}>
+          {first.getMonth() === last.getMonth()
+            ? `${first.getDate()} – ${fmtDate(last, { year: false })}`
+            : `${fmtDateShort(first)} – ${fmtDateShort(last)}`}
+        </T>
+        <View style={styles.arrows}>
+          <IconButton
+            icon="chevron-left"
+            plain
+            size={34}
+            color={c.secondary}
+            onPress={() => onWeek(-1)}
+            accessibilityLabel="Settimana precedente"
+          />
+          <IconButton
+            icon="chevron-right"
+            plain
+            size={34}
+            color={c.secondary}
+            onPress={() => onWeek(1)}
+            accessibilityLabel="Settimana successiva"
+          />
+        </View>
+      </View>
       <View style={styles.week}>
         {days.map((d, i) => {
           const on = d === selected;
@@ -91,22 +116,21 @@ export function DayStrip({
           );
         })}
       </View>
-      <IconButton
-        icon="chevron-right"
-        plain
-        size={32}
-        color={c.secondary}
-        onPress={() => onWeek(1)}
-        accessibilityLabel="Settimana successiva"
-      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // The arrows keep their distance from the days.
-  row: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
-  week: { flex: 1, flexDirection: 'row', justifyContent: 'space-between' },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingLeft: 4,
+  },
+  flex: { flex: 1 },
+  // Well apart, so they are easy to hit.
+  arrows: { flexDirection: 'row', gap: 14 },
+  week: { flexDirection: 'row', justifyContent: 'space-between' },
   day: { alignItems: 'center', gap: 6 },
   dateBox: {
     width: D,

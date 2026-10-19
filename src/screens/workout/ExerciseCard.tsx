@@ -131,14 +131,84 @@ function ExerciseCardImpl({
 
   return (
     <View style={[styles.card, { backgroundColor: c.card }]}>
-      {/* Header */}
-      <Tap
-        onPress={done ? () => setOpen(o => !o) : undefined}
-        disabled={!done}
-        feedback={null}
-        scaleTo={1}
-        accessibilityLabel={done ? `${first.name}, completato` : undefined}
-      >
+      {/* Header (a finished exercise opens / closes on tap) */}
+      {done ? (
+        <Tap
+          onPress={() => setOpen(o => !o)}
+          feedback={null}
+          scaleTo={1}
+          accessibilityLabel={`${first.name}, completato`}
+        >
+          <View style={styles.head}>
+            <View
+              style={[
+                styles.num,
+                {
+                  backgroundColor: done ? c.done[0] : current ? color : c.fill3,
+                },
+              ]}
+            >
+              {done ? (
+                <Icon name="check" size={16} color="#FFFFFF" weight={3} />
+              ) : (
+                <T v="headline" color={current ? '#FFFFFF' : 'secondary'}>
+                  {bi + 1}
+                </T>
+              )}
+            </View>
+            <View style={styles.flex}>
+              {superset ? (
+                <T v="caption" color={color} weight="700">
+                  {block.exercises.length > 2 ? 'Circuito' : 'Superset'}
+                </T>
+              ) : null}
+              <T v="headline" numberOfLines={2}>
+                {block.exercises.map(e => e.name).join(' + ')}
+              </T>
+              <T v="footnote" color="secondary" numberOfLines={1}>
+                {done
+                  ? `${setsDone} ${
+                      setsDone === 1 ? 'serie fatta' : 'serie fatte'
+                    }`
+                  : `${targetText(first)}${
+                      restSec ? ` · rec ${fmtDuration(restSec)}` : ''
+                    }`}
+              </T>
+            </View>
+            {done ? (
+              <Icon
+                name={open ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={c.tertiary}
+              />
+            ) : (
+              <>
+                {!superset ? (
+                  <Tap
+                    onPress={() => onInfo(bi, 0)}
+                    scaleTo={0.94}
+                    accessibilityLabel="Come si fa"
+                  >
+                    <ExerciseThumb
+                      catalogId={first.catalogId}
+                      kind={first.kind}
+                      size={44}
+                    />
+                  </Tap>
+                ) : null}
+                <IconButton
+                  plain
+                  icon="ellipsis"
+                  size={36}
+                  color={c.secondary}
+                  onPress={() => onMenu(bi, 0)}
+                  accessibilityLabel="Opzioni esercizio"
+                />
+              </>
+            )}
+          </View>
+        </Tap>
+      ) : (
         <View style={styles.head}>
           <View
             style={[
@@ -207,7 +277,7 @@ function ExerciseCardImpl({
             </>
           )}
         </View>
-      </Tap>
+      )}
 
       {showSets
         ? block.exercises.map((ex, ei) => {

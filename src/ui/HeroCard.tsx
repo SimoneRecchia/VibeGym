@@ -3,7 +3,7 @@
  * progress): a deep gradient of the given color, a large faint ring in the
  * corner like the Activity rings, white content.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import Svg, {
   Circle,
@@ -28,9 +28,25 @@ export function HeroCard({
   style?: StyleProp<ViewStyle>;
 }) {
   const id = `hero${color.replace('#', '')}`;
+  // Numeric size: on Android an SVG sized in % isn't redrawn when the card
+  // grows, and the content spills out of the colored background.
+  const [size, setSize] = useState({ w: 0, h: 0 });
   return (
-    <View style={[styles.card, style]}>
-      <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View
+      style={[styles.card, style]}
+      onLayout={e =>
+        setSize({
+          w: e.nativeEvent.layout.width,
+          h: e.nativeEvent.layout.height,
+        })
+      }
+    >
+      <Svg
+        width={size.w}
+        height={size.h}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      >
         <Defs>
           <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor={mix(color, '#FFFFFF', 0.1)} />
@@ -41,14 +57,14 @@ export function HeroCard({
         {/* Rounded in the drawing too: on Android the clip of a view that
             changes size can lose its rounded corners. */}
         <Rect
-          width="100%"
-          height="100%"
+          width={size.w}
+          height={size.h}
           rx={radius.card}
           ry={radius.card}
           fill={`url(#${id})`}
         />
         <Circle
-          cx="100%"
+          cx={size.w}
           cy="0"
           r="110"
           stroke="#FFFFFF"

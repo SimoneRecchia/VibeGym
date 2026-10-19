@@ -28,11 +28,7 @@ import { useDayNutrition, useKcalByDay } from '../nutrition/useDayNutrition';
 import { goalOffset } from '../nutrition/energy';
 import { healthPlatformName } from '../services/health';
 import { DAY_MS, addDays, dayKey, dayStart, startOfWeek } from '../core/dates';
-import {
-  capitalize,
-  fmtNum,
-  fmtWeekdayDate,
-} from '../core/format';
+import { capitalize, fmtNum, fmtWeekdayDate } from '../core/format';
 import { numeric } from '../theme/typography';
 import { mix, withAlpha } from '../theme/colors';
 import { BLOCK } from '../theme/metrics';
@@ -218,7 +214,7 @@ export function NutritionTab() {
           <Row
             icon="flame"
             iconBg={c.done[0]}
-            title="Consumo stimato"
+            title="Consumo"
             value={`${fmtNum(n.energy.total, 0)} kcal`}
             right={
               <Icon
