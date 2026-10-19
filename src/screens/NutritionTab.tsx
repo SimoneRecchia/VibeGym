@@ -11,7 +11,7 @@ import { Screen } from '../ui/Screen';
 import { ProfileButton } from '../ui/Avatar';
 import { Card } from '../ui/Card';
 import { T } from '../ui/Text';
-import { Button, IconButton } from '../ui/Button';
+import { IconButton } from '../ui/Button';
 import { Icon, IconName } from '../ui/Icon';
 import { Tap } from '../ui/Pressable';
 import { Ring } from '../ui/charts/Ring';
@@ -39,6 +39,7 @@ import { withAlpha } from '../theme/colors';
 import { Nav } from '../navigation/types';
 import { FoodEntrySheet, EntryValue } from './nutrition/FoodEntrySheet';
 import { MACRO_COLOR, MACRO_KEYS, MACRO_LABEL } from './nutrition/macroColors';
+import { Fab } from '../ui/Fab';
 
 export function NutritionTab() {
   const nav = useNavigation<Nav>();
@@ -126,23 +127,7 @@ export function NutritionTab() {
       title="Nutrizione"
       eyebrow={label}
       right={<ProfileButton />}
-      footer={
-        <View style={styles.footer}>
-          <Button
-            title="Aggiungi cibo"
-            icon="plus"
-            variant="glass"
-            onPress={() => add(defaultMeal)}
-            style={styles.flex}
-          />
-          <IconButton
-            icon="barcode"
-            size={54}
-            onPress={() => nav.navigate('Scanner', { day, meal: defaultMeal })}
-            accessibilityLabel="Scansiona un prodotto"
-          />
-        </View>
-      }
+      fab={<Fab label="Aggiungi cibo" onPress={() => add(defaultMeal)} />}
     >
       {/* Week: one light row, arrows at the ends */}
       <View style={styles.weekRow}>
@@ -655,5 +640,4 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  footer: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 });

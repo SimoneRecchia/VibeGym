@@ -5,7 +5,12 @@
  * progress ring sits at the top, summary and finish at the bottom.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useStore } from '../../data/store';
@@ -15,6 +20,7 @@ import { T } from '../../ui/Text';
 import { Button, IconButton } from '../../ui/Button';
 import { Ring } from '../../ui/charts/Ring';
 import { Backdrop } from '../../ui/Backdrop';
+import { BottomFade } from '../../ui/Screen';
 import { showMenu } from '../../ui/Menu';
 import { useNow } from '../../ui/useNow';
 import { ExerciseCard, EditField } from './ExerciseCard';
@@ -40,10 +46,12 @@ import { useDraft } from '../../data/draft';
 import { ScreenProps } from '../../navigation/types';
 
 const TOP_H = 64;
+const BUTTON_H = 54;
 
 export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height: winH } = useWindowDimensions();
   const workout = useStore(s => s.workout);
   const plans = useStore(s => s.plans);
   const sessions = useStore(s => s.sessions);
@@ -226,8 +234,9 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
   const progress = workoutProgress(workout);
   const timing = phase === 'work' ? timerRef ?? null : null;
   const topH = insets.top + TOP_H;
-  const bottomH =
-    84 + (phase !== 'idle' ? 72 : 0) + Math.max(insets.bottom, 12);
+  const padBottom = Math.max(insets.bottom, 12);
+  const dockTop = padBottom + BUTTON_H + 12;
+  const bottomH = dockTop + (phase !== 'idle' ? 76 : 0);
   const editEx = edit
     ? workout.blocks[edit.ref.bi]?.exercises[edit.ref.ei] ?? null
     : null;
@@ -254,6 +263,7 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
               workout={workout}
               bi={bi}
               color={color}
+              current={bi === workout.cursor}
               sessions={sessions}
               unit={settings.unit}
               stepKg={settings.loadStepKg}
@@ -274,7 +284,7 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
         pointerEvents="box-none"
         style={[styles.top, { paddingTop: insets.top }]}
       >
-        <Fade from="top" color={c.bg} />
+        <TopFade height={topH + 12} color={c.bg} />
         <View style={styles.topRow}>
           <IconButton
             icon="chevron-down"
@@ -304,33 +314,31 @@ export function WorkoutScreen({ navigation }: ScreenProps<'Workout'>) {
         </View>
       </View>
 
-      {/* Bottom bar */}
+      {/* Bottom bar: scroll edge, then the two actions on glass */}
+      <BottomFade height={dockTop + 28} />
       <View
         pointerEvents="box-none"
-        style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 12) }]}
+        style={[styles.dock, { paddingBottom: padBottom }]}
       >
-        <Fade from="bottom" color={c.bg} />
-        <View style={styles.dockInner}>
-          <RestDock />
-          <View style={styles.dockRow}>
-            <Button
-              title="Riepilogo"
-              icon="list"
-              variant="glass"
-              onPress={() => setOverview(true)}
-              style={styles.flex}
-            />
-            <Button
-              title="Fine"
-              icon="flame"
-              tint={color}
-              onPress={() => setFinishing(true)}
-              feedback="medium"
-              style={styles.flex}
-            />
-          </View>
+        <View style={styles.dockRow}>
+          <Button
+            title="Riepilogo"
+            icon="list"
+            variant="glass"
+            onPress={() => setOverview(true)}
+            style={styles.flex}
+          />
+          <Button
+            title="Fine"
+            icon="flame"
+            tint={color}
+            onPress={() => setFinishing(true)}
+            feedback="medium"
+            style={styles.flex}
+          />
         </View>
       </View>
+      <RestDock bottom={dockTop} maxLift={winH - dockTop - topH - 88} />
 
       <SetEditSheet
         visible={!!edit}
@@ -384,20 +392,23 @@ function Elapsed({ since }: { since: number }) {
   return <>{fmtClock((now - since) / 1000)}</>;
 }
 
-/** Background fade under the floating bars. */
-function Fade({ from, color }: { from: 'top' | 'bottom'; color: string }) {
-  const top = from === 'top';
-  const id = top ? 'wfadeTop' : 'wfadeBottom';
+/** Scroll edge under the top bar. */
+function TopFade({ height, color }: { height: number; color: string }) {
   return (
-    <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <Svg
+      pointerEvents="none"
+      width="100%"
+      height={height}
+      style={StyleSheet.absoluteFill}
+    >
       <Defs>
-        <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={color} stopOpacity={top ? 1 : 0} />
-          <Stop offset="0.6" stopColor={color} stopOpacity={top ? 0.9 : 0.92} />
-          <Stop offset="1" stopColor={color} stopOpacity={top ? 0 : 1} />
+        <LinearGradient id="wfadeTop" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={color} stopOpacity={1} />
+          <Stop offset="0.7" stopColor={color} stopOpacity={0.94} />
+          <Stop offset="1" stopColor={color} stopOpacity={0} />
         </LinearGradient>
       </Defs>
-      <Rect width="100%" height="100%" fill={`url(#${id})`} />
+      <Rect width="100%" height={height} fill="url(#wfadeTop)" />
     </Svg>
   );
 }
@@ -417,7 +428,6 @@ const styles = StyleSheet.create({
     height: TOP_H,
   },
   topCenter: { flex: 1, minWidth: 0 },
-  dock: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 24 },
-  dockInner: { paddingHorizontal: 16, gap: 10 },
-  dockRow: { flexDirection: 'row', gap: 10 },
+  dock: { position: 'absolute', left: 16, right: 16, bottom: 0 },
+  dockRow: { flexDirection: 'row', gap: 12 },
 });

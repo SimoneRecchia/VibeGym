@@ -332,6 +332,8 @@ export interface Settings {
   /** Start the rest timer as soon as a set is ticked. */
   autoRest: boolean;
   keepAwake: boolean;
+  /** Where the rest timer was dragged in the workout (dp above its dock). */
+  restDockLift?: number;
   sound: boolean;
   haptics: boolean;
   showMedia: boolean;

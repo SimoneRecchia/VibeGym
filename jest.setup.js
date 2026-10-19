@@ -9,6 +9,20 @@ jest.mock('react-native-gesture-handler', () => {
     TapGestureHandler: View,
     Directions: {},
     gestureHandlerRootHOC: jest.fn(c => c),
+    // Gesture builder API: every method chains, the detector renders its child.
+    Gesture: new Proxy(
+      {},
+      {
+        get: () => () => {
+          const chain = new Proxy(
+            {},
+            { get: () => () => chain },
+          );
+          return chain;
+        },
+      },
+    ),
+    GestureDetector: ({ children }) => children,
   };
 });
 

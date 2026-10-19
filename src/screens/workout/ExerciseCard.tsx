@@ -3,7 +3,7 @@
  * what to do, the sets as rows (tap the row = done, tap a value = edit) and
  * one button for the next set, which also starts the rest.
  */
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
   ActiveWorkout,
@@ -13,7 +13,8 @@ import {
   SessionExercise,
 } from '../../core/types';
 import { useTheme } from '../../theme/ThemeProvider';
-import { mix, withAlpha } from '../../theme/colors';
+import { withAlpha } from '../../theme/colors';
+import { numeric } from '../../theme/typography';
 import { T } from '../../ui/Text';
 import { Tap } from '../../ui/Pressable';
 import { Icon } from '../../ui/Icon';
@@ -37,6 +38,8 @@ interface Props {
   workout: ActiveWorkout;
   bi: number;
   color: string;
+  /** The exercise to do now: it shows the button for the next set. */
+  current: boolean;
   sessions: Session[];
   unit: DisplayUnit;
   stepKg: number;
@@ -49,8 +52,6 @@ interface Props {
   onMenu: (bi: number, ei: number) => void;
   onApplyHint: (bi: number, ei: number, kg: number) => void;
 }
-
-const CLEAR = 'transparent';
 
 const targetText = (ex: SessionExercise): string => {
   const t = ex.target[0];
@@ -67,6 +68,7 @@ function ExerciseCardImpl({
   workout,
   bi,
   color,
+  current,
   sessions,
   unit,
   stepKg,
@@ -78,17 +80,24 @@ function ExerciseCardImpl({
   onMenu,
   onApplyHint,
 }: Props) {
-  const { c, dark } = useTheme();
+  const { c } = useTheme();
   const block = workout.blocks[bi];
   const superset = block.exercises.length > 1;
   const pending = nextInBlock(workout, bi);
   const done = !pending;
+  // Finished exercises fold into one line, so the list stays light.
+  const [open, setOpen] = useState(false);
+  const showSets = !done || open;
   const first = block.exercises[0];
   const restSec = first.restSec ?? 0;
+  const setsDone = block.exercises.reduce(
+    (n, e) => n + e.sets.filter(x => x.done).length,
+    0,
+  );
 
   // Primary action of the card: the next set of this exercise.
-  let action = 'Completato';
-  let icon: 'check' | 'play' | 'check-circle' = 'check-circle';
+  let action = '';
+  let icon: 'check' | 'play' = 'check';
   if (pending) {
     const ex = block.exercises[pending.ei];
     const set = ex.sets[pending.si];
@@ -110,183 +119,189 @@ function ExerciseCardImpl({
       action = `${prefix}${
         ex.kind === 'cardio' ? 'Fatto' : `Serie ${pending.si + 1} fatta`
       }${rest ? ` · ${fmtDuration(rest)}` : ''}`;
-      icon = 'check';
     }
   }
-  const actionDisabled =
-    done ||
-    !!(
-      timing &&
-      pending &&
-      timing.bi === pending.bi &&
-      timing.ei === pending.ei &&
-      timing.si === pending.si
-    );
-
-  const cardBg = done ? c.card : mix(c.card, color, dark ? 0.1 : 0.05);
-  const border = done ? CLEAR : withAlpha(color, 0.45);
+  const actionDisabled = !!(
+    timing &&
+    pending &&
+    timing.bi === pending.bi &&
+    timing.ei === pending.ei &&
+    timing.si === pending.si
+  );
 
   return (
-    <View
-      style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}
-    >
-      {superset ? (
-        <View style={[styles.tag, { backgroundColor: withAlpha(color, 0.18) }]}>
-          <Icon name="layers" size={12} color={color} weight={2.4} />
-          <T v="caption2" color={color} weight="700">
-            {block.exercises.length > 2 ? 'CIRCUITO' : 'SUPERSET'}
-          </T>
-        </View>
-      ) : null}
-
+    <View style={[styles.card, { backgroundColor: c.card }]}>
       {/* Header */}
-      <View style={styles.head}>
-        <View
-          style={[
-            styles.num,
-            { backgroundColor: done ? c.green : withAlpha(color, 0.2) },
-          ]}
-        >
-          {done ? (
-            <Icon name="check" size={16} color="#FFFFFF" weight={3} />
-          ) : (
-            <T v="headline" color={color}>
-              {bi + 1}
+      <Tap
+        onPress={done ? () => setOpen(o => !o) : undefined}
+        disabled={!done}
+        feedback={null}
+        scaleTo={1}
+        accessibilityLabel={done ? `${first.name}, completato` : undefined}
+      >
+        <View style={styles.head}>
+          <View
+            style={[
+              styles.num,
+              {
+                backgroundColor: done ? c.green : current ? color : c.fill3,
+              },
+            ]}
+          >
+            {done ? (
+              <Icon name="check" size={16} color="#FFFFFF" weight={3} />
+            ) : (
+              <T v="headline" color={current ? '#FFFFFF' : 'secondary'}>
+                {bi + 1}
+              </T>
+            )}
+          </View>
+          <View style={styles.flex}>
+            {superset ? (
+              <T v="caption" color={color} weight="700">
+                {block.exercises.length > 2 ? 'Circuito' : 'Superset'}
+              </T>
+            ) : null}
+            <T v="headline" numberOfLines={2}>
+              {block.exercises.map(e => e.name).join(' + ')}
             </T>
+            <T v="footnote" color="secondary" numberOfLines={1}>
+              {done
+                ? `${setsDone} ${
+                    setsDone === 1 ? 'serie fatta' : 'serie fatte'
+                  }`
+                : `${targetText(first)}${
+                    restSec ? ` · rec ${fmtDuration(restSec)}` : ''
+                  }`}
+            </T>
+          </View>
+          {done ? (
+            <Icon
+              name={open ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={c.tertiary}
+            />
+          ) : (
+            <>
+              {!superset ? (
+                <Tap
+                  onPress={() => onInfo(bi, 0)}
+                  scaleTo={0.94}
+                  accessibilityLabel="Come si fa"
+                >
+                  <ExerciseThumb
+                    catalogId={first.catalogId}
+                    kind={first.kind}
+                    size={44}
+                  />
+                </Tap>
+              ) : null}
+              <IconButton
+                plain
+                icon="ellipsis"
+                size={36}
+                color={c.secondary}
+                onPress={() => onMenu(bi, 0)}
+                accessibilityLabel="Opzioni esercizio"
+              />
+            </>
           )}
         </View>
-        <View style={styles.flex}>
-          <T v="headline" numberOfLines={2}>
-            {block.exercises.map(e => e.name).join(' + ')}
-          </T>
-          <T v="footnote" color="secondary" numberOfLines={1}>
-            {targetText(first)}
-            {restSec ? ` · Rec ${fmtDuration(restSec)}` : ''}
-          </T>
-        </View>
-        {!superset ? (
-          <Tap
-            onPress={() => onInfo(bi, 0)}
-            scaleTo={0.94}
-            accessibilityLabel="Come si fa"
-          >
-            <ExerciseThumb
-              catalogId={first.catalogId}
-              kind={first.kind}
-              size={48}
-            />
-          </Tap>
-        ) : null}
-        <IconButton
-          plain
-          icon="ellipsis"
-          size={34}
-          onPress={() => onMenu(bi, 0)}
-          accessibilityLabel="Opzioni esercizio"
-        />
-      </View>
-
-      {block.exercises.map((ex, ei) => {
-        const prev = lastPerformance(sessions, ex.key)?.ex.sets;
-        const hint = !done ? progressionHint(ex, sessions, stepKg) : null;
-        return (
-          <View key={`${ex.exerciseId}-${ei}`} style={styles.exercise}>
-            {superset ? (
-              <View style={styles.subHead}>
-                <T v="footnoteStrong" color={color}>
-                  {String.fromCharCode(65 + bi)}
-                  {ei + 1}
-                </T>
-                <T v="subheadStrong" numberOfLines={1} style={styles.flex}>
-                  {ex.name}
-                </T>
-                <IconButton
-                  plain
-                  icon="info"
-                  size={30}
-                  onPress={() => onInfo(bi, ei)}
-                  accessibilityLabel={`Come si fa ${ex.name}`}
-                />
-              </View>
-            ) : null}
-
-            {ex.notes ? (
-              <View
-                style={[
-                  styles.note,
-                  { backgroundColor: withAlpha(c.orange, 0.14) },
-                ]}
-              >
-                <Icon name="bulb" size={15} color={c.orange} />
-                <T v="footnote" style={styles.flex}>
-                  {ex.notes}
-                </T>
-              </View>
-            ) : null}
-
-            {hint ? (
-              <View style={styles.hint}>
-                <Chip
-                  tinted
-                  icon="arrow-up"
-                  label={`Prova ${fmtLoad(hint, unit)}`}
-                  onPress={() => onApplyHint(bi, ei, hint)}
-                />
-                <T v="footnote" color="secondary" style={styles.flex}>
-                  L'ultima volta hai fatto tutto
-                </T>
-              </View>
-            ) : null}
-
-            {ex.sets.map((s, si) => (
-              <SetRow
-                key={si}
-                ex={ex}
-                set={s}
-                si={si}
-                prev={prev?.[si]}
-                active={!!pending && pending.ei === ei && pending.si === si}
-                color={color}
-                unit={unit}
-                onToggle={() => onToggle({ bi, ei, si })}
-                onEdit={f => onEdit({ bi, ei, si }, f)}
-              />
-            ))}
-          </View>
-        );
-      })}
-
-      <Tap
-        onPress={() => onAction(bi)}
-        disabled={actionDisabled}
-        feedback={null}
-        accessibilityRole="button"
-        accessibilityLabel={action}
-      >
-        <View
-          style={[
-            styles.action,
-            { backgroundColor: done ? withAlpha(c.green, 0.16) : color },
-          ]}
-        >
-          <Icon
-            name={icon}
-            size={18}
-            color={done ? c.green : '#FFFFFF'}
-            weight={2.6}
-          />
-          <T v="headline" color={done ? c.green : '#FFFFFF'} numberOfLines={1}>
-            {action}
-          </T>
-        </View>
       </Tap>
+
+      {showSets
+        ? block.exercises.map((ex, ei) => {
+            const prev = lastPerformance(sessions, ex.key)?.ex.sets;
+            const hint = !done ? progressionHint(ex, sessions, stepKg) : null;
+            return (
+              <View key={`${ex.exerciseId}-${ei}`} style={styles.exercise}>
+                {superset ? (
+                  <View style={styles.subHead}>
+                    <T v="footnoteStrong" color={color}>
+                      {String.fromCharCode(65 + bi)}
+                      {ei + 1}
+                    </T>
+                    <T v="subheadStrong" numberOfLines={1} style={styles.flex}>
+                      {ex.name}
+                    </T>
+                    <IconButton
+                      plain
+                      icon="info"
+                      size={30}
+                      color={c.secondary}
+                      onPress={() => onInfo(bi, ei)}
+                      accessibilityLabel={`Come si fa ${ex.name}`}
+                    />
+                  </View>
+                ) : null}
+
+                {ex.notes ? (
+                  <View style={styles.note}>
+                    <Icon name="bulb" size={15} color={c.orange} />
+                    <T v="footnote" color="secondary" style={styles.flex}>
+                      {ex.notes}
+                    </T>
+                  </View>
+                ) : null}
+
+                {hint ? (
+                  <View style={styles.hint}>
+                    <Chip
+                      tinted
+                      icon="arrow-up"
+                      label={`Prova ${fmtLoad(hint, unit)}`}
+                      onPress={() => onApplyHint(bi, ei, hint)}
+                    />
+                  </View>
+                ) : null}
+
+                {ex.sets.map((s, si) => (
+                  <SetRow
+                    key={si}
+                    ex={ex}
+                    set={s}
+                    si={si}
+                    prev={prev?.[si]}
+                    active={
+                      current &&
+                      !!pending &&
+                      pending.ei === ei &&
+                      pending.si === si
+                    }
+                    color={color}
+                    unit={unit}
+                    onToggle={() => onToggle({ bi, ei, si })}
+                    onEdit={f => onEdit({ bi, ei, si }, f)}
+                  />
+                ))}
+              </View>
+            );
+          })
+        : null}
+
+      {current && pending ? (
+        <Tap
+          onPress={() => onAction(bi)}
+          disabled={actionDisabled}
+          feedback={null}
+          accessibilityRole="button"
+          accessibilityLabel={action}
+        >
+          <View style={[styles.action, { backgroundColor: color }]}>
+            <Icon name={icon} size={18} color="#FFFFFF" weight={2.6} />
+            <T v="headline" color="#FFFFFF" numberOfLines={1}>
+              {action}
+            </T>
+          </View>
+        </Tap>
+      ) : null}
     </View>
   );
 }
 
 export const ExerciseCard = memo(ExerciseCardImpl);
 
-/** One set: status circle, then its values as pills. */
+/** One set: status, then its values as plain tappable numbers. */
 function SetRow({
   ex,
   set,
@@ -309,49 +324,40 @@ function SetRow({
   onEdit: (f: EditField) => void;
 }) {
   const { c } = useTheme();
-  const pills: {
-    field: EditField;
-    icon: 'refresh' | 'dumbbell' | 'timer' | 'ruler';
-    text: string;
-  }[] =
+  const values: { field: EditField; value: string; unit: string }[] =
     ex.kind === 'reps'
       ? [
-          { field: 'reps', icon: 'refresh', text: `${set.reps ?? '–'} rip.` },
-          {
-            field: 'kg',
-            icon: 'dumbbell',
-            text: set.kg
-              ? `${fmtLoadValue(set.kg, unit)} ${unit}`
-              : 'Corpo libero',
-          },
+          { field: 'reps', value: `${set.reps ?? '–'}`, unit: 'rip' },
+          set.kg
+            ? { field: 'kg', value: fmtLoadValue(set.kg, unit), unit }
+            : { field: 'kg', value: 'Corpo libero', unit: '' },
         ]
       : ex.kind === 'time'
       ? [
-          { field: 'sec', icon: 'timer', text: `${set.sec ?? 0} s` },
+          { field: 'sec', value: `${set.sec ?? 0}`, unit: 's' },
           ...(set.kg
             ? [
                 {
                   field: 'kg' as const,
-                  icon: 'dumbbell' as const,
-                  text: `${fmtLoadValue(set.kg, unit)} ${unit}`,
+                  value: fmtLoadValue(set.kg, unit),
+                  unit,
                 },
               ]
             : []),
         ]
       : [
-          { field: 'sec', icon: 'timer', text: fmtClock(set.sec ?? 0) },
+          { field: 'sec', value: fmtClock(set.sec ?? 0), unit: '' },
           {
             field: 'km',
-            icon: 'ruler',
-            text: set.km ? `${fmtNum(set.km, 2)} km` : '– km',
+            value: set.km ? fmtNum(set.km, 2) : '–',
+            unit: 'km',
           },
         ];
   const prevText =
     prev?.done && ex.kind === 'reps'
-      ? `prima ${prev.kg ? `${fmtLoadValue(prev.kg, unit)}×` : ''}${
-          prev.reps ?? 0
-        }`
+      ? `${prev.kg ? `${fmtLoadValue(prev.kg, unit)} × ` : ''}${prev.reps ?? 0}`
       : null;
+  const valueColor = set.done ? c.secondary : active ? color : c.label;
 
   return (
     <Tap
@@ -361,55 +367,53 @@ function SetRow({
       accessibilityRole="checkbox"
       accessibilityState={{ checked: set.done }}
       accessibilityLabel={`Serie ${si + 1} completata`}
-      // Background and border from the start: on Android a background added
-      // later loses the rounded corners.
+      // The background is always there (only its color changes): on
+      // Android a background added later loses the rounded corners.
       style={[
         styles.row,
-        {
-          backgroundColor: set.done ? withAlpha(color, 0.18) : c.fill4,
-          borderColor: active ? color : CLEAR,
-        },
+        { backgroundColor: withAlpha(color, active ? 0.14 : 0.001) },
       ]}
     >
       <View
         style={[
           styles.status,
           {
-            backgroundColor: set.done ? color : CLEAR,
-            borderColor: set.done ? color : c.tertiary,
+            backgroundColor: set.done ? c.green : withAlpha(c.green, 0.001),
+            borderColor: set.done ? c.green : active ? color : c.quaternary,
           },
         ]}
       >
         {set.done ? (
           <Icon name="check" size={15} color="#FFFFFF" weight={3} />
         ) : (
-          <T v="footnoteStrong" color="secondary">
+          <T v="footnoteStrong" color={active ? color : 'tertiary'}>
             {si + 1}
           </T>
         )}
       </View>
-      <View style={styles.pills}>
-        {pills.map(p => (
+      <View style={styles.values}>
+        {values.map(v => (
           <Tap
-            key={p.field}
-            onPress={() => onEdit(p.field)}
-            scaleTo={0.94}
-            hitSlop={6}
+            key={v.field}
+            onPress={() => onEdit(v.field)}
+            scaleTo={0.92}
+            hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={`Modifica ${
-              p.field === 'kg'
+              v.field === 'kg'
                 ? 'peso'
-                : p.field === 'reps'
+                : v.field === 'reps'
                 ? 'ripetizioni'
                 : 'valore'
             } serie ${si + 1}`}
+            style={styles.value}
           >
-            <View style={[styles.pill, { backgroundColor: c.card }]}>
-              <Icon name={p.icon} size={13} color={c.secondary} weight={2.2} />
-              <T v="subheadStrong" numberOfLines={1}>
-                {p.text}
-              </T>
-            </View>
+            <T style={[numeric(20, '600'), { color: valueColor }]}>
+              {v.value}
+              {v.unit ? (
+                <T v="footnote" color="secondary">{` ${v.unit}`}</T>
+              ) : null}
+            </T>
           </Tap>
         ))}
       </View>
@@ -425,35 +429,23 @@ function SetRow({
 const styles = StyleSheet.create({
   card: {
     borderRadius: radius.card,
-    borderWidth: 1.5,
-    padding: 14,
-    marginBottom: 12,
+    padding: 18,
+    marginBottom: 16,
   },
   flex: { flex: 1, minWidth: 0 },
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
   head: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
+    gap: 12,
   },
   num: {
     width: 34,
     height: 34,
-    borderRadius: 12,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  exercise: { marginBottom: 4 },
+  exercise: { marginTop: 14 },
   subHead: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -463,50 +455,37 @@ const styles = StyleSheet.create({
   note: {
     flexDirection: 'row',
     gap: 8,
-    padding: 10,
-    borderRadius: 14,
-    marginBottom: 8,
+    paddingHorizontal: 4,
+    marginBottom: 10,
   },
-  hint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
-  },
+  hint: { flexDirection: 'row', marginBottom: 10 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    padding: 8,
+    gap: 14,
+    height: 54,
+    paddingHorizontal: 10,
     borderRadius: 16,
-    borderWidth: 1.5,
-    marginBottom: 6,
+    marginBottom: 2,
   },
   status: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pills: { flex: 1, flexDirection: 'row', gap: 8, minWidth: 0 },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    height: 36,
-    borderRadius: 18,
-  },
+  values: { flex: 1, flexDirection: 'row', gap: 22, minWidth: 0 },
+  value: { minHeight: 44, justifyContent: 'center' },
   action: {
-    height: 50,
-    borderRadius: 25,
+    height: 52,
+    borderRadius: 26,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 6,
+    marginTop: 14,
     paddingHorizontal: 12,
   },
 });

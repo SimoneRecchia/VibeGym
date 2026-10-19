@@ -1,9 +1,13 @@
 /**
- * Floating timer: compact glass capsule above the primary button, expandable
- * to a full-screen countdown readable from across the room.
+ * Floating timer: compact glass capsule above the bottom buttons, expandable
+ * to a full-screen countdown readable from across the room. Hold it and drag
+ * to move it out of the way; the position is remembered.
  */
-import React, { useEffect, useState } from 'react';
-import { Modal, StyleSheet, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Modal, StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useStore } from '../../data/store';
+import { haptic } from '../../services/haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { adjustTimer, finishNow, useTimer } from '../../workout/timer';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -15,9 +19,62 @@ import { IconButton, Button } from '../../ui/Button';
 import { numeric } from '../../theme/typography';
 import { fmtClock } from '../../core/format';
 import { Icon } from '../../ui/Icon';
+import { ACCENTS } from '../../theme/colors';
 
-export function RestDock() {
+export function RestDock({
+  bottom,
+  maxLift,
+}: {
+  /** Distance of the docked position from the screen bottom. */
+  bottom: number;
+  /** How far up it may be dragged. */
+  maxLift: number;
+}) {
   const { c } = useTheme();
+  const saved = useStore(s => s.settings.restDockLift ?? 0);
+  const lift = useRef(new Animated.Value(-saved)).current;
+  const base = useRef(saved);
+  const [dragging, setDragging] = useState(false);
+  const clamp = (v: number) => Math.min(maxLift, Math.max(0, v));
+  const maxRef = useRef(maxLift);
+  maxRef.current = maxLift;
+
+  useEffect(() => {
+    base.current = clamp(saved);
+    lift.setValue(-base.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saved, maxLift]);
+
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .activateAfterLongPress(280)
+        .runOnJS(true)
+        .onStart(() => {
+          haptic('medium');
+          setDragging(true);
+        })
+        .onUpdate(e => {
+          const v = Math.min(
+            maxRef.current,
+            Math.max(0, base.current - e.translationY),
+          );
+          lift.setValue(-v);
+        })
+        .onEnd(e => {
+          const v = Math.min(
+            maxRef.current,
+            Math.max(0, base.current - e.translationY),
+          );
+          base.current = v;
+          setDragging(false);
+          useStore
+            .getState()
+            .updateSettings(st => ({ ...st, restDockLift: Math.round(v) }));
+        })
+        .onFinalize(() => setDragging(false)),
+    [lift],
+  );
   const phase = useTimer(s => s.phase);
   const remaining = useTimer(s => s.remaining);
   const total = useTimer(s => s.total);
@@ -32,58 +89,73 @@ export function RestDock() {
   }, [phase]);
 
   if (phase === 'idle') return null;
-  const color = phase === 'work' ? c.green : c.accent;
+  // Rest is calm (cyan, like the Stand ring), effort is green.
+  const color = phase === 'work' ? c.green : REST_COLOR(c);
   const progress = 1 - remaining / Math.max(1, total);
 
   return (
     <>
-      <Tap
-        onPress={() => setExpanded(true)}
-        scaleTo={0.98}
-        accessibilityRole="button"
-        accessibilityLabel={`${
-          phase === 'rest' ? 'Recupero' : label
-        }: ${fmtClock(remaining)}. Tocca per ingrandire`}
-      >
-        <Glass interactive style={styles.capsule}>
-          <Ring progress={progress} size={40} stroke={4} color={color}>
-            <Icon name="timer" size={16} color={c.label} />
-          </Ring>
-          <View style={styles.texts}>
-            <T v="caption" color="secondary" numberOfLines={1}>
-              {phase === 'rest' ? `Poi: ${nextLabel}` : label}
-            </T>
-            <T style={[numeric(26), { color: c.label }]}>
-              {fmtClock(remaining)}
-            </T>
-          </View>
-          <View style={styles.actions}>
-            <IconButton
-              plain
-              icon="minus"
-              size={40}
-              onPress={() => adjustTimer(-15)}
-              accessibilityLabel="Togli 15 secondi"
-            />
-            <IconButton
-              plain
-              icon="plus"
-              size={40}
-              onPress={() => adjustTimer(15)}
-              accessibilityLabel="Aggiungi 15 secondi"
-            />
-            <IconButton
-              plain
-              icon={phase === 'rest' ? 'forward' : 'check'}
-              size={40}
-              onPress={finishNow}
-              accessibilityLabel={
-                phase === 'rest' ? 'Salta recupero' : 'Termina ora'
-              }
-            />
-          </View>
-        </Glass>
-      </Tap>
+      <GestureDetector gesture={pan}>
+        <Animated.View
+          style={[
+            styles.float,
+            {
+              bottom,
+              transform: [{ translateY: lift }, { scale: dragging ? 1.03 : 1 }],
+            },
+          ]}
+        >
+          <Tap
+            onPress={() => setExpanded(true)}
+            scaleTo={0.98}
+            accessibilityRole="button"
+            accessibilityLabel={`${
+              phase === 'rest' ? 'Recupero' : label
+            }: ${fmtClock(
+              remaining,
+            )}. Tocca per ingrandire, tieni premuto per spostare`}
+          >
+            <Glass interactive style={styles.capsule}>
+              <Ring progress={progress} size={40} stroke={4} color={color}>
+                <Icon name="timer" size={16} color={c.label} />
+              </Ring>
+              <View style={styles.texts}>
+                <T v="caption" color="secondary" numberOfLines={1}>
+                  {phase === 'rest' ? `Poi: ${nextLabel}` : label}
+                </T>
+                <T style={[numeric(26), { color: c.label }]}>
+                  {fmtClock(remaining)}
+                </T>
+              </View>
+              <View style={styles.actions}>
+                <IconButton
+                  plain
+                  icon="minus"
+                  size={40}
+                  onPress={() => adjustTimer(-15)}
+                  accessibilityLabel="Togli 15 secondi"
+                />
+                <IconButton
+                  plain
+                  icon="plus"
+                  size={40}
+                  onPress={() => adjustTimer(15)}
+                  accessibilityLabel="Aggiungi 15 secondi"
+                />
+                <IconButton
+                  plain
+                  icon={phase === 'rest' ? 'forward' : 'check'}
+                  size={40}
+                  onPress={finishNow}
+                  accessibilityLabel={
+                    phase === 'rest' ? 'Salta recupero' : 'Termina ora'
+                  }
+                />
+              </View>
+            </Glass>
+          </Tap>
+        </Animated.View>
+      </GestureDetector>
       <TimerFullScreen visible={expanded} onClose={() => setExpanded(false)} />
     </>
   );
@@ -104,7 +176,7 @@ function TimerFullScreen({
   const nextLabel = useTimer(s => s.nextLabel);
   const label = useTimer(s => s.label);
   if (phase === 'idle') return null;
-  const color = phase === 'work' ? c.green : c.accent;
+  const color = phase === 'work' ? c.green : REST_COLOR(c);
   return (
     <Modal
       visible={visible}
@@ -191,7 +263,11 @@ function TimerFullScreen({
   );
 }
 
+const REST_COLOR = (c: { dark: boolean }) =>
+  ACCENTS.cyan[c.dark ? 'dark' : 'light'];
+
 const styles = StyleSheet.create({
+  float: { position: 'absolute', left: 16, right: 16 },
   capsule: {
     flexDirection: 'row',
     alignItems: 'center',

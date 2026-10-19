@@ -27,6 +27,11 @@ import { GlassGroup } from './Glass';
 import { Backdrop } from './Backdrop';
 
 export const BAR_H = 52;
+// Line heights of the eyebrow (subheadStrong) and large title, and the row
+// of trailing buttons aligned with the title.
+const EYEBROW_H = 20;
+const TITLE_H = 41;
+const ROW_H = 44;
 /** Height of a footer button plus the fade above it. */
 const FOOTER_FADE = 96;
 
@@ -48,7 +53,9 @@ export function BottomFade({ height }: { height: number }) {
   const { c } = useTheme();
   return (
     <View pointerEvents="none" style={[styles.fade, { height }]}>
-      <Svg width="100%" height="100%">
+      {/* Numeric height: a percentage isn't redrawn on Android when the
+          height changes, leaving content showing through. */}
+      <Svg width="100%" height={height}>
         <Defs>
           <LinearGradient id="bottomFade" x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={c.bg} stopOpacity={0} />
@@ -57,7 +64,13 @@ export function BottomFade({ height }: { height: number }) {
             <Stop offset="1" stopColor={c.bg} stopOpacity={EDGE_TOP} />
           </LinearGradient>
         </Defs>
-        <Rect x="0" y="0" width="100%" height="100%" fill="url(#bottomFade)" />
+        <Rect
+          x="0"
+          y="0"
+          width="100%"
+          height={height}
+          fill="url(#bottomFade)"
+        />
       </Svg>
     </View>
   );
@@ -82,6 +95,8 @@ interface Props {
   children: React.ReactNode;
   /** Floating element pinned to the bottom (primary action). */
   footer?: React.ReactNode;
+  /** Round button in the bottom corner (lighter than a footer). */
+  fab?: React.ReactNode;
   /** Extra bottom padding for the content (beyond tab bar / footer). */
   bottomSpace?: number;
   largeTitle?: boolean;
@@ -102,6 +117,7 @@ export function Screen({
   right,
   children,
   footer,
+  fab,
   bottomSpace = 0,
   largeTitle = true,
   refreshControl,
@@ -117,7 +133,14 @@ export function Screen({
   const extraInset = useContext(ExtraBottomInset);
   const y = useRef(new Animated.Value(0)).current;
 
-  const barH = insets.top + BAR_H;
+  // Tab roots (no back button) put the trailing buttons on the large title's
+  // line, as iOS does, instead of a bar above it: no space lost at the top.
+  const inline = largeTitle && !back && !close && !left;
+  const titleTop = insets.top + 10;
+  const rowTop = inline
+    ? titleTop + 4 + (eyebrow ? EYEBROW_H : 0) + (TITLE_H - ROW_H) / 2
+    : insets.top;
+  const barH = inline ? rowTop + ROW_H + 6 : insets.top + BAR_H;
   const edge = y.interpolate({
     inputRange: [0, 16],
     outputRange: [0, 1],
@@ -176,19 +199,23 @@ export function Screen({
       keyboardDismissMode="interactive"
       refreshControl={refreshControl}
       contentContainerStyle={{
-        paddingTop: barH + (largeTitle ? 0 : 8),
+        paddingTop: inline ? titleTop : barH + (largeTitle ? 0 : 8),
         paddingBottom:
           Math.max(insets.bottom, tabInset) +
           extraInset +
           bottomSpace +
-          (footer ? 96 : 24),
+          (footer ? 96 : fab ? 84 : 24),
         paddingHorizontal: GUTTER,
       }}
       showsVerticalScrollIndicator={false}
     >
       {largeTitle ? (
         <Animated.View
-          style={[styles.titleBlock, { opacity: largeTitleOpacity }]}
+          style={[
+            styles.titleBlock,
+            inline && right ? styles.titleBeside : null,
+            { opacity: largeTitleOpacity },
+          ]}
         >
           {eyebrow ? (
             <T v="subheadStrong" color="secondary" numberOfLines={1}>
@@ -246,7 +273,12 @@ export function Screen({
         </Animated.View>
         <View
           pointerEvents="box-none"
-          style={[styles.barInner, { paddingTop: insets.top, height: barH }]}
+          style={[
+            styles.barInner,
+            inline
+              ? { paddingTop: rowTop, height: rowTop + ROW_H }
+              : { paddingTop: insets.top, height: barH },
+          ]}
         >
           <View style={styles.side}>{leftNode}</View>
           <Animated.View
@@ -263,6 +295,23 @@ export function Screen({
         </View>
       </View>
 
+      {fab ? (
+        <View
+          pointerEvents="box-none"
+          style={[
+            styles.fab,
+            {
+              bottom:
+                Math.max(insets.bottom, 12) +
+                (tabInset ? tabInset - insets.bottom : 0) +
+                extraInset +
+                4,
+            },
+          ]}
+        >
+          {fab}
+        </View>
+      ) : null}
       {footer ? (
         <BottomFade
           height={
@@ -296,7 +345,8 @@ export function Screen({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  titleBlock: { paddingTop: 4, paddingBottom: 16 },
+  titleBlock: { paddingTop: 4, paddingBottom: 20 },
+  titleBeside: { paddingRight: 60 },
   bar: { position: 'absolute', top: 0, left: 0, right: 0 },
   barInner: {
     flexDirection: 'row',
@@ -308,4 +358,5 @@ const styles = StyleSheet.create({
   inlineTitle: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
   footer: { position: 'absolute', left: GUTTER, right: GUTTER, bottom: 0 },
   fade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  fab: { position: 'absolute', right: GUTTER + 4 },
 });
