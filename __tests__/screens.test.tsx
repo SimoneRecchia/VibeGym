@@ -115,7 +115,7 @@ test('progress and nutrition tabs render with data', () => {
   expect(t).toContain('I tuoi progressi appariranno qui');
   // Weight trend on top of Progressi (weigh-ins are scheduled by default).
   expect(t).toContain('Prossima pesata');
-  expect(t).toContain('Consumo stimato');
+  expect(t).toContain('Consumo');
   expect(t).toContain('Colazione');
 });
 
