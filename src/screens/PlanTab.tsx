@@ -19,6 +19,7 @@ import {
   capitalize,
   fmtMinutes,
   fmtRelativeDay,
+  fmtClock,
   fmtWeekdayDate,
   greeting,
   plural,
@@ -41,6 +42,7 @@ import { Nav } from '../navigation/types';
 import { useDraft } from '../data/draft';
 import { Day } from '../core/types';
 import { workoutProgress } from '../workout/engine';
+import { useTimer } from '../workout/timer';
 import { useHealthRecovery } from '../services/health';
 import { sleepHint } from '../stats/health';
 
@@ -186,9 +188,7 @@ export function PlanTab() {
                   ]}
                 />
               </View>
-              <T v="subhead" color="rgba(255,255,255,0.85)">
-                {live.done} di {live.total} serie
-              </T>
+              <LiveLine done={live.done} total={live.total} />
               <HeroButton
                 title="Riprendi"
                 icon="play"
@@ -362,6 +362,19 @@ export function PlanTab() {
         </>
       )}
     </Screen>
+  );
+}
+
+/** Sets done, or the rest counting down while you look at the plan. */
+function LiveLine({ done, total }: { done: number; total: number }) {
+  const phase = useTimer(t => t.phase);
+  const remaining = useTimer(t => t.remaining);
+  return (
+    <T v="subhead" color="rgba(255,255,255,0.85)">
+      {phase === 'rest'
+        ? `Recupero ${fmtClock(remaining)} · ${done} di ${total} serie`
+        : `${done} di ${total} serie`}
+    </T>
   );
 }
 
