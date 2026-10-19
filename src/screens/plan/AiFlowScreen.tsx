@@ -451,7 +451,7 @@ export function AiFlowScreen({ route, navigation }: ScreenProps<'AiFlow'>) {
                 align="center"
                 style={styles.label}
               >
-                DURATA MASSIMA
+                Durata massima
               </T>
               <View style={[styles.chips, styles.center]}>
                 {MINUTES.map(m => (
@@ -548,7 +548,7 @@ export function AiFlowScreen({ route, navigation }: ScreenProps<'AiFlow'>) {
         <>
           <Card style={styles.card}>
             <T v="footnoteStrong" color="secondary">
-              SCHEDA ATTUALE
+              Scheda attuale
             </T>
             <T v="headline" style={styles.mt4}>
               {plan?.name}

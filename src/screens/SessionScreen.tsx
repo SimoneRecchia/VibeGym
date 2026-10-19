@@ -111,7 +111,7 @@ export function SessionScreen({ route, navigation }: ScreenProps<'Session'>) {
       {session.notes ? (
         <Card style={styles.block}>
           <T v="footnoteStrong" color="secondary">
-            NOTE
+            Note
           </T>
           <T v="body" style={styles.recLine}>
             {session.notes}

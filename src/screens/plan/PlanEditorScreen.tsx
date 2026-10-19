@@ -205,7 +205,7 @@ export function PlanEditorScreen({ navigation }: ScreenProps<'PlanEditor'>) {
                   weight="700"
                   style={styles.ssLabel}
                 >
-                  SUPERSET
+                  Superset
                 </T>
               ) : null}
               {b.exercises.map(ex => (

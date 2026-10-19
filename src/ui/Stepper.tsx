@@ -81,7 +81,7 @@ export function Stepper({
           align="center"
           style={styles.label}
         >
-          {label.toUpperCase()}
+          {label}
         </T>
       ) : null}
       <View style={styles.row}>

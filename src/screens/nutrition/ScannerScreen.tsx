@@ -430,10 +430,9 @@ function FindingsSheet({
         foods.length ? (
           <React.Fragment key={cat}>
             <T v="footnoteStrong" color="secondary" style={styles.head}>
-              {(findings?.foods.length
-                ? `ALTRO: ${CATEGORY_LABEL[cat] ?? cat}`
-                : CATEGORY_LABEL[cat] ?? cat
-              ).toUpperCase()}
+              {findings?.foods.length
+                ? `Altro: ${CATEGORY_LABEL[cat] ?? cat}`
+                : CATEGORY_LABEL[cat] ?? cat}
             </T>
             <View style={styles.chips}>
               {foods.map(f => (

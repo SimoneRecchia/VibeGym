@@ -45,7 +45,7 @@ function Option({
             {primary ? (
               <View style={[styles.badge, { backgroundColor: c.accentSoft }]}>
                 <T v="caption2" color="accent" weight="700">
-                  CONSIGLIATO
+                  Consigliato
                 </T>
               </View>
             ) : null}

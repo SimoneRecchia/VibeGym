@@ -2,7 +2,9 @@
  * The three sections of the app. Scheda (center) is the landing tab.
  *  - iOS: native SwiftUI TabView → real Liquid Glass tab bar with SF Symbols,
  *    minimizes on scroll and hosts the workout as bottom accessory (iOS 26).
- *  - Android: floating glass capsule drawn in JS.
+ *  - Android: floating glass capsule drawn in JS. A workout in progress shows
+ *    as the animated center icon (and in the notification shade), not as a
+ *    bar over the content.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, StyleSheet, View } from 'react-native';
@@ -17,13 +19,11 @@ import {
   BottomFade,
   ExtraBottomInset,
   JsTabInset,
-  useTabBarInset,
 } from '../ui/Screen';
-import {
-  FLOATING_BAR_H,
-  FloatingWorkoutBar,
-  NativeWorkoutAccessory,
-} from './WorkoutAccessory';
+import { NativeWorkoutAccessory } from './WorkoutAccessory';
+import { WorkoutTabIcon } from './WorkoutTabIcon';
+import { useNavigation } from '@react-navigation/native';
+import { Nav } from './types';
 import { Glass } from '../ui/Glass';
 import { Tap } from '../ui/Pressable';
 import { Icon, IconName } from '../ui/Icon';
@@ -60,17 +60,10 @@ const renderTab = (key: TabKey) =>
     <NutritionTab />
   );
 
-/** Scene wrapper: adds the floating workout bar where the native accessory isn't available. */
 function Scene({ tab }: { tab: TabKey }) {
-  const inset = useTabBarInset();
-  const active = useStore(s => !!s.workout);
-  const floating = active && !NATIVE_ACCESSORY;
   return (
-    <ExtraBottomInset.Provider value={floating ? FLOATING_BAR_H + 8 : 0}>
-      <View style={styles.fill}>
-        {renderTab(tab)}
-        {floating ? <FloatingWorkoutBar bottom={inset + 8} /> : null}
-      </View>
+    <ExtraBottomInset.Provider value={0}>
+      <View style={styles.fill}>{renderTab(tab)}</View>
     </ExtraBottomInset.Provider>
   );
 }
@@ -107,6 +100,8 @@ const PILL_H = JS_BAR_H - BAR_PAD * 2;
 
 function JsTabs() {
   const { c } = useTheme();
+  const nav = useNavigation<Nav>();
+  const inWorkout = useStore(s => !!s.workout);
   const insets = useSafeAreaInsets();
   const [index, setIndex] = useState(1);
   const [loaded, setLoaded] = useState<TabKey[]>(['plan']);
@@ -128,6 +123,11 @@ function JsTabs() {
   }, [index, itemW, x]);
   const select = (i: number) => {
     const k = ROUTES[i].key;
+    // Workout in progress: the glowing center tab takes you back to it.
+    if (k === 'plan' && i === index && inWorkout) {
+      nav.navigate('Workout');
+      return;
+    }
     if (!loaded.includes(k)) setLoaded(l => [...l, k]);
     setIndex(i);
   };
@@ -182,12 +182,16 @@ function JsTabs() {
                   accessibilityLabel={r.title}
                 >
                   <View style={styles.itemInner}>
-                    <Icon
-                      name={r.icon}
-                      size={24}
-                      color={on ? c.accent : c.label}
-                      weight={on ? 2.3 : 1.9}
-                    />
+                    {r.key === 'plan' && inWorkout ? (
+                      <WorkoutTabIcon />
+                    ) : (
+                      <Icon
+                        name={r.icon}
+                        size={24}
+                        color={on ? c.accent : c.label}
+                        weight={on ? 2.3 : 1.9}
+                      />
+                    )}
                     <T
                       v="caption2"
                       color={on ? c.accent : c.label}

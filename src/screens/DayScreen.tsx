@@ -104,7 +104,7 @@ export function DayScreen({ route, navigation }: ScreenProps<'Day'>) {
             <View style={styles.ssHead}>
               <View style={[styles.ssPill, { backgroundColor: c.accentSoft }]}>
                 <T v="caption2" color="accent" weight="700">
-                  {b.exercises.length > 2 ? 'CIRCUITO' : 'SUPERSET'}
+                  {b.exercises.length > 2 ? 'Circuito' : 'Superset'}
                 </T>
               </View>
               <T v="footnote" color="secondary">

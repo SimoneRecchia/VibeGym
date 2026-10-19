@@ -126,7 +126,7 @@ export function CustomFoodScreen({
       </View>
 
       <T v="footnoteStrong" color="secondary" style={styles.head}>
-        VALORI PER {per.toUpperCase()}
+        Valori per {per}
       </T>
       <View style={styles.grid}>
         <Num label="Proteine (g)" value={protein} onChange={setProtein} />

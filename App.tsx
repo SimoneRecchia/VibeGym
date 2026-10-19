@@ -5,10 +5,16 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import { useStore } from './src/data/store';
-import { AppNavigator } from './src/navigation/AppNavigator';
+import { AppNavigator, navigationRef } from './src/navigation/AppNavigator';
 import { ToastHost } from './src/ui/Toast';
 import { MenuHost } from './src/ui/Menu';
 import { installWorkoutRuntime } from './src/workout/actions';
+import {
+  consumeOpenRequest,
+  installWorkoutNotification,
+  setOpenWorkout,
+} from './src/services/workoutNotification';
+import notifee from 'react-native-notify-kit';
 import { setRestNotifications } from './src/workout/timer';
 import { setHapticsEnabled } from './src/services/haptics';
 import { setSoundEnabled } from './src/services/sound';
@@ -31,6 +37,30 @@ function Runtime() {
   const settings = useStore(s => s.settings);
 
   useEffect(() => installWorkoutRuntime(), []);
+
+  // Workout notification (Android): in sync with the workout; a tap on it
+  // opens the workout, also when it launched the app.
+  useEffect(() => {
+    if (!hydrated) return;
+    const open = (tries = 10) => {
+      if (!useStore.getState().workout) return;
+      if (navigationRef.isReady()) navigationRef.navigate('Workout');
+      else if (tries > 0) setTimeout(() => open(tries - 1), 300);
+    };
+    setOpenWorkout(() => open());
+    if (consumeOpenRequest()) open();
+    notifee
+      .getInitialNotification()
+      .then(n => {
+        if (n?.notification.id === 'workout-live') open();
+      })
+      .catch(() => {});
+    const stop = installWorkoutNotification();
+    return () => {
+      stop();
+      setOpenWorkout(null);
+    };
+  }, [hydrated]);
 
   useEffect(() => {
     setHapticsEnabled(settings.haptics);

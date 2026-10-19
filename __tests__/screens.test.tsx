@@ -105,8 +105,8 @@ afterAll(async () => {
 test('plan tab with greeting and next workout', () => {
   const t = allText(r);
   expect(t).toContain('Simone');
-  expect(t).toContain('PROSSIMO');
-  expect(t).toContain('I TUOI GIORNI');
+  expect(t).toContain('Prossimo');
+  expect(t).toContain('I tuoi giorni');
   expect(t).toContain('Full body A');
 });
 
@@ -212,7 +212,7 @@ test('a second, heavier workout sets records and fills the trend screens', async
   await go('ExerciseTrend', { key: 'Barbell_Squat', name: 'Squat' });
   expect(allText(r)).toContain('1RM stimato');
   await go('ExerciseInfo', { catalogId: 'Barbell_Squat', name: 'Squat' });
-  expect(allText(r)).toContain('MUSCOLI PRINCIPALI');
+  expect(allText(r)).toContain('Muscoli principali');
   await go('History');
   expect(allText(r)).toContain('Storico');
 });
@@ -252,7 +252,7 @@ test('plan flows: setup, AI prompts, import review, editor, picker, library', as
   await go('AiFlow', { mode: 'convert' });
   expect(allText(r)).toContain("Migliorala con l'AI");
   await go('AiFlow', { mode: 'modify' });
-  expect(allText(r)).toContain('SCHEDA ATTUALE');
+  expect(allText(r)).toContain('Scheda attuale');
 
   await act(async () => {
     useDraft.setState({
@@ -275,7 +275,7 @@ test('plan flows: setup, AI prompts, import review, editor, picker, library', as
     blockId: d.blocks[0].id,
     exerciseId: d.blocks[0].exercises[0].id,
   });
-  expect(allText(r)).toContain('RECUPERO TRA LE SERIE');
+  expect(allText(r)).toContain('Recupero tra le serie');
   await go('ExercisePicker', { title: 'Scegli' });
   expect(allText(r)).toContain('Panca piana');
   await go('Plans');
@@ -305,7 +305,7 @@ test('settings and submenus', async () => {
 test('app icon color picker', async () => {
   const icons = jest.requireMock('vibe-app-icon');
   await go('Settings', { screen: 'AppearanceSettings' });
-  expect(allText(r)).toContain("ICONA DELL'APP");
+  expect(allText(r)).toContain("Icona dell'app");
   expect(allText(r)).toContain('Viola');
   const [viola] = r.root.findAll(
     n => n.props.accessibilityLabel === 'Icona Viola' && n.props.onPress,

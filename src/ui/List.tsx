@@ -24,8 +24,8 @@ export function Section({
   return (
     <View style={styles.section}>
       {title ? (
-        <T v="footnote" color="secondary" style={styles.header}>
-          {title.toUpperCase()}
+        <T v="subheadStrong" color="secondary" style={styles.header}>
+          {title}
         </T>
       ) : null}
       <View style={[styles.group, { backgroundColor: c.card }]}>
@@ -133,23 +133,24 @@ export function Row({
 }
 
 const styles = StyleSheet.create({
-  section: { marginBottom: 28 },
-  header: { marginLeft: 16, marginBottom: 6 },
-  footer: { marginHorizontal: 16, marginTop: 6 },
+  section: { marginBottom: 32 },
+  header: { marginLeft: 18, marginBottom: 8 },
+  footer: { marginHorizontal: 18, marginTop: 8 },
   group: { borderRadius: radius.card, overflow: 'hidden' },
-  sep: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
+  sep: { height: StyleSheet.hairlineWidth, marginLeft: 18 },
+  // iOS 26 lists: taller rows and more padding, so content can breathe.
   row: {
-    minHeight: 52,
+    minHeight: 58,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    gap: 14,
   },
   tile: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },

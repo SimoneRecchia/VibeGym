@@ -1,6 +1,7 @@
 /**
- * "Now playing"-style bar for the workout in progress. On iOS 26 it is the
- * native tab bar bottom accessory; elsewhere a floating glass capsule.
+ * "Now playing"-style bar for the workout in progress: the native tab bar
+ * bottom accessory on iOS 26. (Android uses the notification and the
+ * animated center tab instead.)
  */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -10,7 +11,6 @@ import { useTimer } from '../workout/timer';
 import { workoutProgress } from '../workout/engine';
 import { useTheme } from '../theme/ThemeProvider';
 import { Tap } from '../ui/Pressable';
-import { Glass } from '../ui/Glass';
 import { T } from '../ui/Text';
 import { Icon } from '../ui/Icon';
 import { Ring } from '../ui/charts/Ring';
@@ -81,27 +81,6 @@ export function NativeWorkoutAccessory({
   );
 }
 
-/** Floating fallback (Android, iOS < 26). */
-export function FloatingWorkoutBar({ bottom }: { bottom: number }) {
-  const nav = useNavigation<Nav>();
-  const active = useStore(s => !!s.workout);
-  if (!active) return null;
-  return (
-    <View pointerEvents="box-none" style={[styles.floating, { bottom }]}>
-      <Tap
-        onPress={() => nav.navigate('Workout')}
-        accessibilityRole="button"
-        accessibilityLabel="Riprendi allenamento"
-      >
-        <Glass interactive style={styles.capsule}>
-          <AccessoryContent />
-        </Glass>
-      </Tap>
-    </View>
-  );
-}
-
-export const FLOATING_BAR_H = 64;
 
 const styles = StyleSheet.create({
   fill: { flex: 1, justifyContent: 'center' },
@@ -114,6 +93,4 @@ const styles = StyleSheet.create({
   },
   rowCompact: { paddingVertical: 4, gap: 8 },
   texts: { flex: 1, minWidth: 0 },
-  floating: { position: 'absolute', left: 16, right: 16 },
-  capsule: { borderRadius: 28, minHeight: 56, justifyContent: 'center' },
 });

@@ -167,7 +167,7 @@ export function PlanTab() {
               <View style={styles.rowGap}>
                 <View style={styles.liveDot} />
                 <T v="footnoteStrong" color="#FFFFFF">
-                  ALLENAMENTO IN CORSO
+                  Allenamento in corso
                 </T>
               </View>
               <T
@@ -200,7 +200,7 @@ export function PlanTab() {
           ) : nextDay ? (
             <HeroCard color={nextColor} style={styles.block}>
               <T v="footnoteStrong" color="rgba(255,255,255,0.85)">
-                PROSSIMO · GIORNO {dayLetter(nextIndex)}
+                Prossimo · Giorno {dayLetter(nextIndex)}
               </T>
               <T
                 v="title1"
@@ -253,7 +253,7 @@ export function PlanTab() {
           <View style={[styles.rowBetween, styles.sectionHead]}>
             <View style={styles.flex}>
               <T v="footnoteStrong" color="secondary">
-                I TUOI GIORNI
+                I tuoi giorni
               </T>
               <T v="title3" numberOfLines={1}>
                 {plan.name}
@@ -299,7 +299,7 @@ export function PlanTab() {
                       ]}
                     >
                       <T v="caption2" color={color} weight="700">
-                        PROSSIMO
+                        Prossimo
                       </T>
                     </View>
                   ) : null}
@@ -322,7 +322,7 @@ export function PlanTab() {
                 color="secondary"
                 style={styles.sectionLabel}
               >
-                ATTIVITÀ
+                Attività
               </T>
               <Card
                 onPress={() => nav.navigate('History')}

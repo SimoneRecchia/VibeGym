@@ -21,10 +21,17 @@ import { weighReminderAt } from '../body/schedule';
 
 const CH_TIMER = 'timer';
 const CH_REMINDERS = 'reminders';
-const REST_ID = 'rest-end';
+/** Silent, always-there notification of the workout in progress (Android). */
+export const CH_LIVE = 'workout-live';
+/**
+ * On Android the rest end replaces the workout notification (same id), so
+ * the player-like notification itself rings; iOS has a separate one.
+ */
+export const LIVE_ID = 'workout-live';
+const REST_ID = Platform.OS === 'android' ? LIVE_ID : 'rest-end';
 
 let channelsReady: Promise<void> | null = null;
-const ensureChannels = () => {
+export const ensureChannels = () => {
   if (Platform.OS !== 'android') return Promise.resolve();
   if (!channelsReady) {
     channelsReady = notifee
@@ -39,6 +46,12 @@ const ensureChannels = () => {
           id: CH_REMINDERS,
           name: 'Promemoria',
           importance: AndroidImportance.DEFAULT,
+        },
+        {
+          id: CH_LIVE,
+          name: 'Allenamento in corso',
+          importance: AndroidImportance.LOW,
+          vibration: false,
         },
       ])
       .catch(() => {
@@ -104,16 +117,17 @@ export const scheduleRestEnd = async (endAt: number, nextLabel: string) => {
     await notifee.createTriggerNotification(
       {
         id: REST_ID,
-        title: 'Recupero finito',
-        body: nextLabel
-          ? `Tocca a te: ${nextLabel}`
-          : 'Pronto per la prossima serie',
+        title: 'Tocca a te',
+        body: nextLabel || 'Pronto per la prossima serie',
         android: {
           channelId: CH_TIMER,
           smallIcon: 'ic_stat_notify',
-          pressAction: { id: 'default' },
+          pressAction: { id: 'default', launchActivity: 'default' },
           timestamp: endAt,
           showTimestamp: true,
+          // It takes the place of the workout notification: keep it there.
+          ongoing: true,
+          autoCancel: false,
         },
         ios: { sound: 'default', interruptionLevel: 'timeSensitive' },
       },
@@ -128,7 +142,10 @@ export const scheduleRestEnd = async (endAt: number, nextLabel: string) => {
 
 export const cancelRestEnd = async () => {
   try {
-    await notifee.cancelNotification(REST_ID);
+    // Android: only the scheduled alert; the workout notification stays.
+    if (Platform.OS === 'android')
+      await notifee.cancelTriggerNotification(REST_ID);
+    else await notifee.cancelNotification(REST_ID);
   } catch {
     /* no-op */
   }

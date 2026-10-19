@@ -2,8 +2,15 @@
  * Line icons drawn on a 24pt grid in the style of SF Symbols (rounded caps,
  * regular weight). On iOS the native tab bar uses real SF Symbols.
  */
-import React, { memo } from 'react';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import React, { memo, useId } from 'react';
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient,
+  Path,
+  Rect,
+  Stop,
+} from 'react-native-svg';
 
 export type IconName =
   | 'chevron-left'
@@ -70,7 +77,8 @@ export type IconName =
   | 'link'
   | 'fork'
   | 'barcode'
-  | 'text-viewfinder';
+  | 'text-viewfinder'
+  | 'alarm';
 
 /** Gear outline generated from geometry: 8 rounded teeth. */
 const GEAR = (() => {
@@ -265,6 +273,10 @@ const SHAPES: Record<IconName, Shape> = {
   link: {
     d: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
   },
+  alarm: {
+    d: 'M12 9.5V13l2.3 1.6M3.8 6.4l3-2.6M20.2 6.4l-3-2.6M7.4 19.6l-1.6 1.9M16.6 19.6l1.6 1.9',
+    circles: [[12, 13, 7.2]],
+  },
 };
 
 interface Props {
@@ -272,15 +284,20 @@ interface Props {
   size?: number;
   color: string;
   weight?: number;
+  /** Diagonal two-color gradient instead of the flat color. */
+  gradient?: [string, string];
 }
 
 export const Icon = memo(function Icon({
   name,
   size = 22,
-  color,
+  color: flat,
   weight = 1.9,
+  gradient,
 }: Props) {
   const s = SHAPES[name];
+  const gid = `ig${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const color = gradient ? `url(#${gid})` : flat;
   const stroke = {
     stroke: color,
     strokeWidth: weight,
@@ -289,6 +306,21 @@ export const Icon = memo(function Icon({
   };
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {gradient ? (
+        <Defs>
+          <LinearGradient
+            id={gid}
+            x1="0"
+            y1="0"
+            x2="24"
+            y2="24"
+            gradientUnits="userSpaceOnUse"
+          >
+            <Stop offset="0" stopColor={gradient[0]} />
+            <Stop offset="1" stopColor={gradient[1]} />
+          </LinearGradient>
+        </Defs>
+      ) : null}
       {s.d ? <Path d={s.d} {...(s.fill ? { fill: color } : stroke)} /> : null}
       {s.circles?.map(([cx, cy, r, filled], i) => (
         <Circle

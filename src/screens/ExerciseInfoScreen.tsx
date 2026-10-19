@@ -68,7 +68,7 @@ export function ExerciseInfoScreen({
             </T>
           )}
           <T v="footnoteStrong" color="secondary">
-            MUSCOLI PRINCIPALI
+            Muscoli principali
           </T>
           <View style={styles.chips}>
             {cat.primary.map(m => (
@@ -78,7 +78,7 @@ export function ExerciseInfoScreen({
           {cat.secondary.length ? (
             <>
               <T v="footnoteStrong" color="secondary" style={styles.mt}>
-                MUSCOLI SECONDARI
+                Muscoli secondari
               </T>
               <View style={styles.chips}>
                 {cat.secondary.map(m => (

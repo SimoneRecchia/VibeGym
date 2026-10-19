@@ -263,7 +263,7 @@ export function ExerciseEditorScreen({
         ex.sets.map((s, i) => (
           <Card key={i} style={styles.block}>
             <T v="footnoteStrong" color="secondary" style={styles.setLabel}>
-              SERIE {i + 1}
+              Serie {i + 1}
             </T>
             {valueEditors(s, p => setOne(i, p))}
           </Card>

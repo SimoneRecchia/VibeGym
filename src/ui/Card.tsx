@@ -52,5 +52,5 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: { borderRadius: radius.card, overflow: 'hidden' },
-  padded: { padding: 16 },
+  padded: { padding: 18 },
 });
