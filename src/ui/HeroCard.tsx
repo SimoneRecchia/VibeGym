@@ -30,7 +30,15 @@ export function HeroCard({
             <Stop offset="1" stopColor={mix(color, '#000000', 0.38)} />
           </LinearGradient>
         </Defs>
-        <Rect width="100%" height="100%" fill={`url(#${id})`} />
+        {/* Rounded in the drawing too: on Android the clip of a view that
+            changes size can lose its rounded corners. */}
+        <Rect
+          width="100%"
+          height="100%"
+          rx={radius.card}
+          ry={radius.card}
+          fill={`url(#${id})`}
+        />
       </Svg>
       {children}
     </View>
