@@ -7,10 +7,11 @@ import {
   View,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { mix } from '../theme/colors';
 import { T } from './Text';
 import { haptic } from '../services/haptics';
 
-const THUMB_DARK = '#636366';
+const WHITE = '#FFFFFF';
 
 interface Props<K extends string> {
   options: { key: K; label: string }[];
@@ -33,7 +34,7 @@ export function Segmented<K extends string>({
     options.findIndex(o => o.key === value),
   );
   const x = useRef(new Animated.Value(0)).current;
-  const segW = w > 0 ? (w - 4) / options.length : 0;
+  const segW = w > 0 ? (w - 6) / options.length : 0;
 
   useEffect(() => {
     Animated.spring(x, {
@@ -44,13 +45,13 @@ export function Segmented<K extends string>({
     }).start();
   }, [idx, segW, x]);
 
-  const h = compact ? 32 : 36;
+  const h = compact ? 34 : 40;
   return (
     <View
       onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}
       style={[
         styles.track,
-        { height: h, borderRadius: h / 2, backgroundColor: c.fill3 },
+        { height: h, borderRadius: h / 2, backgroundColor: c.fill4 },
       ]}
       accessibilityRole="tablist"
     >
@@ -60,10 +61,10 @@ export function Segmented<K extends string>({
             styles.thumb,
             {
               width: segW,
-              height: h - 4,
-              borderRadius: (h - 4) / 2,
-              // iOS segmented thumb: white in light mode, #636366 in dark.
-              backgroundColor: dark ? THUMB_DARK : c.card,
+              height: h - 6,
+              borderRadius: (h - 6) / 2,
+              // A lighter step of the surface: white in light mode.
+              backgroundColor: dark ? mix(c.card, WHITE, 0.16) : WHITE,
               transform: [{ translateX: x }],
             },
           ]}
@@ -96,11 +97,11 @@ export function Segmented<K extends string>({
 }
 
 const styles = StyleSheet.create({
-  track: { flexDirection: 'row', padding: 2, alignItems: 'center' },
+  track: { flexDirection: 'row', padding: 3, alignItems: 'center' },
   thumb: {
     position: 'absolute',
-    left: 2,
-    top: 2,
+    left: 3,
+    top: 3,
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 6,

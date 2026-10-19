@@ -1,14 +1,18 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { StyleSheet, View } from 'react-native';
+import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
-import { dayColor, withAlpha } from '../../theme/colors';
+import { dayColor, mix, withAlpha } from '../../theme/colors';
 import { T } from '../../ui/Text';
 import { dayLetter } from '../../plan/planUtils';
 
-/** Rounded letter tile identifying a plan day (A, B, C…), in the day's color. */
+/**
+ * Round letter badge of a plan day (A, B, C…) in the day's color: a soft
+ * tint, or a full gradient when it is the day to train.
+ */
 export function DayBadge({
   index,
-  size = 44,
+  size = 42,
   filled,
 }: {
   index: number;
@@ -17,19 +21,27 @@ export function DayBadge({
 }) {
   const { c } = useTheme();
   const color = dayColor(index, c);
+  const id = `db${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
-    <View
-      style={[
-        styles.badge,
-        {
-          width: size,
-          height: size,
-          borderRadius: size * 0.3,
-          backgroundColor: filled ? color : withAlpha(color, 0.2),
-        },
-      ]}
-    >
-      <T v={size > 40 ? 'title3' : 'headline'} color={filled ? '#FFFFFF' : color}>
+    <View style={[styles.badge, { width: size, height: size }]}>
+      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={mix(color, '#FFFFFF', 0.18)} />
+            <Stop offset="1" stopColor={mix(color, '#000000', 0.12)} />
+          </LinearGradient>
+        </Defs>
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={size / 2}
+          fill={filled ? `url(#${id})` : withAlpha(color, 0.16)}
+        />
+      </Svg>
+      <T
+        v={size > 40 ? 'headline' : 'subheadStrong'}
+        color={filled ? '#FFFFFF' : color}
+      >
         {dayLetter(index)}
       </T>
     </View>

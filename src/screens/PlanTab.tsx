@@ -27,16 +27,18 @@ import {
 import {
   allExercises,
   dayLetter,
-  dayMuscles,
   estimateDayMinutes,
   lastSessionForDay,
   nextDayId,
 } from '../plan/planUtils';
 import { trainedThisWeek, weekStreak } from '../stats/progress';
-import { StatRow, StatTile } from '../ui/StatTile';
+import { WeekCard } from './components/WeekCard';
+import { SectionHeader } from '../ui/SectionHeader';
+import { Row, Section } from '../ui/List';
 import { HeroButton, HeroCard } from '../ui/HeroCard';
 import { Tap } from '../ui/Pressable';
-import { dayColor, withAlpha } from '../theme/colors';
+import { dayColor } from '../theme/colors';
+import { BLOCK } from '../theme/metrics';
 import { planToJson } from '../plan/aiFormat';
 import { Nav } from '../navigation/types';
 import { useDraft } from '../data/draft';
@@ -54,6 +56,7 @@ export function PlanTab() {
   const sessions = useStore(s => s.sessions);
   const workout = useStore(s => s.workout);
   const startWorkout = useStore(s => s.startWorkout);
+  const daysPerWeek = useStore(s => s.profile.daysPerWeek);
   const restHint = sleepHint(useHealthRecovery()?.sleepMin);
 
   const nextId = useMemo(
@@ -140,29 +143,6 @@ export function PlanTab() {
         </Card>
       ) : (
         <>
-          {/* Numbers that matter, each in its color */}
-          <StatRow>
-            <StatTile
-              icon="flame"
-              color={c.orange}
-              value={String(week.filter(Boolean).length)}
-              label="Settimana"
-            />
-            <StatTile
-              icon="trophy"
-              color={c.yellow}
-              value={String(streak)}
-              unit="sett."
-              label="Di fila"
-            />
-            <StatTile
-              icon="chart"
-              color={c.accent}
-              value={String(sessions.length)}
-              label="Totali"
-            />
-          </StatRow>
-
           {/* The one thing to do now */}
           {workout ? (
             <HeroCard color={liveColor} style={styles.block}>
@@ -199,7 +179,7 @@ export function PlanTab() {
             </HeroCard>
           ) : nextDay ? (
             <HeroCard color={nextColor} style={styles.block}>
-              <T v="footnoteStrong" color="rgba(255,255,255,0.85)">
+              <T v="footnoteStrong" color="rgba(255,255,255,0.8)">
                 Prossimo · Giorno {dayLetter(nextIndex)}
               </T>
               <T
@@ -210,12 +190,9 @@ export function PlanTab() {
               >
                 {nextDay.name}
               </T>
-              <T v="subhead" color="rgba(255,255,255,0.85)" numberOfLines={2}>
+              <T v="subhead" color="rgba(255,255,255,0.8)" numberOfLines={1}>
                 {plural(allExercises(nextDay).length, 'esercizio', 'esercizi')}{' '}
                 · {fmtMinutes(estimateDayMinutes(nextDay))}
-                {dayMuscles(nextDay).length
-                  ? ` · ${dayMuscles(nextDay).slice(0, 3).join(', ')}`
-                  : ''}
               </T>
               {restHint ? (
                 <View style={styles.heroHint}>
@@ -249,115 +226,74 @@ export function PlanTab() {
             </HeroCard>
           ) : null}
 
-          {/* Plan days */}
-          <View style={[styles.rowBetween, styles.sectionHead]}>
-            <View style={styles.flex}>
-              <T v="footnoteStrong" color="secondary">
-                I tuoi giorni
-              </T>
-              <T v="title3" numberOfLines={1}>
-                {plan.name}
-              </T>
-            </View>
-            <IconButton
-              icon="ellipsis"
-              onPress={planMenu}
-              size={40}
-              accessibilityLabel="Opzioni scheda"
-              plain
-            />
-          </View>
+          {/* This week, like the Activity summary */}
+          <WeekCard
+            trained={week}
+            streak={streak}
+            target={daysPerWeek}
+            style={styles.block}
+          />
 
-          {plan.days.map((d, i) => {
-            const last = lastSessionForDay(sessions, plan.id, d.id);
-            const color = dayColor(i, c);
-            const next = d.id === nextId && !workout;
-            return (
-              <Card
-                key={d.id}
-                onPress={() => nav.navigate('Day', { dayId: d.id })}
-                style={styles.dayCard}
-                accessibilityLabel={d.name}
-              >
-                <View style={styles.rowGap}>
-                  <DayBadge index={i} filled={next} />
-                  <View style={styles.flex}>
-                    <T v="headline" numberOfLines={1}>
-                      {d.name}
-                    </T>
-                    <T v="footnote" color="secondary" numberOfLines={1}>
-                      {plural(allExercises(d).length, 'esercizio', 'esercizi')}{' '}
-                      · {fmtMinutes(estimateDayMinutes(d))}
-                      {last ? ` · ${fmtRelativeDay(last.startedAt)}` : ''}
-                    </T>
-                  </View>
-                  {next ? (
-                    <View
-                      style={[
-                        styles.nextPill,
-                        { backgroundColor: withAlpha(color, 0.2) },
-                      ]}
-                    >
-                      <T v="caption2" color={color} weight="700">
+          {/* Plan days: one grouped list */}
+          <SectionHeader
+            overline="I tuoi giorni"
+            title={plan.name}
+            right={
+              <IconButton
+                icon="ellipsis"
+                onPress={planMenu}
+                size={36}
+                color={c.secondary}
+                accessibilityLabel="Opzioni scheda"
+                plain
+              />
+            }
+          />
+          <Section>
+            {plan.days.map((d, i) => {
+              const last = lastSessionForDay(sessions, plan.id, d.id);
+              const next = d.id === nextId && !workout;
+              return (
+                <Row
+                  key={d.id}
+                  left={<DayBadge index={i} filled={next} />}
+                  title={d.name}
+                  subtitle={`${plural(
+                    allExercises(d).length,
+                    'esercizio',
+                    'esercizi',
+                  )} · ${fmtMinutes(estimateDayMinutes(d))}${
+                    last ? ` · ${fmtRelativeDay(last.startedAt)}` : ''
+                  }`}
+                  right={
+                    next ? (
+                      <T v="footnoteStrong" color={dayColor(i, c)}>
                         Prossimo
                       </T>
-                    </View>
-                  ) : null}
-                  <Icon
-                    name="chevron-right"
-                    size={16}
-                    color={c.tertiary}
-                    weight={2.4}
-                  />
-                </View>
-              </Card>
-            );
-          })}
+                    ) : undefined
+                  }
+                  chevron
+                  onPress={() => nav.navigate('Day', { dayId: d.id })}
+                />
+              );
+            })}
+          </Section>
 
           {/* Last activity */}
           {lastSession ? (
-            <>
-              <T
-                v="footnoteStrong"
-                color="secondary"
-                style={styles.sectionLabel}
-              >
-                Attività
-              </T>
-              <Card
+            <Section title="Attività">
+              <Row
+                icon="clock"
+                iconBg={c.calm[1]}
+                title={lastSession.dayName}
+                subtitle={`${fmtRelativeDay(
+                  lastSession.startedAt,
+                )} · ${fmtMinutes(Math.round(lastSession.durationSec / 60))}`}
+                value="Storico"
+                chevron
                 onPress={() => nav.navigate('History')}
-                accessibilityLabel="Storico allenamenti"
-              >
-                <View style={styles.rowGap}>
-                  <View
-                    style={[styles.actIcon, { backgroundColor: c.accentSoft }]}
-                  >
-                    <Icon
-                      name="clock"
-                      size={18}
-                      color={c.accent}
-                      weight={2.2}
-                    />
-                  </View>
-                  <View style={styles.flex}>
-                    <T v="headline" numberOfLines={1}>
-                      {lastSession.dayName}
-                    </T>
-                    <T v="footnote" color="secondary" numberOfLines={1}>
-                      {fmtRelativeDay(lastSession.startedAt)} ·{' '}
-                      {fmtMinutes(Math.round(lastSession.durationSec / 60))} ·
-                      Storico
-                    </T>
-                  </View>
-                  <Icon
-                    name="chevron-right"
-                    size={16}
-                    color={c.tertiary}
-                    weight={2.4}
-                  />
-                </View>
-              </Card>
-            </>
+              />
+            </Section>
           ) : null}
         </>
       )}
@@ -379,39 +315,33 @@ function LiveLine({ done, total }: { done: number; total: number }) {
 }
 
 const styles = StyleSheet.create({
-  block: { marginBottom: 12 },
+  block: { marginBottom: BLOCK },
   flex: { flex: 1, minWidth: 0 },
-  rowBetween: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  rowGap: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  rowGap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
-  heroTitle: { marginTop: 6, marginBottom: 4 },
+  heroTitle: { marginTop: 8, marginBottom: 6 },
   heroHint: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
     backgroundColor: 'rgba(0,0,0,0.18)',
   },
-  heroBtn: { marginTop: 16 },
+  heroBtn: { marginTop: 20 },
   heroActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 16,
+    marginTop: 20,
   },
   heroRound: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -419,20 +349,9 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: 'rgba(255,255,255,0.25)',
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: 10,
+    marginBottom: 10,
     overflow: 'hidden',
   },
   progressFill: { height: 6, borderRadius: 3, backgroundColor: '#FFFFFF' },
-  sectionHead: { marginTop: 12, marginBottom: 10, paddingHorizontal: 4 },
-  sectionLabel: { marginTop: 14, marginBottom: 8, paddingHorizontal: 4 },
-  dayCard: { marginBottom: 10 },
-  nextPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  actIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });

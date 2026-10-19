@@ -55,11 +55,7 @@ export function Glass({
     <View
       pointerEvents={pointerEvents}
       style={[
-        styles.base,
-        {
-          backgroundColor: tint ?? c.glass,
-          borderColor: tint ?? c.glassBorder,
-        },
+        { backgroundColor: tint ?? c.glass },
         !flat && (dark ? styles.shadowDark : styles.shadowLight),
         style,
       ]}
@@ -90,19 +86,19 @@ export function GlassGroup({
 }
 
 const styles = StyleSheet.create({
-  base: { borderWidth: StyleSheet.hairlineWidth },
+  // Soft, wide shadow: the glass floats, no outline needed.
   shadowLight: {
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    shadowColor: '#141828',
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
   shadowDark: {
     shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    shadowOpacity: 0.5,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
 });

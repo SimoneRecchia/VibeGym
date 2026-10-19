@@ -1,10 +1,17 @@
 /**
  * Full-color card for the one thing to do now (next workout, workout in
- * progress): a gradient of the given color with white content.
+ * progress): a deep gradient of the given color, a large faint ring in the
+ * corner like the Activity rings, white content.
  */
 import React from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient,
+  Rect,
+  Stop,
+} from 'react-native-svg';
 import { mix } from '../theme/colors';
 import { radius } from '../theme/metrics';
 import { Icon, IconName } from './Icon';
@@ -26,8 +33,9 @@ export function HeroCard({
       <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
         <Defs>
           <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={mix(color, '#FFFFFF', 0.12)} />
-            <Stop offset="1" stopColor={mix(color, '#000000', 0.38)} />
+            <Stop offset="0" stopColor={mix(color, '#FFFFFF', 0.1)} />
+            <Stop offset="0.55" stopColor={color} />
+            <Stop offset="1" stopColor={mix(color, '#000000', 0.42)} />
           </LinearGradient>
         </Defs>
         {/* Rounded in the drawing too: on Android the clip of a view that
@@ -39,13 +47,22 @@ export function HeroCard({
           ry={radius.card}
           fill={`url(#${id})`}
         />
+        <Circle
+          cx="100%"
+          cy="0"
+          r="110"
+          stroke="#FFFFFF"
+          strokeOpacity={0.1}
+          strokeWidth={26}
+          fill="none"
+        />
       </Svg>
       {children}
     </View>
   );
 }
 
-/** White pill button for use on a HeroCard. */
+/** White capsule button for use on a HeroCard. */
 export function HeroButton({
   title,
   icon,
@@ -65,13 +82,15 @@ export function HeroButton({
     <Tap
       onPress={onPress}
       disabled={disabled}
-      feedback="light"
+      feedback="medium"
       accessibilityRole="button"
       accessibilityLabel={title}
       style={style}
     >
       <View style={styles.btn}>
-        {icon ? <Icon name={icon} size={18} color={color} weight={2.4} /> : null}
+        {icon ? (
+          <Icon name={icon} size={18} color={color} weight={2.4} />
+        ) : null}
         <T v="headline" color={color}>
           {title}
         </T>
@@ -84,11 +103,11 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: radius.card,
     overflow: 'hidden',
-    padding: 18,
+    padding: 22,
   },
   btn: {
-    height: 52,
-    borderRadius: 26,
+    height: 54,
+    borderRadius: 27,
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',

@@ -54,7 +54,10 @@ interface RowProps {
   icon?: IconName;
   /** Background of the rounded icon tile. */
   iconBg?: string;
+  /** Custom leading element (instead of the icon tile). */
+  left?: React.ReactNode;
   onPress?: () => void;
+  onLongPress?: () => void;
   chevron?: boolean;
   checked?: boolean;
   destructive?: boolean;
@@ -68,7 +71,9 @@ export function Row({
   value,
   icon,
   iconBg,
+  left,
   onPress,
+  onLongPress,
   chevron,
   checked,
   destructive,
@@ -78,6 +83,7 @@ export function Row({
   const { c } = useTheme();
   const content = (
     <View style={styles.row}>
+      {left}
       {icon ? (
         <View style={[styles.tile, { backgroundColor: iconBg ?? c.accent }]}>
           <Icon name={icon} size={18} color="#FFFFFF" weight={2.1} />
@@ -119,10 +125,11 @@ export function Row({
       ) : null}
     </View>
   );
-  if (!onPress) return content;
+  if (!onPress && !onLongPress) return content;
   return (
     <Tap
       onPress={onPress}
+      onLongPress={onLongPress}
       scaleTo={0.99}
       accessibilityRole="button"
       accessibilityLabel={title}

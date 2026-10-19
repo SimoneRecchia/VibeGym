@@ -73,10 +73,12 @@ def find(label, timeout=20, scroll=False):
         # The emulator's own apps sometimes freeze ("Pixel Launcher isn't
         # responding") and the dialog covers ours: dismiss it.
         if any("isn't responding" in n['text'] for n in found):
-            wait = next((n for n in found if n['text'] == 'Wait'), None)
-            if wait:
+            # Close the frozen system app (it restarts by itself): waiting
+            # often brings the dialog straight back.
+            btn = next((n for n in found if n['text'] in ('Close app', 'Wait')), None)
+            if btn:
                 log('   chiudo il dialogo di sistema "non risponde"')
-                x1, y1, x2, y2 = wait['bounds']
+                x1, y1, x2, y2 = btn['bounds']
                 adb('shell', 'input', 'tap', str((x1 + x2) // 2), str((y1 + y2) // 2))
                 time.sleep(1)
                 continue

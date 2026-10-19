@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
-import { radius } from '../theme/metrics';
+import { CARD_PAD, radius } from '../theme/metrics';
 import { Tap } from './Pressable';
 
 interface Props {
@@ -52,5 +52,5 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: { borderRadius: radius.card, overflow: 'hidden' },
-  padded: { padding: 18 },
+  padded: { padding: CARD_PAD },
 });
